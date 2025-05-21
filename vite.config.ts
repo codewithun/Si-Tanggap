@@ -7,7 +7,16 @@ import { defineConfig } from 'vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.tsx'],
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.tsx',
+                'resources/js/pages/webgis/landing.tsx',
+                'resources/js/pages/webgis/map.tsx',
+                'resources/js/pages/webgis/reports.tsx',
+                'resources/js/pages/webgis/data.tsx',
+                'resources/js/pages/webgis/about.tsx',
+                'resources/js/pages/webgis/reports/create.tsx',
+            ],
             ssr: 'resources/js/ssr.tsx',
             refresh: true,
         }),
