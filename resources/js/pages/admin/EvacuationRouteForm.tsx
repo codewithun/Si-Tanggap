@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
@@ -187,8 +186,8 @@ export default function EvacuationRouteForm() {
                     <div className="space-y-6">
                         <div className="h-[400px] w-full overflow-hidden rounded-md">
                             <MapContainer
-                                center={[-7.797068, 110.370529]} // Default to Yogyakarta
-                                zoom={13}
+                                center={[-7.150975, 110.140259]}
+                                zoom={6}
                                 style={{ height: '100%', width: '100%' }}
                             >
                                 <TileLayer

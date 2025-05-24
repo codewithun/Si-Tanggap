@@ -161,8 +161,8 @@ export default function PoskoForm() {
                     <div className="space-y-6">
                         <div className="h-[400px] w-full overflow-hidden rounded-md">
                             <MapContainer
-                                center={[-7.797068, 110.370529]} // Default to Yogyakarta
-                                zoom={13}
+                                center={[-7.150975, 110.140259]}
+                                zoom={6}
                                 style={{ height: '100%', width: '100%' }}
                             >
                                 <TileLayer

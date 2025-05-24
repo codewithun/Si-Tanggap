@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AdminMap from './AdminMap';
 import DisasterStatistics from './DisasterStatistics';
 import EvacuationRouteForm from './EvacuationRouteForm';
 import PoskoForm from './PoskoForm';
@@ -17,15 +18,19 @@ export default function AdminDashboard() {
             <Tabs defaultValue="statistics" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="statistics">Statistik</TabsTrigger>
+                    <TabsTrigger value="map">Map</TabsTrigger>
                     <TabsTrigger value="evacuation-routes">Jalur Evakuasi</TabsTrigger>
                     <TabsTrigger value="shelters">Posko</TabsTrigger>
                     <TabsTrigger value="reports">Laporan Bencana</TabsTrigger>
-                    <TabsTrigger value="users">Pengguna</TabsTrigger>
                     <TabsTrigger value="notifications">Notifikasi</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="statistics" className="space-y-4">
                     <DisasterStatistics />
+                </TabsContent>
+
+                <TabsContent value="map" className="space-y-4">
+                    <AdminMap />
                 </TabsContent>
 
                 <TabsContent value="evacuation-routes" className="space-y-4">
