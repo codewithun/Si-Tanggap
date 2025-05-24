@@ -23,7 +23,7 @@ export default function DisasterStatistics() {
 
     const fetchStatistics = useCallback(async () => {
         try {
-            const response = await axios.get('/api/statistics');
+            const response = await axios.get('/statistik-bencana');
             setStats(response.data);
         } catch (error) {
             if (axios.isAxiosError(error)) {

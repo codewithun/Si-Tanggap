@@ -6,10 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
-import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useCallback, useEffect, useState } from 'react';
+import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 
 interface Posko {
     id: number;
@@ -68,11 +68,7 @@ export default function PoskoForm() {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
-    useEffect(() => {
-        fetchExistingPoskos();
-    }, []);
-
-    const fetchExistingPoskos = async () => {
+    const fetchExistingPoskos = useCallback(async () => {
         try {
             const response = await axios.get('/poskos');
             setPoskoList(response.data);
@@ -84,7 +80,7 @@ export default function PoskoForm() {
                 variant: 'destructive',
             });
         }
-    };
+    }, [toast]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -148,23 +144,21 @@ export default function PoskoForm() {
         }
     };
 
+    useEffect(() => {
+        fetchExistingPoskos();
+    }, [fetchExistingPoskos]);
+
     return (
         <div className="space-y-6">
             <Card>
                 <CardHeader>
                     <CardTitle>Tambah Posko</CardTitle>
-                    <CardDescription>
-                        Tentukan lokasi posko pada peta dengan mengklik titik yang diinginkan
-                    </CardDescription>
+                    <CardDescription>Tentukan lokasi posko pada peta dengan mengklik titik yang diinginkan</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-6">
                         <div className="h-[400px] w-full overflow-hidden rounded-md">
-                            <MapContainer
-                                center={[-7.150975, 110.140259]}
-                                zoom={6}
-                                style={{ height: '100%', width: '100%' }}
-                            >
+                            <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
                                 <TileLayer
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -173,11 +167,7 @@ export default function PoskoForm() {
 
                                 {/* Display existing poskos */}
                                 {poskoList.map((posko) => (
-                                    <Marker
-                                        key={posko.id}
-                                        position={[posko.latitude, posko.longitude]}
-                                        icon={shelterIcon}
-                                    />
+                                    <Marker key={posko.id} position={[posko.latitude, posko.longitude]} icon={shelterIcon} />
                                 ))}
                             </MapContainer>
                         </div>
@@ -288,54 +278,46 @@ export default function PoskoForm() {
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="py-2 px-4 text-left font-medium">Nama</th>
-                                    <th className="py-2 px-4 text-left font-medium">Jenis</th>
-                                    <th className="py-2 px-4 text-left font-medium">Status</th>
-                                    <th className="py-2 px-4 text-left font-medium">Kapasitas</th>
-                                    <th className="py-2 px-4 text-left font-medium">Alamat</th>
-                                    <th className="py-2 px-4 text-left font-medium">Kontak</th>
-                                    <th className="py-2 px-4 text-left font-medium">Pembuat</th>
-                                    <th className="py-2 px-4 text-left font-medium">Dibuat</th>
-                                    <th className="py-2 px-4 text-left font-medium">Diperbarui</th>
+                                    <th className="px-4 py-2 text-left font-medium">Nama</th>
+                                    <th className="px-4 py-2 text-left font-medium">Jenis</th>
+                                    <th className="px-4 py-2 text-left font-medium">Status</th>
+                                    <th className="px-4 py-2 text-left font-medium">Kapasitas</th>
+                                    <th className="px-4 py-2 text-left font-medium">Alamat</th>
+                                    <th className="px-4 py-2 text-left font-medium">Kontak</th>
+                                    <th className="px-4 py-2 text-left font-medium">Pembuat</th>
+                                    <th className="px-4 py-2 text-left font-medium">Dibuat</th>
+                                    <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {poskoList.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} className="py-4 px-4 text-center text-gray-500">
+                                        <td colSpan={9} className="px-4 py-4 text-center text-gray-500">
                                             Belum ada posko yang ditambahkan
                                         </td>
                                     </tr>
                                 ) : (
                                     poskoList.map((posko) => (
                                         <tr key={posko.id}>
-                                            <td className="py-2 px-4">{posko.nama}</td>
-                                            <td className="py-2 px-4">
-                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">
-                                                    {posko.jenis_posko}
-                                                </span>
+                                            <td className="px-4 py-2">{posko.nama}</td>
+                                            <td className="px-4 py-2">
+                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{posko.jenis_posko}</span>
                                             </td>
-                                            <td className="py-2 px-4">
+                                            <td className="px-4 py-2">
                                                 <span
                                                     className={`rounded-full px-2 py-1 text-xs ${
-                                                        posko.status === 'aktif'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-red-100 text-red-800'
+                                                        posko.status === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                                     }`}
                                                 >
                                                     {posko.status}
                                                 </span>
                                             </td>
-                                            <td className="py-2 px-4">{posko.kapasitas} orang</td>
-                                            <td className="py-2 px-4">{posko.alamat}</td>
-                                            <td className="py-2 px-4">{posko.kontak || '-'}</td>
-                                            <td className="py-2 px-4">{posko.user?.name || 'Unknown'}</td>
-                                            <td className="py-2 px-4 text-gray-500">
-                                                {new Date(posko.created_at).toLocaleDateString()}
-                                            </td>
-                                            <td className="py-2 px-4 text-gray-500">
-                                                {new Date(posko.updated_at).toLocaleDateString()}
-                                            </td>
+                                            <td className="px-4 py-2">{posko.kapasitas} orang</td>
+                                            <td className="px-4 py-2">{posko.alamat}</td>
+                                            <td className="px-4 py-2">{posko.kontak || '-'}</td>
+                                            <td className="px-4 py-2">{posko.user?.name || 'Unknown'}</td>
+                                            <td className="px-4 py-2 text-gray-500">{new Date(posko.created_at).toLocaleDateString()}</td>
+                                            <td className="px-4 py-2 text-gray-500">{new Date(posko.updated_at).toLocaleDateString()}</td>
                                         </tr>
                                     ))
                                 )}

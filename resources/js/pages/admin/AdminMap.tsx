@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/useToast';
 import axios from 'axios';
-import { useCallback, useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useCallback, useEffect, useState } from 'react';
+import { MapContainer, Marker, Polyline, TileLayer } from 'react-leaflet';
 
 interface JalurEvakuasi {
     id: number;
@@ -67,10 +67,7 @@ function CustomMap({
     return (
         <div style={{ height }} className={className}>
             <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
-                <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; OpenStreetMap contributors'
-                />
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
                 {markers.map((marker) => (
                     <Marker key={marker.id} position={marker.position} icon={shelterIcon} />
                 ))}

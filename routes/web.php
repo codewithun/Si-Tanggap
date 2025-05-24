@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Api\JalurEvakuasiController;
@@ -16,14 +15,16 @@ Route::get('/', function () {
 })->name('home');
 
 // Public routes
-Route::get('jalur-evakuasi', [JalurEvakuasiController::class, 'index']);
-Route::get('jalur-evakuasi/{jalurEvakuasi}', [JalurEvakuasiController::class, 'show']);
+Route::group(['prefix' => 'jalur-evakuasi'], function () {
+    Route::get('/', [App\Http\Controllers\Api\JalurEvakuasiController::class, 'index']);
+    Route::get('/{jalurEvakuasi}', [JalurEvakuasiController::class, 'show']);
+});
 Route::get('poskos', [PoskoController::class, 'index']);
 Route::get('poskos/{posko}', [PoskoController::class, 'show']);
 Route::get('statistik', [StatistikController::class, 'index']);
 Route::get('titik-bencana', [TitikBencanaController::class, 'index']);
 Route::get('laporan-bencana', [LaporanController::class, 'index']);
-Route::get('statistik-bencana', [StatistikController::class, 'index']);
+Route::get('statistik-bencana', [App\Http\Controllers\StatistikController::class, 'index']);
 Route::get('laporans', [LaporanController::class, 'index']);
 Route::get('laporans/{laporan}', [LaporanController::class, 'show']);
 
