@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import axios from 'axios';
 import { PencilIcon, Trash2Icon, UserPlusIcon } from 'lucide-react';
-import {  useState } from 'react';
+import { useState } from 'react';
 import { useToast } from '../../hooks/useToast';
 
 interface User {
@@ -42,7 +42,6 @@ export default function UserManagement() {
     });
 
     const { toast } = useToast();
-
 
     const fetchUsers = async () => {
         try {

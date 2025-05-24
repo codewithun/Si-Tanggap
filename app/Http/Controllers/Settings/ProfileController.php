@@ -27,7 +27,7 @@ class ProfileController extends Controller
     /**
      * Update the user's profile settings.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(ProfileUpdateRequest $request)
     {
         $request->user()->fill($request->validated());
 
@@ -35,7 +35,20 @@ class ProfileController extends Controller
             $request->user()->email_verified_at = null;
         }
 
+        // Handle profile photo upload
+        if ($request->hasFile('profile_photo')) {
+            $path = $request->file('profile_photo')->store('public/profile-photos');
+            $request->user()->profile_photo_path = \Illuminate\Support\Facades\Storage::url($path);
+        }
+
         $request->user()->save();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'user' => $request->user(),
+                'message' => 'Profile berhasil diupdate'
+            ]);
+        }
 
         return to_route('profile.edit');
     }

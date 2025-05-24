@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Title, Tooltip } from 'chart.js';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { useToast } from '../../hooks/useToast';
 
@@ -21,52 +21,38 @@ export default function DisasterStatistics() {
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
-    useEffect(() => {
-        fetchStatistics();
-    }, []);
-
-    const fetchStatistics = async () => {
+    const fetchStatistics = useCallback(async () => {
         try {
-            const response = await axios.get('/statistik-bencana');
-            const data = response.data;
-
-            // Transform laporan_by_jenis (array) jadi object key-value untuk chart
-            const bencanaBerdasarkanJenis = data.laporan_by_jenis.reduce(
-                (acc: Record<string, number>, item: { jenis_bencana: string; total: number }) => {
-                    acc[item.jenis_bencana] = item.total;
-                    return acc;
-                }, {}
-            );
-
-            // Transform laporan_per_bulan (array) jadi object key-value dengan format "YYYY-MM"
-            const laporanBulanan = data.laporan_per_bulan.reduce(
-                (acc: Record<string, number>, item: { tahun: number; bulan: number; total: number }) => {
-                    const bulanStr = item.bulan.toString().padStart(2, '0');
-                    const key = `${item.tahun}-${bulanStr}`;
-                    acc[key] = item.total;
-                    return acc;
-                }, {}
-            );
-
-            setStats({
-                totalBencana: data.totals.laporan,
-                totalLaporan: data.totals.laporan,
-                totalLaporanVerified: data.laporan_by_status.find((s: any) => s.status === 'diverifikasi')?.total || 0,
-                totalPosko: data.totals.posko,
-                bencanaBerdasarkanJenis,
-                laporanBulanan,
-            });
+            const response = await axios.get('/api/statistics');
+            setStats(response.data);
         } catch (error) {
-            console.error('Failed to fetch statistics:', error);
-            toast({
-                title: 'Error',
-                description: 'Gagal memuat data statistik bencana',
-                variant: 'destructive',
-            });
+            if (axios.isAxiosError(error)) {
+                const err = error as AxiosError;
+                if (err.response) {
+                    toast({
+                        title: 'Error',
+                        description:
+                            typeof err.response.data === 'object' && err.response.data !== null && 'message' in err.response.data
+                                ? (err.response.data as { message: string }).message
+                                : 'An unexpected error occurred.',
+                        variant: 'destructive',
+                    });
+                } else {
+                    toast({
+                        title: 'Error',
+                        description: 'An unexpected error occurred.',
+                        variant: 'destructive',
+                    });
+                }
+            }
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]);
+
+    useEffect(() => {
+        fetchStatistics();
+    }, [fetchStatistics]);
 
     const disasterTypeChartData = {
         labels: stats?.bencanaBerdasarkanJenis ? Object.keys(stats.bencanaBerdasarkanJenis) : [],

@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import axios from 'axios';
 import { CheckCircleIcon, ExternalLinkIcon, XCircleIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '../../hooks/useToast';
 
 interface Laporan {
@@ -38,11 +38,7 @@ export default function ReportManagement() {
 
     const { toast } = useToast();
 
-    useEffect(() => {
-        fetchReports();
-    }, []);
-
-    const fetchReports = async () => {
+    const fetchReports = useCallback(async () => {
         try {
             const response = await axios.get('/api/laporan-bencana');
             setReports(response.data.data);
@@ -56,7 +52,11 @@ export default function ReportManagement() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]);
+
+    useEffect(() => {
+        fetchReports();
+    }, [fetchReports]);
 
     const openViewDialog = (report: Laporan) => {
         setSelectedReport(report);
