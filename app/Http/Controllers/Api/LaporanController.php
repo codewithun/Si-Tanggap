@@ -176,4 +176,21 @@ class LaporanController extends Controller
             'data' => $laporan
         ]);
     }
+
+    /**
+     * Get reports belonging to current user
+     */
+    public function getMyReports(Request $request)
+    {
+        $query = Laporan::where('user_id', $request->user()->id)
+            ->orderBy('created_at', 'desc');
+
+        // Filter berdasarkan status jika parameter ada
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $laporans = $query->paginate(10);
+        return response()->json($laporans);
+    }
 }

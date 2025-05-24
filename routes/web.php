@@ -26,6 +26,17 @@ Route::get('statistik-bencana', [StatistikController::class, 'index']);
 Route::get('laporans', [LaporanController::class, 'index']);
 Route::get('laporans/{laporan}', [LaporanController::class, 'show']);
 
+// API routes with Sanctum authentication
+Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
+    Route::get('laporan-saya', [LaporanController::class, 'getMyReports']);
+    Route::put('profile', [App\Http\Controllers\Settings\ProfileController::class, 'update'])->name('profile.api.update');
+
+    // User API Routes
+    Route::post('login', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'store']);
+    Route::post('register', [App\Http\Controllers\Auth\RegisteredUserController::class, 'store']);
+    Route::post('logout', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy']);
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
@@ -33,6 +44,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Routes for all authenticated users
     Route::post('laporans', [LaporanController::class, 'store']);
+
+    // Masyarakat routes
+    Route::get('akun-saya', function () {
+        return Inertia::render('masyarakat/AkunSaya');
+    })->name('akun-saya');
+
+    Route::get('laporan-saya', function () {
+        return Inertia::render('masyarakat/MasyarakatDashboard');
+    })->name('laporan-saya');
+
+    Route::get('laporan-bencana/create', function () {
+        return Inertia::render('masyarakat/BuatLaporan');
+    })->name('laporan-bencana.create');
 
     // Relawan Dashboard
     Route::middleware('role:relawan')->group(function () {

@@ -4,6 +4,7 @@ import { Head, usePage } from '@inertiajs/react';
 
 // Import role-specific dashboards
 import AdminDashboard from '@/pages/admin/AdminDashboard';
+import MasyarakatDashboard from '@/pages/masyarakat/MasyarakatDashboard';
 import RelawanDashboard from '@/pages/relawan/RelawanDashboard';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -23,7 +24,7 @@ export default function Dashboard() {
             case 'admin':
                 return <AdminDashboard />;
             case 'masyarakat':
-                return <div>Masyarakat Dashboard</div>; // Replace with actual masyarakat dashboard component
+                return <MasyarakatDashboard />;
             case 'relawan':
                 return <RelawanDashboard />; // Replace with actual relawan dashboard component
             default:
