@@ -49,6 +49,10 @@ export interface ToastProviderProps {
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = React.useState<ToastProps[]>([]);
 
+  const dismiss = React.useCallback((id: string) => {
+    setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
+  }, []);
+
   const toast = React.useCallback((props: ToastProps) => {
     const id = props.id || Math.random().toString(36).substring(2, 9);
     setToasts((prevToasts) => [...prevToasts, { ...props, id }]);
@@ -60,11 +64,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
     }
 
     return id;
-  }, []);
-
-  const dismiss = React.useCallback((id: string) => {
-    setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
-  }, []);
+  }, [dismiss]);
 
   return (
     <ToastContext.Provider value={{ toast, dismiss }}>

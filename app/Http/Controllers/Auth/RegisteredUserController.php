@@ -28,21 +28,34 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
+            'password' => ['required', 'confirmed', 'min:8'],
+            'phone' => 'nullable|string|max:20',
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'phone' => $request->phone,
+            'role' => 'masyarakat',
         ]);
 
         event(new Registered($user));
+
+        if ($request->wantsJson()) {
+            Auth::login($user);
+            $token = $user->createToken('api-token');
+            return response()->json([
+                'user' => $user,
+                'token' => $token->plainTextToken,
+                'message' => 'Registrasi berhasil'
+            ], 201);
+        }
 
         Auth::login($user);
 
