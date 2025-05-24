@@ -64,6 +64,9 @@ export default function EvacuationRouteForm() {
 
     const fetchExistingRoutes = useCallback(async () => {
         try {
+            const response = await axios.get('/jalur-evakuasi');
+            setJalurList(response.data || []);
+        } catch (error) {
             console.error('Failed to fetch evacuation routes:', error);
             toast({
                 title: 'Error',
@@ -106,7 +109,7 @@ export default function EvacuationRouteForm() {
             await axios.post('/jalur-evakuasi', {
                 nama: routeName,
                 deskripsi: routeDesc,
-                koordinat: points.map(point => ({ lat: point[0], lng: point[1] })), // Format coordinates properly
+                koordinat: points.map((point) => ({ lat: point[0], lng: point[1] })), // Format coordinates properly
                 jenis_bencana: disasterType,
                 warna: routeColor,
             });
@@ -159,16 +162,16 @@ export default function EvacuationRouteForm() {
                                 {jalurList.map((jalur) => {
                                     // Debug log for each route
                                     console.log(`Rendering route ${jalur.id}:`, jalur.koordinat);
-                                    
+
                                     return jalur.koordinat && jalur.koordinat.length > 0 ? (
-                                        <Polyline 
-                                            key={jalur.id} 
-                                            positions={jalur.koordinat} 
-                                            pathOptions={{ 
+                                        <Polyline
+                                            key={jalur.id}
+                                            positions={jalur.koordinat}
+                                            pathOptions={{
                                                 color: jalur.warna || '#FF0000',
                                                 weight: 3,
-                                                opacity: 0.8 
-                                            }} 
+                                                opacity: 0.8,
+                                            }}
                                         />
                                     ) : null;
                                 })}
@@ -255,54 +258,39 @@ export default function EvacuationRouteForm() {
                         <table className="w-full text-sm">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="py-2 px-4 text-left font-medium">Nama</th>
-                                    <th className="py-2 px-4 text-left font-medium">Jenis Bencana</th>
-                                    <th className="py-2 px-4 text-left font-medium">Deskripsi</th>
-                                    <th className="py-2 px-4 text-left font-medium">Pembuat</th>
-                                    <th className="py-2 px-4 text-left font-medium">Titik</th>
-                                    <th className="py-2 px-4 text-left font-medium">Dibuat</th>
-                                    <th className="py-2 px-4 text-left font-medium">Diperbarui</th>
+                                    <th className="px-4 py-2 text-left font-medium">Nama</th>
+                                    <th className="px-4 py-2 text-left font-medium">Jenis Bencana</th>
+                                    <th className="px-4 py-2 text-left font-medium">Deskripsi</th>
+                                    <th className="px-4 py-2 text-left font-medium">Pembuat</th>
+                                    <th className="px-4 py-2 text-left font-medium">Titik</th>
+                                    <th className="px-4 py-2 text-left font-medium">Dibuat</th>
+                                    <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {jalurList.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="py-4 px-4 text-center text-gray-500">
+                                        <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
                                             Belum ada jalur evakuasi yang ditambahkan
                                         </td>
                                     </tr>
                                 ) : (
                                     jalurList.map((jalur) => (
                                         <tr key={jalur.id}>
-                                            <td className="py-2 px-4">
+                                            <td className="px-4 py-2">
                                                 <div className="flex items-center gap-2">
-                                                    <div
-                                                        className="h-3 w-3 rounded-full"
-                                                        style={{ backgroundColor: jalur.warna }}
-                                                    />
+                                                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: jalur.warna }} />
                                                     {jalur.nama}
                                                 </div>
                                             </td>
-                                            <td className="py-2 px-4">
-                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">
-                                                    {jalur.jenis_bencana}
-                                                </span>
+                                            <td className="px-4 py-2">
+                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{jalur.jenis_bencana}</span>
                                             </td>
-                                            <td className="py-2 px-4 max-w-xs truncate">
-                                                {jalur.deskripsi}
-                                            </td>
-                                            <td className="py-2 px-4">
-                                                {jalur.user?.name || 'Unknown'}
-                                            </td>
-                                            <td className="py-2 px-4">
-                                                {jalur.koordinat.length} titik
-                                            </td>
-                                            <td className="py-2 px-4 text-gray-500">
-                                                {new Date(jalur.created_at).toLocaleDateString()}
-                                            </td>
-                                            <td className="py-2 px-4 text-gray-500">
-                                                {new Date(jalur.updated_at).toLocaleDateString()}
-                                            </td>
+                                            <td className="max-w-xs truncate px-4 py-2">{jalur.deskripsi}</td>
+                                            <td className="px-4 py-2">{jalur.user?.name || 'Unknown'}</td>
+                                            <td className="px-4 py-2">{jalur.koordinat.length} titik</td>
+                                            <td className="px-4 py-2 text-gray-500">{new Date(jalur.created_at).toLocaleDateString()}</td>
+                                            <td className="px-4 py-2 text-gray-500">{new Date(jalur.updated_at).toLocaleDateString()}</td>
                                         </tr>
                                     ))
                                 )}

@@ -90,14 +90,16 @@ export default function EvacuationAndShelterMap() {
     }));
 
     // Transform jalur evakuasi to path format with validation
-    const paths = Array.isArray(jalurEvakuasi) ? jalurEvakuasi
-        .filter((jalur) => jalur?.koordinat && Array.isArray(jalur.koordinat))
-        .map((jalur) => ({
-            id: jalur.id,
-            positions: jalur.koordinat.map((point) => [point.lat, point.lng] as [number, number]),
-            color: jalur.warna || '#3B82F6',
-            name: jalur.nama,
-        })) : [];
+    const paths = Array.isArray(jalurEvakuasi)
+        ? jalurEvakuasi
+              .filter((jalur) => jalur?.koordinat && Array.isArray(jalur.koordinat))
+              .map((jalur) => ({
+                  id: jalur.id,
+                  positions: jalur.koordinat.map((point) => [point.lat, point.lng] as [number, number]),
+                  color: jalur.warna || '#3B82F6',
+                  name: jalur.nama,
+              }))
+        : [];
 
     return (
         <div className="space-y-2 sm:space-y-4">

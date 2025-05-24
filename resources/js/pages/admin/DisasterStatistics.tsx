@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import axios, { AxiosError } from 'axios';
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Title, Tooltip } from 'chart.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
@@ -22,6 +23,8 @@ export default function DisasterStatistics() {
 
     const fetchStatistics = useCallback(async () => {
         try {
+            const response = await axios.get('/api/statistics');
+            setStats(response.data);
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 const err = error as AxiosError;
