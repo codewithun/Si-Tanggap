@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -34,15 +35,66 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
+
+    /**
+     * Check if the user is an admin.
+     *
+     * @return bool
+     */
+    public function isAdmin(): bool
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if the user is a relawan.
+     *
+     * @return bool
+     */
+    public function isRelawan(): bool
+    {
+        return $this->role === 'relawan';
+    }
+
+    /**
+     * Check if the user is a masyarakat.
+     *
+     * @return bool
+     */
+    public function isMasyarakat(): bool
+    {
+        return $this->role === 'masyarakat';
+    }
+
+    /**
+     * Get the laporan for the user.
+     */
+    public function laporans()
+    {
+        return $this->hasMany(Laporan::class);
+    }
+
+    /**
+     * Get the jalur evakuasi for the user.
+     */
+    public function jalurEvakuasis()
+    {
+        return $this->hasMany(JalurEvakuasi::class);
+    }
+
+    /**
+     * Get the posko for the user.
+     */
+    public function poskos()
+    {
+        return $this->hasMany(Posko::class);
     }
 }

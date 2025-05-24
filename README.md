@@ -1,4 +1,4 @@
-﻿# Si-Tanggap
+# Si-Tanggap
 
 # Laravel + React Project Setup Tutorial
 
