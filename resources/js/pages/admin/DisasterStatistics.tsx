@@ -1,12 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// Update the path below if your useToast hook is located elsewhere
 import axios from 'axios';
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Title, Tooltip } from 'chart.js';
 import { useEffect, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { useToast } from '../../hooks/useToast';
 
-// Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface StatisticsData {
@@ -29,8 +27,35 @@ export default function DisasterStatistics() {
 
     const fetchStatistics = async () => {
         try {
-            const response = await axios.get('/api/statistik-bencana');
-            setStats(response.data);
+            const response = await axios.get('/statistik-bencana');
+            const data = response.data;
+
+            // Transform laporan_by_jenis (array) jadi object key-value untuk chart
+            const bencanaBerdasarkanJenis = data.laporan_by_jenis.reduce(
+                (acc: Record<string, number>, item: { jenis_bencana: string; total: number }) => {
+                    acc[item.jenis_bencana] = item.total;
+                    return acc;
+                }, {}
+            );
+
+            // Transform laporan_per_bulan (array) jadi object key-value dengan format "YYYY-MM"
+            const laporanBulanan = data.laporan_per_bulan.reduce(
+                (acc: Record<string, number>, item: { tahun: number; bulan: number; total: number }) => {
+                    const bulanStr = item.bulan.toString().padStart(2, '0');
+                    const key = `${item.tahun}-${bulanStr}`;
+                    acc[key] = item.total;
+                    return acc;
+                }, {}
+            );
+
+            setStats({
+                totalBencana: data.totals.laporan,
+                totalLaporan: data.totals.laporan,
+                totalLaporanVerified: data.laporan_by_status.find((s: any) => s.status === 'diverifikasi')?.total || 0,
+                totalPosko: data.totals.posko,
+                bencanaBerdasarkanJenis,
+                laporanBulanan,
+            });
         } catch (error) {
             console.error('Failed to fetch statistics:', error);
             toast({
@@ -43,13 +68,12 @@ export default function DisasterStatistics() {
         }
     };
 
-    // Prepare chart data for disaster types
     const disasterTypeChartData = {
-        labels: stats ? Object.keys(stats.bencanaBerdasarkanJenis) : [],
+        labels: stats?.bencanaBerdasarkanJenis ? Object.keys(stats.bencanaBerdasarkanJenis) : [],
         datasets: [
             {
                 label: 'Jumlah Kejadian',
-                data: stats ? Object.values(stats.bencanaBerdasarkanJenis) : [],
+                data: stats?.bencanaBerdasarkanJenis ? Object.values(stats.bencanaBerdasarkanJenis) : [],
                 backgroundColor: [
                     'rgba(255, 99, 132, 0.6)',
                     'rgba(54, 162, 235, 0.6)',
@@ -71,13 +95,12 @@ export default function DisasterStatistics() {
         ],
     };
 
-    // Prepare chart data for monthly reports
     const monthlyReportChartData = {
-        labels: stats ? Object.keys(stats.laporanBulanan) : [],
+        labels: stats?.laporanBulanan ? Object.keys(stats.laporanBulanan) : [],
         datasets: [
             {
                 label: 'Laporan Bulanan',
-                data: stats ? Object.values(stats.laporanBulanan) : [],
+                data: stats?.laporanBulanan ? Object.values(stats.laporanBulanan) : [],
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
                 borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 1,
@@ -90,6 +113,18 @@ export default function DisasterStatistics() {
         plugins: {
             legend: {
                 position: 'top' as const,
+            },
+            title: {
+                display: true,
+                text: 'Statistik Bencana',
+            },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    precision: 0,
+                },
             },
         },
     };
