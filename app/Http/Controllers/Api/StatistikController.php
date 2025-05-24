@@ -4,11 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Laporan;
-use App\Models\JalurEvakuasi;
 use App\Models\Posko;
+use App\Models\JalurEvakuasi;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class StatistikController extends Controller
 {
@@ -73,6 +74,9 @@ class StatistikController extends Controller
                 'jalur_evakuasi' => $totalJalurEvakuasi,
                 'users' => $totalUsers,
             ]
-        ]);
+        ])
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     }
 }

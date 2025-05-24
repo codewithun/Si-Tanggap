@@ -1,11 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import axios, { AxiosError } from 'axios';
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Title, Tooltip } from 'chart.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { useToast } from '../../hooks/useToast';
 
-// Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface StatisticsData {
@@ -24,9 +22,6 @@ export default function DisasterStatistics() {
 
     const fetchStatistics = useCallback(async () => {
         try {
-            setLoading(true);
-            const response = await axios.get('/api/admin/statistics');
-            setStats(response.data);
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 const err = error as AxiosError;
@@ -55,13 +50,12 @@ export default function DisasterStatistics() {
         fetchStatistics();
     }, [fetchStatistics]);
 
-    // Prepare chart data for disaster types
     const disasterTypeChartData = {
-        labels: stats ? Object.keys(stats.bencanaBerdasarkanJenis) : [],
+        labels: stats?.bencanaBerdasarkanJenis ? Object.keys(stats.bencanaBerdasarkanJenis) : [],
         datasets: [
             {
                 label: 'Jumlah Kejadian',
-                data: stats ? Object.values(stats.bencanaBerdasarkanJenis) : [],
+                data: stats?.bencanaBerdasarkanJenis ? Object.values(stats.bencanaBerdasarkanJenis) : [],
                 backgroundColor: [
                     'rgba(255, 99, 132, 0.6)',
                     'rgba(54, 162, 235, 0.6)',
@@ -83,13 +77,12 @@ export default function DisasterStatistics() {
         ],
     };
 
-    // Prepare chart data for monthly reports
     const monthlyReportChartData = {
-        labels: stats ? Object.keys(stats.laporanBulanan) : [],
+        labels: stats?.laporanBulanan ? Object.keys(stats.laporanBulanan) : [],
         datasets: [
             {
                 label: 'Laporan Bulanan',
-                data: stats ? Object.values(stats.laporanBulanan) : [],
+                data: stats?.laporanBulanan ? Object.values(stats.laporanBulanan) : [],
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
                 borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 1,
@@ -102,6 +95,18 @@ export default function DisasterStatistics() {
         plugins: {
             legend: {
                 position: 'top' as const,
+            },
+            title: {
+                display: true,
+                text: 'Statistik Bencana',
+            },
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    precision: 0,
+                },
             },
         },
     };

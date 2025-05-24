@@ -8,7 +8,10 @@ interface JalurEvakuasi {
     id: number;
     nama: string;
     deskripsi: string;
-    koordinat: Array<{ lat: number; lng: number }>;
+    koordinat: Array<{
+        lat: number;
+        lng: number;
+    }>;
     jenis_bencana: string;
     warna: string;
 }
@@ -34,12 +37,12 @@ export default function EvacuationAndShelterMap() {
     const fetchJalurEvakuasi = useCallback(async () => {
         try {
             const response = await axios.get('/jalur-evakuasi');
-            setJalurEvakuasi(response.data);
-            return response.data;
+            // Extract data from response.data.data
+            setJalurEvakuasi(response.data?.data || []);
+            return response.data?.data || [];
         } catch (error: unknown) {
             console.error('Failed to fetch evacuation routes:', error);
             const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data jalur evakuasi';
-
             toast({
                 title: 'Error',
                 description: errorMessage,
@@ -52,12 +55,12 @@ export default function EvacuationAndShelterMap() {
     const fetchPosko = useCallback(async () => {
         try {
             const response = await axios.get('/poskos');
-            setPosko(response.data);
-            return response.data;
+            // Extract data from response.data.data
+            setPosko(response.data?.data || []);
+            return response.data?.data || [];
         } catch (error: unknown) {
             console.error('Failed to fetch evacuation shelters:', error);
             const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data posko evakuasi';
-
             toast({
                 title: 'Error',
                 description: errorMessage,
@@ -84,15 +87,18 @@ export default function EvacuationAndShelterMap() {
                       Kontak: ${p.kontak || 'Tidak tersedia'}
                       Jenis: ${p.jenis_posko || 'Tidak tersedia'}
                       Status: ${p.status || 'Aktif'}`,
-    })); // Transform jalur evakuasi to path format with validation
-    const paths = jalurEvakuasi
-        .filter((jalur) => jalur.koordinat && Array.isArray(jalur.koordinat) && jalur.koordinat.length > 0)
+    }));
+
+    // Transform jalur evakuasi to path format with validation
+    const paths = Array.isArray(jalurEvakuasi) ? jalurEvakuasi
+        .filter((jalur) => jalur?.koordinat && Array.isArray(jalur.koordinat))
         .map((jalur) => ({
             id: jalur.id,
             positions: jalur.koordinat.map((point) => [point.lat, point.lng] as [number, number]),
-            color: jalur.warna || '#3B82F6', // Use defined color or blue as default
+            color: jalur.warna || '#3B82F6',
             name: jalur.nama,
-        }));
+        })) : [];
+
     return (
         <div className="space-y-2 sm:space-y-4">
             <div className="flex items-center justify-between">

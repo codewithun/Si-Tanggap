@@ -11,11 +11,19 @@ import { useToast } from '../../hooks/useToast';
 
 interface JalurEvakuasi {
     id: number;
+    user_id: number;
     nama: string;
     deskripsi: string;
     koordinat: [number, number][];
     jenis_bencana: string;
     warna: string;
+    created_at: string;
+    updated_at: string;
+    user?: {
+        id: number;
+        name: string;
+        email: string;
+    };
 }
 
 const PolylineCreator = ({
@@ -56,15 +64,13 @@ export default function EvacuationRouteForm() {
 
     const fetchExistingRoutes = useCallback(async () => {
         try {
-            const response = await axios.get('/api/jalur-evakuasi');
-            setJalurList(response.data.data);
-        } catch (error: unknown) {
             console.error('Failed to fetch evacuation routes:', error);
             toast({
                 title: 'Error',
                 description: 'Gagal memuat jalur evakuasi',
                 variant: 'destructive',
             });
+            setJalurList([]);
         }
     }, [toast]);
 
@@ -96,10 +102,11 @@ export default function EvacuationRouteForm() {
         setLoading(true);
 
         try {
-            await axios.post('/api/jalur-evakuasi', {
+            // Change the endpoint URL from /api/jalur-evakuasi to /jalur-evakuasi
+            await axios.post('/jalur-evakuasi', {
                 nama: routeName,
                 deskripsi: routeDesc,
-                koordinat: points,
+                koordinat: points.map(point => ({ lat: point[0], lng: point[1] })), // Format coordinates properly
                 jenis_bencana: disasterType,
                 warna: routeColor,
             });
@@ -149,9 +156,22 @@ export default function EvacuationRouteForm() {
                                 <PolylineCreator points={points} setPoints={setPoints} color={routeColor} />
 
                                 {/* Display existing routes */}
-                                {jalurList.map((jalur) => (
-                                    <Polyline key={jalur.id} positions={jalur.koordinat} pathOptions={{ color: jalur.warna }} />
-                                ))}
+                                {jalurList.map((jalur) => {
+                                    // Debug log for each route
+                                    console.log(`Rendering route ${jalur.id}:`, jalur.koordinat);
+                                    
+                                    return jalur.koordinat && jalur.koordinat.length > 0 ? (
+                                        <Polyline 
+                                            key={jalur.id} 
+                                            positions={jalur.koordinat} 
+                                            pathOptions={{ 
+                                                color: jalur.warna || '#FF0000',
+                                                weight: 3,
+                                                opacity: 0.8 
+                                            }} 
+                                        />
+                                    ) : null;
+                                })}
                             </MapContainer>
                         </div>
 
@@ -231,22 +251,63 @@ export default function EvacuationRouteForm() {
                     <CardDescription>Jalur evakuasi yang telah ditambahkan</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="divide-y">
-                        {jalurList.length === 0 ? (
-                            <p className="py-4 text-sm text-gray-500">Belum ada jalur evakuasi yang ditambahkan</p>
-                        ) : (
-                            jalurList.map((jalur) => (
-                                <div key={jalur.id} className="py-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-4 w-4 rounded-full" style={{ backgroundColor: jalur.warna }} />
-                                        <h3 className="font-medium">{jalur.nama}</h3>
-                                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{jalur.jenis_bencana}</span>
-                                    </div>
-                                    <p className="mt-1 text-sm text-gray-500">{jalur.deskripsi}</p>
-                                    <div className="mt-1 text-xs text-gray-400">{jalur.koordinat.length} titik koordinat</div>
-                                </div>
-                            ))
-                        )}
+                    <div className="rounded-md border">
+                        <table className="w-full text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="py-2 px-4 text-left font-medium">Nama</th>
+                                    <th className="py-2 px-4 text-left font-medium">Jenis Bencana</th>
+                                    <th className="py-2 px-4 text-left font-medium">Deskripsi</th>
+                                    <th className="py-2 px-4 text-left font-medium">Pembuat</th>
+                                    <th className="py-2 px-4 text-left font-medium">Titik</th>
+                                    <th className="py-2 px-4 text-left font-medium">Dibuat</th>
+                                    <th className="py-2 px-4 text-left font-medium">Diperbarui</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {jalurList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="py-4 px-4 text-center text-gray-500">
+                                            Belum ada jalur evakuasi yang ditambahkan
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    jalurList.map((jalur) => (
+                                        <tr key={jalur.id}>
+                                            <td className="py-2 px-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className="h-3 w-3 rounded-full"
+                                                        style={{ backgroundColor: jalur.warna }}
+                                                    />
+                                                    {jalur.nama}
+                                                </div>
+                                            </td>
+                                            <td className="py-2 px-4">
+                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">
+                                                    {jalur.jenis_bencana}
+                                                </span>
+                                            </td>
+                                            <td className="py-2 px-4 max-w-xs truncate">
+                                                {jalur.deskripsi}
+                                            </td>
+                                            <td className="py-2 px-4">
+                                                {jalur.user?.name || 'Unknown'}
+                                            </td>
+                                            <td className="py-2 px-4">
+                                                {jalur.koordinat.length} titik
+                                            </td>
+                                            <td className="py-2 px-4 text-gray-500">
+                                                {new Date(jalur.created_at).toLocaleDateString()}
+                                            </td>
+                                            <td className="py-2 px-4 text-gray-500">
+                                                {new Date(jalur.updated_at).toLocaleDateString()}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </CardContent>
             </Card>
