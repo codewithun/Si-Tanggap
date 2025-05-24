@@ -1,8 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// Update the path below if your useToast hook is located elsewhere
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Title, Tooltip } from 'chart.js';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { useToast } from '../../hooks/useToast';
 
@@ -23,25 +22,38 @@ export default function DisasterStatistics() {
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
-    useEffect(() => {
-        fetchStatistics();
-    }, []);
-
-    const fetchStatistics = async () => {
+    const fetchStatistics = useCallback(async () => {
         try {
-            const response = await axios.get('/api/statistik-bencana');
+            setLoading(true);
+            const response = await axios.get('/api/admin/statistics');
             setStats(response.data);
         } catch (error) {
-            console.error('Failed to fetch statistics:', error);
-            toast({
-                title: 'Error',
-                description: 'Gagal memuat data statistik bencana',
-                variant: 'destructive',
-            });
+            if (axios.isAxiosError(error)) {
+                const err = error as AxiosError;
+                if (err.response) {
+                    toast({
+                        title: 'Error',
+                        description: typeof err.response.data === 'object' && err.response.data !== null && 'message' in err.response.data
+                            ? (err.response.data as { message: string }).message
+                            : 'An unexpected error occurred.',
+                        variant: 'destructive',
+                    });
+                } else {
+                    toast({
+                        title: 'Error',
+                        description: 'An unexpected error occurred.',
+                        variant: 'destructive',
+                    });
+                }
+            }
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]);
+
+    useEffect(() => {
+        fetchStatistics();
+    }, [fetchStatistics]);
 
     // Prepare chart data for disaster types
     const disasterTypeChartData = {

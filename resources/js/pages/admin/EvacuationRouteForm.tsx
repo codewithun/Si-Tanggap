@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 import { useToast } from '../../hooks/useToast';
 
@@ -54,15 +54,11 @@ export default function EvacuationRouteForm() {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
-    useEffect(() => {
-        fetchExistingRoutes();
-    }, []);
-
-    const fetchExistingRoutes = async () => {
+    const fetchExistingRoutes = useCallback(async () => {
         try {
             const response = await axios.get('/api/jalur-evakuasi');
             setJalurList(response.data.data);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Failed to fetch evacuation routes:', error);
             toast({
                 title: 'Error',
@@ -70,7 +66,11 @@ export default function EvacuationRouteForm() {
                 variant: 'destructive',
             });
         }
-    };
+    }, [toast]);
+
+    useEffect(() => {
+        fetchExistingRoutes();
+    }, [fetchExistingRoutes]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
