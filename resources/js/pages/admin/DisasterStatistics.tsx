@@ -33,9 +33,10 @@ export default function DisasterStatistics() {
                 if (err.response) {
                     toast({
                         title: 'Error',
-                        description: typeof err.response.data === 'object' && err.response.data !== null && 'message' in err.response.data
-                            ? (err.response.data as { message: string }).message
-                            : 'An unexpected error occurred.',
+                        description:
+                            typeof err.response.data === 'object' && err.response.data !== null && 'message' in err.response.data
+                                ? (err.response.data as { message: string }).message
+                                : 'An unexpected error occurred.',
                         variant: 'destructive',
                     });
                 } else {

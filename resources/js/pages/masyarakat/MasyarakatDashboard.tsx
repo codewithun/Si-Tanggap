@@ -40,7 +40,7 @@ export default function MasyarakatDashboard() {
             setLoading(true);
             const params = activeTab !== 'semua' ? { status: activeTab } : {};
             const response = await axios.get<ApiResponse>('/api/laporan-saya', { params });
-            
+
             if (response.data && Array.isArray(response.data.data)) {
                 setLaporans(response.data.data);
             } else {
@@ -49,12 +49,10 @@ export default function MasyarakatDashboard() {
             }
         } catch (error) {
             console.error('Error fetching reports:', error);
-            
+
             const axiosError = error as AxiosError<ErrorResponse>;
-            const errorMessage = axiosError.response?.data?.message || 
-                               axiosError.message || 
-                               'Terjadi kesalahan tidak terduga';
-            
+            const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Terjadi kesalahan tidak terduga';
+
             toast.error(`Gagal mengambil data laporan: ${errorMessage}`);
             setLaporans([]);
         } finally {
@@ -70,20 +68,20 @@ export default function MasyarakatDashboard() {
         const statusConfig = {
             menunggu: {
                 className: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-                label: 'Menunggu'
+                label: 'Menunggu',
             },
             diverifikasi: {
                 className: 'bg-green-100 text-green-800 border-green-300',
-                label: 'Diverifikasi'
+                label: 'Diverifikasi',
             },
             ditolak: {
                 className: 'bg-red-100 text-red-800 border-red-300',
-                label: 'Ditolak'
-            }
+                label: 'Ditolak',
+            },
         };
 
         const config = statusConfig[status];
-        
+
         return (
             <Badge variant="outline" className={config.className}>
                 {config.label}
@@ -98,7 +96,7 @@ export default function MasyarakatDashboard() {
                 month: 'long',
                 year: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
             });
         } catch (error) {
             console.error('Error formatting date:', error);
@@ -130,7 +128,7 @@ export default function MasyarakatDashboard() {
             semua: 'Semua',
             menunggu: 'Menunggu',
             diverifikasi: 'Diverifikasi',
-            ditolak: 'Ditolak'
+            ditolak: 'Ditolak',
         };
         return labels[tab];
     };
@@ -141,24 +139,18 @@ export default function MasyarakatDashboard() {
                 <CardHeader>
                     <CardTitle>Dashboard Masyarakat</CardTitle>
                     <CardDescription>
-                        Selamat datang di Si-Tanggap. Di sini Anda dapat melihat dan mengelola 
-                        laporan bencana yang pernah Anda kirimkan.
+                        Selamat datang di Si-Tanggap. Di sini Anda dapat melihat dan mengelola laporan bencana yang pernah Anda kirimkan.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {/* Action Button */}
-                    <div className="flex justify-between items-center">
-                        <Button 
-                            onClick={handleCreateReport}
-                            className="font-medium"
-                        >
+                    <div className="flex items-center justify-between">
+                        <Button onClick={handleCreateReport} className="font-medium">
                             + Buat Laporan Baru
                         </Button>
-                        
+
                         {/* Summary Stats */}
-                        <div className="text-sm text-muted-foreground">
-                            Total laporan: {laporans.length}
-                        </div>
+                        <div className="text-muted-foreground text-sm">Total laporan: {laporans.length}</div>
                     </div>
 
                     {/* Tabs for filtering */}
@@ -174,10 +166,8 @@ export default function MasyarakatDashboard() {
                         <TabsContent value={activeTab} className="mt-6">
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center py-12">
-                                    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-                                    <p className="mt-2 text-sm text-muted-foreground">
-                                        Memuat data laporan...
-                                    </p>
+                                    <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
+                                    <p className="text-muted-foreground mt-2 text-sm">Memuat data laporan...</p>
                                 </div>
                             ) : laporans.length > 0 ? (
                                 <div className="rounded-md border">
@@ -189,27 +179,19 @@ export default function MasyarakatDashboard() {
                                                 <TableHead className="font-semibold">Lokasi</TableHead>
                                                 <TableHead className="font-semibold">Status</TableHead>
                                                 <TableHead className="font-semibold">Tanggal</TableHead>
-                                                <TableHead className="font-semibold text-center">Aksi</TableHead>
+                                                <TableHead className="text-center font-semibold">Aksi</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {laporans.map((laporan) => (
                                                 <TableRow key={laporan.id} className="hover:bg-muted/50">
-                                                    <TableCell className="font-medium">
-                                                        {laporan.judul}
-                                                    </TableCell>
+                                                    <TableCell className="font-medium">{laporan.judul}</TableCell>
                                                     <TableCell>
-                                                        <span className="capitalize">
-                                                            {laporan.jenis_bencana}
-                                                        </span>
+                                                        <span className="capitalize">{laporan.jenis_bencana}</span>
                                                     </TableCell>
                                                     <TableCell>{laporan.lokasi}</TableCell>
-                                                    <TableCell>
-                                                        {getStatusBadge(laporan.status)}
-                                                    </TableCell>
-                                                    <TableCell className="text-sm">
-                                                        {formatDate(laporan.created_at)}
-                                                    </TableCell>
+                                                    <TableCell>{getStatusBadge(laporan.status)}</TableCell>
+                                                    <TableCell className="text-sm">{formatDate(laporan.created_at)}</TableCell>
                                                     <TableCell className="text-center">
                                                         <Button
                                                             variant="outline"
@@ -227,27 +209,20 @@ export default function MasyarakatDashboard() {
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                                        <svg 
-                                            className="h-6 w-6 text-muted-foreground"
-                                            fill="none" 
-                                            viewBox="0 0 24 24" 
-                                            stroke="currentColor"
-                                        >
-                                            <path 
-                                                strokeLinecap="round" 
-                                                strokeLinejoin="round" 
-                                                strokeWidth={2} 
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                                    <div className="bg-muted mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
+                                        <svg className="text-muted-foreground h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                             />
                                         </svg>
                                     </div>
-                                    <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                                    <h3 className="text-muted-foreground mb-2 text-lg font-medium">
                                         {activeTab === 'semua' ? 'Belum Ada Laporan' : 'Tidak Ada Data'}
                                     </h3>
-                                    <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-                                        {getEmptyStateMessage()}
-                                    </p>
+                                    <p className="text-muted-foreground mb-4 max-w-sm text-sm">{getEmptyStateMessage()}</p>
                                     {activeTab === 'semua' && (
                                         <Button onClick={handleCreateReport} size="sm">
                                             Buat Laporan Pertama

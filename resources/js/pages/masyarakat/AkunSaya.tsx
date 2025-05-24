@@ -35,9 +35,7 @@ export default function AkunSaya() {
     const user = auth.user;
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [previewImage, setPreviewImage] = useState<string | null>(
-        typeof user.profile_photo_path === 'string' ? user.profile_photo_path : null
-    );
+    const [previewImage, setPreviewImage] = useState<string | null>(typeof user.profile_photo_path === 'string' ? user.profile_photo_path : null);
 
     const { data, setData, errors } = useForm<ProfileFormData>({
         name: user.name || '',
@@ -87,26 +85,22 @@ export default function AkunSaya() {
                 formData.append('profile_photo', data.profile_photo);
             }
 
-
             toast.success('Profil berhasil diperbarui');
-            
+
             // Reset form after successful update
             setData('profile_photo', null);
-            
         } catch (error) {
             console.error('Error updating profile:', error);
 
             const axiosError = error as AxiosError<ErrorResponse>;
-            
+
             if (axiosError.response?.data?.errors) {
                 const serverErrors = axiosError.response.data.errors;
                 Object.keys(serverErrors).forEach((key) => {
                     toast.error(serverErrors[key][0]);
                 });
             } else {
-                const errorMessage = axiosError.response?.data?.message || 
-                                  axiosError.message || 
-                                  'Terjadi kesalahan tidak terduga';
+                const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Terjadi kesalahan tidak terduga';
                 toast.error(`Gagal memperbarui profil: ${errorMessage}`);
             }
         } finally {
@@ -122,9 +116,7 @@ export default function AkunSaya() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Edit Profil</CardTitle>
-                        <CardDescription>
-                            Perbarui informasi profil dan alamat email Anda.
-                        </CardDescription>
+                        <CardDescription>Perbarui informasi profil dan alamat email Anda.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
@@ -134,24 +126,18 @@ export default function AkunSaya() {
                                 <div className="flex items-center space-x-4">
                                     {previewImage && (
                                         <div className="h-16 w-16 overflow-hidden rounded-full border-2 border-gray-200">
-                                            <img 
-                                                src={previewImage} 
-                                                alt="Profile preview" 
-                                                className="h-full w-full object-cover" 
-                                            />
+                                            <img src={previewImage} alt="Profile preview" className="h-full w-full object-cover" />
                                         </div>
                                     )}
-                                    <Input 
-                                        id="profile_photo" 
-                                        type="file" 
-                                        accept="image/jpeg,image/jpg,image/png,image/gif" 
-                                        onChange={handleFileChange} 
-                                        className="max-w-sm" 
+                                    <Input
+                                        id="profile_photo"
+                                        type="file"
+                                        accept="image/jpeg,image/jpg,image/png,image/gif"
+                                        onChange={handleFileChange}
+                                        className="max-w-sm"
                                     />
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    JPG, GIF atau PNG. Maksimal 2MB.
-                                </p>
+                                <p className="text-muted-foreground text-xs">JPG, GIF atau PNG. Maksimal 2MB.</p>
                                 <InputError message={errors.profile_photo} />
                             </div>
 
@@ -160,11 +146,11 @@ export default function AkunSaya() {
                                 <Label htmlFor="name">
                                     Nama <span className="text-red-500">*</span>
                                 </Label>
-                                <Input 
-                                    id="name" 
-                                    value={data.name} 
-                                    onChange={(e) => setData('name', e.target.value)} 
-                                    required 
+                                <Input
+                                    id="name"
+                                    value={data.name}
+                                    onChange={(e) => setData('name', e.target.value)}
+                                    required
                                     className="max-w-sm"
                                     placeholder="Masukkan nama lengkap"
                                 />
@@ -191,11 +177,11 @@ export default function AkunSaya() {
                             {/* Phone Field */}
                             <div className="grid gap-2">
                                 <Label htmlFor="phone">Nomor Telepon</Label>
-                                <Input 
-                                    id="phone" 
+                                <Input
+                                    id="phone"
                                     type="tel"
-                                    value={data.phone} 
-                                    onChange={(e) => setData('phone', e.target.value)} 
+                                    value={data.phone}
+                                    onChange={(e) => setData('phone', e.target.value)}
                                     className="max-w-sm"
                                     placeholder="08xxxxxxxxxx"
                                 />
@@ -204,11 +190,7 @@ export default function AkunSaya() {
 
                             {/* Submit Button */}
                             <div className="flex justify-start">
-                                <Button 
-                                    type="submit" 
-                                    disabled={isSubmitting}
-                                    className="min-w-[120px]"
-                                >
+                                <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
                                     {isSubmitting ? (
                                         <div className="flex items-center">
                                             <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
