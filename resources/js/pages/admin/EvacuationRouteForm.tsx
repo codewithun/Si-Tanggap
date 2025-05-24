@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
@@ -13,7 +12,6 @@ interface JalurEvakuasi {
     id: number;
     user_id: number;
     nama: string;
-    deskripsi: string;
     koordinat: [number, number][];
     jenis_bencana: string;
     warna: string;
@@ -56,7 +54,6 @@ export default function EvacuationRouteForm() {
     const [jalurList, setJalurList] = useState<JalurEvakuasi[]>([]);
     const [points, setPoints] = useState<[number, number][]>([]);
     const [routeName, setRouteName] = useState('');
-    const [routeDesc, setRouteDesc] = useState('');
     const [disasterType, setDisasterType] = useState('');
     const [routeColor, setRouteColor] = useState('#FF5733');
     const [loading, setLoading] = useState(false);
@@ -65,7 +62,8 @@ export default function EvacuationRouteForm() {
     const fetchExistingRoutes = useCallback(async () => {
         try {
             const response = await axios.get('/jalur-evakuasi');
-            setJalurList(response.data || []);
+            // Ensure we're getting the data array from the response
+            setJalurList(response.data?.data || []);
         } catch (error) {
             console.error('Failed to fetch evacuation routes:', error);
             toast({
@@ -77,10 +75,21 @@ export default function EvacuationRouteForm() {
         }
     }, [toast]);
 
+    // Replace empty array pattern in useEffect
     useEffect(() => {
         fetchExistingRoutes();
-    }, [fetchExistingRoutes]);
+    }, [fetchExistingRoutes]); // Add dependency since we're using useCallback
 
+    // Define a proper error interface
+    interface ApiError {
+        response?: {
+            data?: {
+                message?: string;
+            };
+        };
+    }
+
+    // Fix the error handling with proper type
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -105,14 +114,24 @@ export default function EvacuationRouteForm() {
         setLoading(true);
 
         try {
-            // Change the endpoint URL from /api/jalur-evakuasi to /jalur-evakuasi
-            await axios.post('/jalur-evakuasi', {
+            const formData = {
                 nama: routeName,
-                deskripsi: routeDesc,
-                koordinat: points.map((point) => ({ lat: point[0], lng: point[1] })), // Format coordinates properly
+                deskripsi: 'Jalur evakuasi', // Provide a default description
+                koordinat: points.map(([lat, lng]) => ({
+                    lat: parseFloat(lat.toFixed(6)),
+                    lng: parseFloat(lng.toFixed(6)),
+                })),
                 jenis_bencana: disasterType,
                 warna: routeColor,
-            });
+            };
+
+            // Log the request data for debugging
+            console.log('Sending data:', formData);
+
+            const response = await axios.post('/jalur-evakuasi', formData);
+
+            // Log the response for debugging
+            console.log('Response:', response.data);
 
             toast({
                 title: 'Berhasil',
@@ -122,14 +141,15 @@ export default function EvacuationRouteForm() {
             // Reset form
             setPoints([]);
             setRouteName('');
-            setRouteDesc('');
             setDisasterType('');
             fetchExistingRoutes();
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Failed to save evacuation route:', error);
+            const typedError = error as ApiError;
+            const errorMessage = typedError?.response?.data?.message || 'Gagal menyimpan jalur evakuasi';
             toast({
                 title: 'Error',
-                description: 'Gagal menyimpan jalur evakuasi',
+                description: errorMessage,
                 variant: 'destructive',
             });
         } finally {
@@ -147,11 +167,7 @@ export default function EvacuationRouteForm() {
                 <CardContent>
                     <div className="space-y-6">
                         <div className="h-[400px] w-full overflow-hidden rounded-md">
-                            <MapContainer
-                                center={[-7.797068, 110.370529]} // Default to Yogyakarta
-                                zoom={13}
-                                style={{ height: '100%', width: '100%' }}
-                            >
+                            <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
                                 <TileLayer
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -220,16 +236,6 @@ export default function EvacuationRouteForm() {
                                         <span className="text-sm text-gray-500">{routeColor}</span>
                                     </div>
                                 </div>
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="routeDesc">Deskripsi</Label>
-                                    <Textarea
-                                        id="routeDesc"
-                                        value={routeDesc}
-                                        onChange={(e) => setRouteDesc(e.target.value)}
-                                        placeholder="Masukkan deskripsi jalur evakuasi"
-                                    />
-                                </div>
                             </div>
 
                             <div className="mt-4 flex items-center space-x-2">
@@ -260,7 +266,6 @@ export default function EvacuationRouteForm() {
                                 <tr>
                                     <th className="px-4 py-2 text-left font-medium">Nama</th>
                                     <th className="px-4 py-2 text-left font-medium">Jenis Bencana</th>
-                                    <th className="px-4 py-2 text-left font-medium">Deskripsi</th>
                                     <th className="px-4 py-2 text-left font-medium">Pembuat</th>
                                     <th className="px-4 py-2 text-left font-medium">Titik</th>
                                     <th className="px-4 py-2 text-left font-medium">Dibuat</th>
@@ -286,7 +291,6 @@ export default function EvacuationRouteForm() {
                                             <td className="px-4 py-2">
                                                 <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{jalur.jenis_bencana}</span>
                                             </td>
-                                            <td className="max-w-xs truncate px-4 py-2">{jalur.deskripsi}</td>
                                             <td className="px-4 py-2">{jalur.user?.name || 'Unknown'}</td>
                                             <td className="px-4 py-2">{jalur.koordinat.length} titik</td>
                                             <td className="px-4 py-2 text-gray-500">{new Date(jalur.created_at).toLocaleDateString()}</td>

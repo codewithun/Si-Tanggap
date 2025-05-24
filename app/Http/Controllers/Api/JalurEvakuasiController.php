@@ -29,26 +29,42 @@ class JalurEvakuasiController extends Controller
             }
 
             $jalurEvakuasis = $query->get()->map(function ($jalur) {
-                // Ensure koordinat is properly decoded
-                $koordinat = is_string($jalur->koordinat) ? json_decode($jalur->koordinat, true) : $jalur->koordinat;
+                $koordinat = [];
                 
-                // Convert koordinat to array of [lat, lng] arrays
-                if (is_array($koordinat)) {
-                    $koordinat = collect($koordinat)->map(function ($coord) {
-                        // If coord is already [lat, lng] array
-                        if (is_array($coord) && count($coord) === 2) {
-                            return $coord;
+                // Ensure koordinat is an array and has valid format
+                if (!empty($jalur->koordinat)) {
+                    if (is_string($jalur->koordinat)) {
+                        $decoded = json_decode($jalur->koordinat, true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $koordinat = $decoded;
                         }
-                        // If coord is object/array with lat/lng properties
-                        if (isset($coord['lat']) && isset($coord['lng'])) {
-                            return [(float)$coord['lat'], (float)$coord['lng']];
-                        }
-                        return null;
-                    })->filter()->values()->toArray();
+                    } else if (is_array($jalur->koordinat)) {
+                        $koordinat = $jalur->koordinat;
+                    }
                 }
 
-                $jalur->koordinat = $koordinat ?: [];
-                return $jalur;
+                // Transform coordinates to {lat, lng} format if needed
+                $koordinat = collect($koordinat)->map(function ($coord) {
+                    if (is_array($coord)) {
+                        // If already in [lat, lng] format, convert to {lat, lng}
+                        if (count($coord) === 2 && is_numeric($coord[0]) && is_numeric($coord[1])) {
+                            return [
+                                'lat' => (float)$coord[0],
+                                'lng' => (float)$coord[1]
+                            ];
+                        }
+                        // If already in {lat, lng} format, ensure values are float
+                        else if (isset($coord['lat']) && isset($coord['lng'])) {
+                            return [
+                                'lat' => (float)$coord['lat'],
+                                'lng' => (float)$coord['lng']
+                            ];
+                        }
+                    }
+                    return null;
+                })->filter()->values()->all();
+
+                return array_merge($jalur->toArray(), ['koordinat' => $koordinat]);
             });
             
             Log::info('Jalur Evakuasi data:', ['count' => $jalurEvakuasis->count(), 'data' => $jalurEvakuasis]);
