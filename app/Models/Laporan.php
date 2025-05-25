@@ -28,6 +28,15 @@ class Laporan extends Model
         'catatan_admin',
     ];
 
+    protected $casts = [
+        'status' => 'string'
+    ];
+
+    // Tambahkan konstanta untuk status yang valid
+    public const STATUS_MENUNGGU = 'menunggu';
+    public const STATUS_DIVERIFIKASI = 'diverifikasi';
+    public const STATUS_DITOLAK = 'ditolak';
+
     /**
      * Get the user that owns the laporan.
      */
