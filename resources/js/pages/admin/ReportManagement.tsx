@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { CheckCircleIcon, ExternalLinkIcon, XCircleIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '../../hooks/useToast';
@@ -40,8 +40,11 @@ export default function ReportManagement() {
 
     const fetchReports = useCallback(async () => {
         try {
-            const response = await axios.get('/api/laporan-bencana');
-            setReports(response.data.data);
+            const response = await axios.get('/laporan-bencana');
+            if (response.data && response.data.data) {
+                setReports(response.data.data);
+            }
+            setLoading(false);
         } catch (error) {
             console.error('Error fetching reports:', error);
             toast({
@@ -49,7 +52,6 @@ export default function ReportManagement() {
                 description: 'Gagal memuat data laporan bencana',
                 variant: 'destructive',
             });
-        } finally {
             setLoading(false);
         }
     }, [toast]);
@@ -73,10 +75,21 @@ export default function ReportManagement() {
     const handleVerification = async () => {
         if (!selectedReport) return;
 
+        if (verificationStatus === 'ditolak' && !adminNote.trim()) {
+            toast({
+                title: 'Error',
+                description: 'Catatan admin wajib diisi untuk penolakan laporan',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         try {
-            await axios.put(`/api/laporan-bencana/${selectedReport.id}/verifikasi`, {
-                status: verificationStatus,
-                catatan_admin: adminNote,
+            const endpoint =
+                verificationStatus === 'diverifikasi' ? `/laporans/${selectedReport.id}/verify` : `/laporans/${selectedReport.id}/reject`;
+
+            await axios.put(endpoint, {
+                catatan_admin: adminNote.trim() || null,
             });
 
             toast({
@@ -86,11 +99,12 @@ export default function ReportManagement() {
 
             setIsVerifyDialogOpen(false);
             fetchReports();
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Error verifying report:', error);
+            const axiosError = error as AxiosError<{ message: string }>;
             toast({
                 title: 'Error',
-                description: 'Gagal memverifikasi laporan',
+                description: axiosError.response?.data?.message || 'Gagal memproses verifikasi laporan',
                 variant: 'destructive',
             });
         }
@@ -144,24 +158,26 @@ export default function ReportManagement() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead>ID</TableHead>
                                         <TableHead>Judul</TableHead>
                                         <TableHead>Jenis Bencana</TableHead>
                                         <TableHead>Lokasi</TableHead>
-                                        <TableHead>Tanggal</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Aksi</TableHead>
+                                        <TableHead>Tanggal Dibuat</TableHead>
+                                        <TableHead>Aksi</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {reports.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="py-8 text-center text-gray-500">
+                                            <TableCell colSpan={7} className="py-8 text-center text-gray-500">
                                                 Tidak ada data laporan bencana
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         reports.map((report) => (
                                             <TableRow key={report.id}>
+                                                <TableCell>{report.id}</TableCell>
                                                 <TableCell className="font-medium">{report.judul}</TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center space-x-2">
@@ -176,22 +192,21 @@ export default function ReportManagement() {
                                                 <TableCell className="max-w-[200px] truncate" title={report.lokasi}>
                                                     {report.lokasi}
                                                 </TableCell>
-                                                <TableCell>{formatDate(report.created_at)}</TableCell>
                                                 <TableCell>
                                                     <span className={`rounded-full px-2 py-1 text-xs ${getStatusBadgeClass(report.status)}`}>
                                                         {report.status}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell>{formatDate(report.created_at)}</TableCell>
+                                                <TableCell>
                                                     <div className="flex justify-end space-x-2">
                                                         <Button variant="outline" size="sm" onClick={() => openViewDialog(report)}>
                                                             <ExternalLinkIcon className="h-4 w-4" />
-                                                            <span className="sr-only">Lihat</span>
                                                         </Button>
                                                         {report.status === 'menunggu' && (
                                                             <Button variant="default" size="sm" onClick={() => openVerifyDialog(report)}>
                                                                 <CheckCircleIcon className="mr-1 h-4 w-4" />
-                                                                <span>Verifikasi</span>
+                                                                Verifikasi
                                                             </Button>
                                                         )}
                                                     </div>
@@ -351,15 +366,23 @@ export default function ReportManagement() {
 
                             <div className="space-y-2">
                                 <label htmlFor="admin-note" className="text-sm font-medium">
-                                    Catatan Admin
+                                    Catatan Admin {verificationStatus === 'ditolak' && <span className="text-red-500">*</span>}
                                 </label>
                                 <Textarea
                                     id="admin-note"
                                     value={adminNote}
                                     onChange={(e) => setAdminNote(e.target.value)}
-                                    placeholder="Masukkan catatan tambahan (opsional)"
+                                    placeholder={
+                                        verificationStatus === 'ditolak'
+                                            ? 'Berikan alasan penolakan (wajib diisi)'
+                                            : 'Masukkan catatan tambahan (opsional)'
+                                    }
                                     rows={4}
+                                    required={verificationStatus === 'ditolak'}
                                 />
+                                {verificationStatus === 'ditolak' && !adminNote.trim() && (
+                                    <p className="text-xs text-red-500">Catatan admin wajib diisi untuk penolakan laporan</p>
+                                )}
                             </div>
                         </div>
                     )}
@@ -367,7 +390,11 @@ export default function ReportManagement() {
                         <Button variant="outline" onClick={() => setIsVerifyDialogOpen(false)}>
                             Batal
                         </Button>
-                        <Button variant={verificationStatus === 'diverifikasi' ? 'default' : 'destructive'} onClick={handleVerification}>
+                        <Button
+                            variant={verificationStatus === 'diverifikasi' ? 'default' : 'destructive'}
+                            onClick={handleVerification}
+                            disabled={verificationStatus === 'ditolak' && !adminNote.trim()}
+                        >
                             {verificationStatus === 'diverifikasi' ? 'Verifikasi' : 'Tolak'} Laporan
                         </Button>
                     </DialogFooter>

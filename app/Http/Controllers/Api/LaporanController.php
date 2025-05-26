@@ -51,28 +51,28 @@ class LaporanController extends Controller
     public function index(Request $request)
     {
         $query = Laporan::with('user:id,name,email')
+            ->select([
+                'id',
+                'user_id',
+                'judul',
+                'jenis_bencana',
+                'deskripsi',
+                'latitude',
+                'longitude',
+                'lokasi',
+                'foto',
+                'status',
+                'catatan_admin',
+                'created_at',
+                'updated_at'
+            ])
             ->orderBy('created_at', 'desc');
 
-        // Filter berdasarkan jenis bencana jika parameter ada
-        if ($request->has('jenis_bencana')) {
-            $query->where('jenis_bencana', $request->jenis_bencana);
-        }
+        $laporans = $query->get();
 
-        // Filter berdasarkan status jika parameter ada
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Pencarian berdasarkan judul atau lokasi
-        if ($request->has('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('judul', 'like', '%' . $request->search . '%')
-                    ->orWhere('lokasi', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        $laporans = $query->paginate(15);
-        return response()->json($laporans);
+        return response()->json([
+            'data' => $laporans
+        ]);
     }
 
     /**
@@ -191,20 +191,11 @@ class LaporanController extends Controller
 
         $laporan->status = 'diverifikasi';
         $laporan->catatan_admin = $validated['catatan_admin'] ?? null;
-
-        // Set risk level if not already set
-        if (!$laporan->tingkat_bahaya) {
-            $laporan->tingkat_bahaya = $this->assessRiskLevel(
-                $laporan->jenis_bencana,
-                $laporan->deskripsi
-            );
-        }
-
         $laporan->save();
 
         return response()->json([
             'message' => 'Laporan berhasil diverifikasi',
-            'data' => $laporan
+            'data' => $laporan->load('user:id,name,email')
         ]);
     }
 
@@ -217,13 +208,14 @@ class LaporanController extends Controller
             'catatan_admin' => 'required|string',
         ]);
 
-        $laporan->status = 'ditolak';
-        $laporan->catatan_admin = $validated['catatan_admin'];
-        $laporan->save();
+        $laporan->update([
+            'status' => Laporan::STATUS_DITOLAK,
+            'catatan_admin' => $validated['catatan_admin'],
+        ]);
 
         return response()->json([
             'message' => 'Laporan berhasil ditolak',
-            'data' => $laporan
+            'data' => $laporan->load('user:id,name,email')
         ]);
     }
 
