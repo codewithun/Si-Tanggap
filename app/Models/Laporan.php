@@ -26,6 +26,7 @@ class Laporan extends Model
         'foto',
         'status',
         'catatan_admin',
+        'tingkat_bahaya',
     ];
 
     protected $casts = [

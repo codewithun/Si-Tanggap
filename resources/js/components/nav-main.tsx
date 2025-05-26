@@ -1,7 +1,7 @@
 import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Shield, Users } from 'lucide-react';
+import { Map, Shield, Users } from 'lucide-react';
 
 interface User {
     role?: string;
@@ -18,6 +18,13 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
 
     // Add role-specific navigation items
     const allItems = [...items];
+
+    // Add map link for all users
+    allItems.push({
+        title: 'Peta Bencana',
+        href: '/map',
+        icon: Map,
+    });
 
     // Add volunteer dashboard link for volunteers
     if (user?.role === 'relawan') {

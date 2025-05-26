@@ -20,7 +20,7 @@ const RecentReports: React.FC = () => {
         const fetchReports = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get('/api/laporan-bencana');
+                const response = await axios.get('/laporan-bencana');
                 setReports(response.data.slice(0, 5)); // Get only the 5 most recent reports
                 setError(null);
             } catch (err) {
