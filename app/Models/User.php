@@ -2,16 +2,15 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -22,7 +21,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
         'phone',
         'profile_photo_path',
     ];
@@ -48,36 +46,6 @@ class User extends Authenticatable
     ];
 
     /**
-     * Check if the user is an admin.
-     *
-     * @return bool
-     */
-    public function isAdmin(): bool
-    {
-        return $this->role === 'admin';
-    }
-
-    /**
-     * Check if the user is a relawan.
-     *
-     * @return bool
-     */
-    public function isRelawan(): bool
-    {
-        return $this->role === 'relawan';
-    }
-
-    /**
-     * Check if the user is a masyarakat.
-     *
-     * @return bool
-     */
-    public function isMasyarakat(): bool
-    {
-        return $this->role === 'masyarakat';
-    }
-
-    /**
      * Get the laporan for the user.
      */
     public function laporans()
@@ -99,5 +67,23 @@ class User extends Authenticatable
     public function poskos()
     {
         return $this->hasMany(Posko::class);
+    }
+
+    /**
+     * Custom helper to check role using Spatie.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    public function isRelawan(): bool
+    {
+        return $this->hasRole('relawan');
+    }
+
+    public function isMasyarakat(): bool
+    {
+        return $this->hasRole('masyarakat');
     }
 }

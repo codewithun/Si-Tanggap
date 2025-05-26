@@ -30,6 +30,7 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request)
     {
         $request->authenticate();
+        $request->session()->regenerate();
 
         if ($request->wantsJson()) {
             $token = $request->user()->createToken('api-token');
@@ -40,9 +41,17 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        $request->session()->regenerate();
+        // Validasi role opsional
+        $user = $request->user();
+        $allowedRoles = ['admin', 'relawan', 'masyarakat'];
+        if (!in_array($user->role, $allowedRoles)) {
+            Auth::logout();
+            return redirect('/')
+                ->with('error', 'Role tidak diizinkan.');
+        }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Arahkan semua ke dashboard umum
+        return redirect()->route('dashboard');
     }
 
     /**

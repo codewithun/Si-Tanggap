@@ -6,6 +6,7 @@ import { Head, usePage } from '@inertiajs/react';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import MasyarakatDashboard from '@/pages/masyarakat/MasyarakatDashboard';
 import RelawanDashboard from '@/pages/relawan/RelawanDashboard';
+import { JSX } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -14,28 +15,26 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+const roleDashboardMap: Record<string, JSX.Element> = {
+    admin: <AdminDashboard />,
+    masyarakat: <MasyarakatDashboard />,
+    relawan: <RelawanDashboard />,
+};
+
 export default function Dashboard() {
     const { auth } = usePage<SharedData>().props;
-    const user = auth.user;
+    const user = auth?.user;
 
-    // Render dashboard based on user role
-    const renderDashboardByRole = () => {
-        switch (user.role) {
-            case 'admin':
-                return <AdminDashboard />;
-            case 'masyarakat':
-                return <MasyarakatDashboard />;
-            case 'relawan':
-                return <RelawanDashboard />; // Replace with actual relawan dashboard component
-            default:
-                return <div>Unauthorized</div>;
-        }
-    };
+    const dashboardComponent = roleDashboardMap[user?.role ?? ''] || (
+        <div className="text-red-500">Unauthorized: Role tidak dikenali</div>
+    );
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">{renderDashboardByRole()}</div>
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                {dashboardComponent}
+            </div>
         </AppLayout>
     );
 }
