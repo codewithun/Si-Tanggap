@@ -83,8 +83,25 @@ interface StatisticsData {
     };
 }
 
+// Interface for USGS earthquake data
+interface EarthquakeFeature {
+    type: 'Feature';
+    properties: {
+        mag: number;
+        place: string;
+        time: number;
+        url: string;
+        title: string;
+    };
+    geometry: {
+        type: 'Point';
+        coordinates: [number, number];  // [longitude, latitude, depth]
+    };
+}
+
 export default function MapKeseluruhan() {
     const [disasters, setDisasters] = useState<Bencana[]>([]);
+    const [earthquakes, setEarthquakes] = useState<EarthquakeFeature[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
@@ -145,7 +162,7 @@ export default function MapKeseluruhan() {
                 },
             });
 
-            const data = response.data || [];
+            const data = response.data?.data || [];
             console.log('Disaster data loaded:', data);
 
             // Add risk level to each disaster
@@ -170,9 +187,35 @@ export default function MapKeseluruhan() {
         }
     }, [toast]);
 
+    // Fetch USGS earthquake data
+    const fetchEarthquakeData = useCallback(async () => {
+        try {
+            const today = new Date();
+            const endtime = today.toISOString().split("T")[0];
+
+            const pastDate = new Date();
+            pastDate.setFullYear(today.getFullYear() - 5);
+            const starttime = pastDate.toISOString().split("T")[0];
+
+            const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${starttime}&endtime=${endtime}&minlatitude=-11&maxlatitude=6.1&minlongitude=94&maxlongitude=141&orderby=time&limit=100`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+            setEarthquakes(data.features || []);
+        } catch (error) {
+            console.error("Gagal ambil data gempa:", error);
+            toast({
+                title: 'Error',
+                description: 'Gagal memuat data gempa USGS',
+                variant: 'destructive',
+            });
+        }
+    }, [toast]);
+
     useEffect(() => {
         fetchDisasters();
-    }, [fetchDisasters]);
+        fetchEarthquakeData();
+    }, [fetchDisasters, fetchEarthquakeData]);
 
     // Handle hazard layer selection
     const handleHazardLayerChange = (type: HazardLayerType, checked: boolean) => {
@@ -192,20 +235,36 @@ export default function MapKeseluruhan() {
         }
     };
 
-    // Transform disaster data to marker format for MapComponent
-    const markers = disasters.map((disaster) => ({
-        id: disaster.id,
-        position: [disaster.latitude, disaster.longitude] as [number, number],
-        title: disaster.judul || disaster.jenis_bencana,
-        type: 'disaster',
-        description: `
-            Jenis: ${disaster.jenis_bencana || 'Tidak diketahui'}
-            Tanggal: ${new Date(disaster.created_at).toLocaleDateString('id-ID')}
-            Lokasi: ${disaster.lokasi || 'Tidak diketahui'}
-            Tingkat Bahaya: ${disaster.tingkat_bahaya || 'Tidak diketahui'}
-            Deskripsi: ${disaster.deskripsi || 'Tidak ada deskripsi'}
-        `,
-    }));
+    // Transform disaster and earthquake data to marker format for MapComponent
+    const markers = [
+        ...disasters.map((disaster) => ({
+            id: `disaster-${disaster.id}`,
+            position: [disaster.latitude, disaster.longitude] as [number, number],
+            title: disaster.judul || disaster.jenis_bencana,
+            type: 'disaster',
+            icon: 'disaster', // You can use this to style different marker types
+            description: `
+                Jenis: ${disaster.jenis_bencana || 'Tidak diketahui'}
+                Tanggal: ${new Date(disaster.created_at).toLocaleDateString('id-ID')}
+                Lokasi: ${disaster.lokasi || 'Tidak diketahui'}
+                Tingkat Bahaya: ${disaster.tingkat_bahaya || 'Tidak diketahui'}
+                Deskripsi: ${disaster.deskripsi || 'Tidak ada deskripsi'}
+            `,
+        })),
+        ...earthquakes.map((quake) => ({
+            id: `earthquake-${quake.properties.time}`,
+            position: [quake.geometry.coordinates[1], quake.geometry.coordinates[0]] as [number, number], // Convert [lon,lat] to [lat,lon]
+            title: 'Gempa Bumi USGS',
+            type: 'earthquake',
+            icon: 'earthquake', // You can use this to style different marker types
+            description: `
+                Magnitude: ${quake.properties.mag}
+                Lokasi: ${quake.properties.place}
+                Waktu: ${new Date(quake.properties.time).toLocaleString('id-ID')}
+                Info lebih lanjut: ${quake.properties.url}
+            `,
+        })),
+    ];
 
     return (
         <div className="flex min-h-screen flex-col bg-slate-50">
