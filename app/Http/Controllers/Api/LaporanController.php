@@ -13,6 +13,41 @@ class LaporanController extends Controller
     /**
      * Display a listing of the resource.
      */
+
+    // Helper function to assess risk level based on disaster type and description
+    private function assessRiskLevel($jenisBencana, $deskripsi)
+    {
+        $deskripsi = strtolower($deskripsi);
+
+        // Keywords indicating high risk
+        $highRiskKeywords = ['parah', 'besar', 'darurat', 'kritis', 'evakuasi', 'korban', 'luka'];
+
+        // High risk types
+        $highRiskTypes = ['gempa', 'tsunami'];
+
+        // Medium risk types
+        $mediumRiskTypes = ['banjir', 'kebakaran', 'longsor'];
+
+        // Check for high risk indicators
+        if (in_array($jenisBencana, $highRiskTypes)) {
+            return 'tinggi';
+        }
+
+        foreach ($highRiskKeywords as $keyword) {
+            if (strpos($deskripsi, $keyword) !== false) {
+                return 'tinggi';
+            }
+        }
+
+        // Check for medium risk
+        if (in_array($jenisBencana, $mediumRiskTypes)) {
+            return 'sedang';
+        }
+
+        // Default to low risk
+        return 'rendah';
+    }
+
     public function index(Request $request)
     {
         $query = Laporan::with('user:id,name,email')
@@ -62,6 +97,12 @@ class LaporanController extends Controller
 
         $validated['user_id'] = $request->user()->id;
         $validated['status'] = 'menunggu';
+
+        // Auto-assess risk level
+        $validated['tingkat_bahaya'] = $this->assessRiskLevel(
+            $validated['jenis_bencana'],
+            $validated['deskripsi']
+        );
 
         $laporan = Laporan::create($validated);
 
@@ -150,6 +191,15 @@ class LaporanController extends Controller
 
         $laporan->status = 'diverifikasi';
         $laporan->catatan_admin = $validated['catatan_admin'] ?? null;
+
+        // Set risk level if not already set
+        if (!$laporan->tingkat_bahaya) {
+            $laporan->tingkat_bahaya = $this->assessRiskLevel(
+                $laporan->jenis_bencana,
+                $laporan->deskripsi
+            );
+        }
+
         $laporan->save();
 
         return response()->json([

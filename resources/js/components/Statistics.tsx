@@ -20,7 +20,7 @@ const Statistics: React.FC = () => {
         const fetchStatistics = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get('/api/statistik');
+                const response = await axios.get('/statistik');
 
                 // Transform API response to our component's data structure
                 setStats({

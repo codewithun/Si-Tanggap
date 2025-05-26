@@ -1,11 +1,8 @@
 import Navbar from '@/components/Navbar';
-import { Head, usePage } from '@inertiajs/react';
-// Make sure the path is correct; if the file is named 'HeroSection.tsx' and located in 'resources/js/components', use:
-import HeroSection from '../components/HeroSection';
-// Or, if using an alias, ensure your tsconfig.json or webpack config maps '@' to 'resources/js'
 import { type SharedData } from '@/types';
+import { Head, usePage } from '@inertiajs/react';
 import AboutSection from '../components/AboutSection';
-import DisasterMap from '../components/DisasterMap';
+import HeroSection from '../components/HeroSection';
 import RecentReports from '../components/RecentReports';
 import Statistics from '../components/Statistics';
 
@@ -25,7 +22,6 @@ export default function LandingPage() {
                     <HeroSection />
                     <Statistics />
                     <RecentReports />
-                    <DisasterMap />
                     <AboutSection />
                 </main>
             </div>

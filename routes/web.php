@@ -9,10 +9,16 @@ use App\Http\Controllers\Api\LaporanController;
 use App\Http\Controllers\Api\StatistikController;
 use App\Http\Controllers\Api\TitikBencanaController;
 use App\Http\Controllers\Api\NotifikasiController;
+use App\Http\Controllers\Api\RegionController;
 
 Route::get('/', function () {
     return Inertia::render('LandingPage');
 })->name('home');
+
+// Map route for public access
+Route::get('/map', function () {
+    return Inertia::render('map/MapKeseluruhan');
+})->name('map');
 
 // Public routes
 Route::group(['prefix' => 'jalur-evakuasi'], function () {
@@ -83,6 +89,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('notifikasi', [NotifikasiController::class, 'send']);
     });
 });
+
+// Add new API route for regions data
+Route::get('/api/regions', [RegionController::class, 'index']);
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';

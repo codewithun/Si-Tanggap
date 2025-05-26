@@ -19,11 +19,11 @@ const HeroSection: React.FC = () => {
 
                     <div className="flex flex-col justify-center gap-4 sm:flex-row">
                         <Link href="/map" className="rounded-lg bg-blue-600 px-6 py-3 font-medium shadow-lg transition-colors hover:bg-blue-700">
-                            Lihat Peta
+                            Lihat Peta Risiko
                         </Link>
 
                         <Link
-                            href="/laporan/create"
+                            href="/laporan-bencana/create"
                             className="rounded-lg bg-white px-6 py-3 font-medium text-blue-900 shadow-lg transition-colors hover:bg-gray-100"
                         >
                             Laporkan Bencana
