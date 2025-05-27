@@ -42,8 +42,10 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
-            'role' => 'masyarakat',
         ]);
+
+        // Assign default role using Spatie's method
+        $user->assignRole('masyarakat');
 
         event(new Registered($user));
 
@@ -59,6 +61,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return to_route('dashboard');
+        return redirect(route('masyarakat.dashboard'));
     }
 }

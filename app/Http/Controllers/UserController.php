@@ -1,5 +1,4 @@
 <?php
-// filepath: d:\laragon\www\PROJECT\Si-Tanggap\app\Http\Controllers\UserController.php
 namespace App\Http\Controllers;
 
 use App\Models\User;
@@ -9,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -20,10 +20,9 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', User::class);
-        
+
         $query = User::query();
-        
-        // Handle search functionality
+
         if ($request->filled('search')) {
             $searchTerm = $request->get('search');
             $query->where(function ($q) use ($searchTerm) {
@@ -31,18 +30,22 @@ class UserController extends Controller
                   ->orWhere('email', 'like', '%' . $searchTerm . '%');
             });
         }
-        
+
         $users = $query->orderBy('created_at', 'desc')->paginate(10);
-        
-        // Append search parameter to pagination links
         $users->appends($request->only('search'));
-        
+
+        // Ambil role user juga, karena pakai Spatie role
+        $users->getCollection()->transform(function ($user) {
+            $user->roles = $user->getRoleNames(); // collection of role names
+            return $user;
+        });
+
         return Inertia::render('users/index', [
             'users' => $users,
             'search' => $request->get('search', ''),
             'filters' => [
                 'search' => $request->get('search'),
-            ]
+            ],
         ]);
     }
 
@@ -52,8 +55,13 @@ class UserController extends Controller
     public function create()
     {
         $this->authorize('create', User::class);
-        
-        return Inertia::render('users/create');
+
+        // Ambil list role dari Spatie
+        $roles = Role::pluck('name');
+
+        return Inertia::render('users/create', [
+            'roles' => $roles,
+        ]);
     }
 
     /**
@@ -62,12 +70,14 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $this->authorize('create', User::class);
-        
+
+        $roles = Role::pluck('name')->toArray();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', 'string', Rule::in(['masyarakat', 'relawan', 'admin'])],
+            'role' => ['required', 'string', Rule::in($roles)],
         ]);
 
         try {
@@ -75,12 +85,13 @@ class UserController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
-                'role' => $validated['role'],
             ]);
+
+            // Assign role via Spatie
+            $user->assignRole($validated['role']);
 
             return redirect()->route('users.index')
                 ->with('message', 'Pengguna berhasil ditambahkan');
-                
         } catch (\Exception $e) {
             return back()
                 ->withInput()
@@ -94,9 +105,18 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $this->authorize('update', $user);
-        
+
+        $roles = Role::pluck('name');
+
         return Inertia::render('users/edit', [
-            'user' => $user->only(['id', 'name', 'email', 'role', 'created_at'])
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->getRoleNames()->first(), // ambil role pertama saja, asumsi 1 role per user
+                'created_at' => $user->created_at,
+            ],
+            'roles' => $roles,
         ]);
     }
 
@@ -106,7 +126,9 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $this->authorize('update', $user);
-        
+
+        $roles = Role::pluck('name')->toArray();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
@@ -116,15 +138,13 @@ class UserController extends Controller
                 'max:255', 
                 Rule::unique('users')->ignore($user->id)
             ],
-            'role' => ['required', 'string', Rule::in(['masyarakat', 'relawan', 'admin'])],
+            'role' => ['required', 'string', Rule::in($roles)],
         ]);
 
-        // Validate password only if provided
         if ($request->filled('password')) {
             $passwordValidated = $request->validate([
                 'password' => ['string', 'min:8', 'confirmed'],
             ]);
-            
             $user->password = Hash::make($passwordValidated['password']);
         }
 
@@ -132,12 +152,13 @@ class UserController extends Controller
             $user->update([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'role' => $validated['role'],
             ]);
+
+            // Sync role via Spatie
+            $user->syncRoles([$validated['role']]);
 
             return redirect()->route('users.index')
                 ->with('message', 'Pengguna berhasil diperbarui');
-                
         } catch (\Exception $e) {
             return back()
                 ->withInput()
@@ -151,46 +172,39 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $this->authorize('delete', $user);
-        
-        // Get current authenticated user ID using Auth facade
+
         $currentUserId = Auth::id();
-        
-        // Alternative approaches (choose one):
-        // Option 1: Using Auth facade (recommended)
+
         if ($currentUserId === $user->id) {
             return back()->with('error', 'Anda tidak dapat menghapus akun yang sedang digunakan');
         }
-        
-        // Option 2: Using auth() helper with null check
-        // if (auth()->user() && auth()->user()->id === $user->id) {
-        //     return back()->with('error', 'Anda tidak dapat menghapus akun yang sedang digunakan');
-        // }
-        
-        // Option 3: Using request user
-        // if ($request->user() && $request->user()->id === $user->id) {
-        //     return back()->with('error', 'Anda tidak dapat menghapus akun yang sedang digunakan');
-        // }
 
         try {
             $user->delete();
-            
+
             return redirect()->route('users.index')
                 ->with('message', 'Pengguna berhasil dihapus');
-                
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal menghapus pengguna: ' . $e->getMessage());
         }
     }
 
     /**
-     * Display the specified user (optional - for show page)
+     * Display the specified user
      */
     public function show(User $user)
     {
         $this->authorize('view', $user);
-        
+
         return Inertia::render('users/show', [
-            'user' => $user->only(['id', 'name', 'email', 'role', 'created_at', 'updated_at'])
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->getRoleNames()->first(),
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+            ],
         ]);
     }
 }

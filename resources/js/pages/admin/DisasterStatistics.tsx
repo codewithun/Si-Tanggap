@@ -1,4 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import axios, { AxiosError } from 'axios';
 import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Title, Tooltip } from 'chart.js';
 import { useCallback, useEffect, useState } from 'react';
@@ -6,6 +9,14 @@ import { Bar } from 'react-chartjs-2';
 import { useToast } from '../../hooks/useToast';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+// Define breadcrumbs for the page
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Statistik Bencana',
+        href: '/admin/statistics',
+    },
+];
 
 interface StatisticsData {
     totalBencana: number;
@@ -115,107 +126,124 @@ export default function DisasterStatistics() {
         },
     };
 
-    if (loading) {
+    // Extracted content component
+    const renderContent = () => {
+        if (loading) {
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {[...Array(4)].map((_, index) => (
+                            <Card key={index} className="animate-pulse">
+                                <CardHeader className="pb-2">
+                                    <div className="h-4 w-1/2 rounded bg-gray-200"></div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-8 w-1/3 rounded bg-gray-200"></div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {[...Array(2)].map((_, index) => (
+                            <Card key={index} className="animate-pulse">
+                                <CardHeader className="pb-2">
+                                    <div className="h-4 w-1/2 rounded bg-gray-200"></div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-40 rounded bg-gray-200"></div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {[...Array(4)].map((_, index) => (
-                        <Card key={index} className="animate-pulse">
-                            <CardHeader className="pb-2">
-                                <div className="h-4 w-1/2 rounded bg-gray-200"></div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="h-8 w-1/3 rounded bg-gray-200"></div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Total Bencana</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats?.totalBencana || 0}</div>
+                            <p className="text-muted-foreground text-xs">Jumlah bencana yang terjadi</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Laporan Masuk</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats?.totalLaporan || 0}</div>
+                            <p className="text-muted-foreground text-xs">Total laporan dari masyarakat</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Laporan Terverifikasi</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats?.totalLaporanVerified || 0}</div>
+                            <p className="text-muted-foreground text-xs">Laporan yang sudah diverifikasi</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Posko Evakuasi</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats?.totalPosko || 0}</div>
+                            <p className="text-muted-foreground text-xs">Jumlah posko yang tersedia</p>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {[...Array(2)].map((_, index) => (
-                        <Card key={index} className="animate-pulse">
-                            <CardHeader className="pb-2">
-                                <div className="h-4 w-1/2 rounded bg-gray-200"></div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="h-40 rounded bg-gray-200"></div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Statistik Jenis Bencana</CardTitle>
+                            <CardDescription>Jumlah kejadian berdasarkan jenis bencana</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-80">
+                                <Bar data={disasterTypeChartData} options={chartOptions} />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Laporan Bulanan</CardTitle>
+                            <CardDescription>Jumlah laporan per bulan</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-80">
+                                <Bar data={monthlyReportChartData} options={chartOptions} />
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         );
-    }
+    };
 
+    // Wrap everything in the AppLayout
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Total Bencana</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats?.totalBencana || 0}</div>
-                        <p className="text-muted-foreground text-xs">Jumlah bencana yang terjadi</p>
-                    </CardContent>
-                </Card>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Statistik Bencana" />
 
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Laporan Masuk</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats?.totalLaporan || 0}</div>
-                        <p className="text-muted-foreground text-xs">Total laporan dari masyarakat</p>
-                    </CardContent>
-                </Card>
+            <div className="p-6">
+                <h1 className="mb-4 text-2xl font-semibold text-gray-800">Statistik Bencana</h1>
+                <p className="mb-6 text-gray-600">Analisis dan visualisasi data statistik bencana yang terjadi.</p>
 
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Laporan Terverifikasi</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats?.totalLaporanVerified || 0}</div>
-                        <p className="text-muted-foreground text-xs">Laporan yang sudah diverifikasi</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Posko Evakuasi</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats?.totalPosko || 0}</div>
-                        <p className="text-muted-foreground text-xs">Jumlah posko yang tersedia</p>
-                    </CardContent>
-                </Card>
+                {renderContent()}
             </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Statistik Jenis Bencana</CardTitle>
-                        <CardDescription>Jumlah kejadian berdasarkan jenis bencana</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-80">
-                            <Bar data={disasterTypeChartData} options={chartOptions} />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Laporan Bulanan</CardTitle>
-                        <CardDescription>Jumlah laporan per bulan</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-80">
-                            <Bar data={monthlyReportChartData} options={chartOptions} />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+        </AppLayout>
     );
 }

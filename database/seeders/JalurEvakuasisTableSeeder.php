@@ -1,5 +1,4 @@
 <?php
-// filepath: d:\laragon\www\PROJECT\Si-Tanggap\database\seeders\JalurEvakuasisTableSeeder.php
 namespace Database\Seeders;
 
 use App\Models\JalurEvakuasi;
@@ -8,15 +7,16 @@ use Illuminate\Database\Seeder;
 
 class JalurEvakuasisTableSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Get IDs of users with 'relawan' role
-        $relawanIds = User::where('role', 'relawan')->pluck('id')->toArray();
+        // Cari user yang punya role relawan (pakai Spatie)
+        $relawanIds = User::role('relawan')->pluck('id')->toArray();
 
-        // Sample evacuation routes
+        if (empty($relawanIds)) {
+            $this->command->error('Seeder JalurEvakuasis gagal: Tidak ada user dengan role relawan ditemukan.');
+            return;
+        }
+
         $jalurEvakuasis = [
             [
                 'nama' => 'Jalur Evakuasi Banjir Kelurahan Sukamaju',
@@ -80,12 +80,12 @@ class JalurEvakuasisTableSeeder extends Seeder
             ],
         ];
 
-        // Create the jalur evakuasi records
         foreach ($jalurEvakuasis as $jalurData) {
-            // Assign a random relawan user as the creator
             $userId = $relawanIds[array_rand($relawanIds)];
 
             JalurEvakuasi::create(array_merge($jalurData, ['user_id' => $userId]));
         }
+
+        $this->command->info('Jalur Evakuasi berhasil di-seed.');
     }
 }

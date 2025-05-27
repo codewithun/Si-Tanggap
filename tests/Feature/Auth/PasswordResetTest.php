@@ -4,6 +4,11 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\Notification;
 
+beforeEach(function () {
+    // Ensure the required roles exist before each test
+    createRoles();
+});
+
 test('reset password link screen can be rendered', function () {
     $response = $this->get('/forgot-password');
 

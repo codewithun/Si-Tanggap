@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\JalurEvakuasi;
@@ -32,46 +32,12 @@ class JalurEvakuasiController extends Controller
             $perPage = $request->input('per_page', 10);
             $jalurEvakuasis = $query->paginate($perPage);
 
-            // Transform the data
-            $jalurEvakuasis->through(function ($jalur) {
-                $koordinat = [];
-                
-                if (!empty($jalur->koordinat)) {
-                    if (is_string($jalur->koordinat)) {
-                        $decoded = json_decode($jalur->koordinat, true);
-                        if (json_last_error() === JSON_ERROR_NONE) {
-                            $koordinat = $decoded;
-                        }
-                    } else if (is_array($jalur->koordinat)) {
-                        $koordinat = $jalur->koordinat;
-                    }
-                }
-
-                $koordinat = collect($koordinat)->map(function ($coord) {
-                    if (is_array($coord)) {
-                        if (count($coord) === 2 && is_numeric($coord[0]) && is_numeric($coord[1])) {
-                            return [
-                                'lat' => (float)$coord[0],
-                                'lng' => (float)$coord[1]
-                            ];
-                        }
-                        else if (isset($coord['lat']) && isset($coord['lng'])) {
-                            return [
-                                'lat' => (float)$coord['lat'],
-                                'lng' => (float)$coord['lng']
-                            ];
-                        }
-                    }
-                    return null;
-                })->filter()->values()->all();
-
-                $jalur->koordinat = $koordinat;
-                return $jalur;
-            });
-            
+            // Return basic data if there's an issue with transformation
             return response()->json($jalurEvakuasis);
         } catch (\Exception $e) {
             Log::error('JalurEvakuasi index error: ' . $e->getMessage());
+            Log::error('Error trace: ' . $e->getTraceAsString());
+            
             return response()->json([
                 'message' => 'Terjadi kesalahan saat memuat data',
                 'error' => $e->getMessage()

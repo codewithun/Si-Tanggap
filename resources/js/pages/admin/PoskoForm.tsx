@@ -5,12 +5,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { Edit2, Trash2 } from 'lucide-react';
 import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
+
+// Define the breadcrumbs for the page
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Admin',
+        href: '/admin/dashboard',
+    },
+    {
+        title: 'Kelola Posko Evakuasi',
+        href: '/admin/shelters',
+    },
+];
 
 interface Posko {
     id: number;
@@ -288,276 +303,285 @@ export default function PoskoForm() {
     };
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>{editId ? 'Edit Posko' : 'Tambah Posko'}</CardTitle>
-                    <CardDescription>Tentukan lokasi posko pada peta dengan mengklik titik yang diinginkan</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-6">
-                        <div className="h-[400px] w-full overflow-hidden rounded-md">
-                            <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
-                                <TileLayer
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                />
-                                <MarkerCreator position={position} setPosition={setPosition} />
-                                {/* Display all poskos, not just current page */}
-                                {allPoskos.map((posko) => (
-                                    <Marker key={posko.id} position={[posko.latitude, posko.longitude]} icon={shelterIcon} />
-                                ))}
-                            </MapContainer>
-                        </div>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Kelola Posko Evakuasi" />
 
-                        <form onSubmit={handleSubmit}>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoName">Nama Posko</Label>
-                                    <Input
-                                        id="poskoName"
-                                        value={poskoName}
-                                        onChange={(e) => setPoskoName(e.target.value)}
-                                        placeholder="Masukkan nama posko"
-                                    />
+            <div className="p-6">
+                <h1 className="mb-4 text-2xl font-semibold text-gray-800">Kelola Posko Evakuasi</h1>
+                <p className="mb-6 text-gray-600">Tambah dan kelola posko evakuasi bencana yang akan ditampilkan di peta.</p>
+
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{editId ? 'Edit Posko' : 'Tambah Posko'}</CardTitle>
+                            <CardDescription>Tentukan lokasi posko pada peta dengan mengklik titik yang diinginkan</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-6">
+                                <div className="h-[400px] w-full overflow-hidden rounded-md">
+                                    <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        />
+                                        <MarkerCreator position={position} setPosition={setPosition} />
+                                        {/* Display all poskos, not just current page */}
+                                        {allPoskos.map((posko) => (
+                                            <Marker key={posko.id} position={[posko.latitude, posko.longitude]} icon={shelterIcon} />
+                                        ))}
+                                    </MapContainer>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoType">Jenis Posko</Label>
-                                    <Select value={poskoType} onValueChange={setPoskoType}>
-                                        <SelectTrigger id="poskoType">
-                                            <SelectValue placeholder="Pilih jenis posko" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="pengungsian">Pengungsian</SelectItem>
-                                            <SelectItem value="kesehatan">Kesehatan</SelectItem>
-                                            <SelectItem value="logistik">Logistik</SelectItem>
-                                            <SelectItem value="dapur-umum">Dapur Umum</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <form onSubmit={handleSubmit}>
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoName">Nama Posko</Label>
+                                            <Input
+                                                id="poskoName"
+                                                value={poskoName}
+                                                onChange={(e) => setPoskoName(e.target.value)}
+                                                placeholder="Masukkan nama posko"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoAddress">Alamat</Label>
-                                    <Textarea
-                                        id="poskoAddress"
-                                        value={poskoAddress}
-                                        onChange={(e) => setPoskoAddress(e.target.value)}
-                                        placeholder="Masukkan alamat lengkap posko"
-                                    />
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoType">Jenis Posko</Label>
+                                            <Select value={poskoType} onValueChange={setPoskoType}>
+                                                <SelectTrigger id="poskoType">
+                                                    <SelectValue placeholder="Pilih jenis posko" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="pengungsian">Pengungsian</SelectItem>
+                                                    <SelectItem value="kesehatan">Kesehatan</SelectItem>
+                                                    <SelectItem value="logistik">Logistik</SelectItem>
+                                                    <SelectItem value="dapur-umum">Dapur Umum</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoDesc">Deskripsi</Label>
-                                    <Textarea
-                                        id="poskoDesc"
-                                        value={poskoDesc}
-                                        onChange={(e) => setPoskoDesc(e.target.value)}
-                                        placeholder="Masukkan deskripsi posko"
-                                    />
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoAddress">Alamat</Label>
+                                            <Textarea
+                                                id="poskoAddress"
+                                                value={poskoAddress}
+                                                onChange={(e) => setPoskoAddress(e.target.value)}
+                                                placeholder="Masukkan alamat lengkap posko"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoContact">Kontak</Label>
-                                    <Input
-                                        id="poskoContact"
-                                        value={poskoContact}
-                                        onChange={(e) => setPoskoContact(e.target.value)}
-                                        placeholder="Masukkan nomor kontak"
-                                    />
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoDesc">Deskripsi</Label>
+                                            <Textarea
+                                                id="poskoDesc"
+                                                value={poskoDesc}
+                                                onChange={(e) => setPoskoDesc(e.target.value)}
+                                                placeholder="Masukkan deskripsi posko"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoCapacity">Kapasitas</Label>
-                                    <Input
-                                        id="poskoCapacity"
-                                        type="number"
-                                        value={poskoCapacity}
-                                        onChange={(e) => setPoskoCapacity(e.target.value)}
-                                        placeholder="Masukkan kapasitas posko"
-                                        min="1"
-                                    />
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoContact">Kontak</Label>
+                                            <Input
+                                                id="poskoContact"
+                                                value={poskoContact}
+                                                onChange={(e) => setPoskoContact(e.target.value)}
+                                                placeholder="Masukkan nomor kontak"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoStatus">Status</Label>
-                                    <Select value={poskoStatus} onValueChange={setPoskoStatus}>
-                                        <SelectTrigger id="poskoStatus">
-                                            <SelectValue placeholder="Pilih status posko" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="aktif">Aktif</SelectItem>
-                                            <SelectItem value="tidak_aktif">Tidak Aktif</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoCapacity">Kapasitas</Label>
+                                            <Input
+                                                id="poskoCapacity"
+                                                type="number"
+                                                value={poskoCapacity}
+                                                onChange={(e) => setPoskoCapacity(e.target.value)}
+                                                placeholder="Masukkan kapasitas posko"
+                                                min="1"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoStatus">Status</Label>
+                                            <Select value={poskoStatus} onValueChange={setPoskoStatus}>
+                                                <SelectTrigger id="poskoStatus">
+                                                    <SelectValue placeholder="Pilih status posko" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="aktif">Aktif</SelectItem>
+                                                    <SelectItem value="tidak_aktif">Tidak Aktif</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex items-center space-x-2">
+                                        <Button type="button" variant="outline" onClick={() => {
+                                            setPosition(null);
+                                            setEditId(null);
+                                            setPoskoName('');
+                                            setPoskoDesc('');
+                                            setPoskoAddress('');
+                                            setPoskoContact('');
+                                            setPoskoType('');
+                                            setPoskoCapacity('');
+                                        }}>
+                                            Reset Form
+                                        </Button>
+                                        <div className="text-sm text-gray-500">{position ? 'Lokasi sudah ditentukan' : 'Belum ada lokasi'}</div>
+                                    </div>
+                                </form>
                             </div>
-                            <div className="mt-4 flex items-center space-x-2">
-                                <Button type="button" variant="outline" onClick={() => {
-                                    setPosition(null);
-                                    setEditId(null);
-                                    setPoskoName('');
-                                    setPoskoDesc('');
-                                    setPoskoAddress('');
-                                    setPoskoContact('');
-                                    setPoskoType('');
-                                    setPoskoCapacity('');
-                                }}>
-                                    Reset Form
-                                </Button>
-                                <div className="text-sm text-gray-500">{position ? 'Lokasi sudah ditentukan' : 'Belum ada lokasi'}</div>
-                            </div>
-                        </form>
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button
-                        type="submit"
-                        onClick={handleSubmit}
-                        disabled={loading || !position || !poskoName || !poskoDesc || !poskoAddress || !poskoType || !poskoCapacity}
-                    >
-                        {loading ? (editId ? 'Menyimpan Perubahan...' : 'Menyimpan...') : (editId ? 'Update Posko' : 'Simpan Posko')}
-                    </Button>
-                </CardFooter>
-            </Card>
+                        </CardContent>
+                        <CardFooter>
+                            <Button
+                                type="submit"
+                                onClick={handleSubmit}
+                                disabled={loading || !position || !poskoName || !poskoDesc || !poskoAddress || !poskoType || !poskoCapacity}
+                            >
+                                {loading ? (editId ? 'Menyimpan Perubahan...' : 'Menyimpan...') : (editId ? 'Update Posko' : 'Simpan Posko')}
+                            </Button>
+                        </CardFooter>
+                    </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Daftar Posko</CardTitle>
-                    <CardDescription>Posko yang telah ditambahkan</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-2 text-left font-medium">Nama</th>
-                                    <th className="px-4 py-2 text-left font-medium">Jenis</th>
-                                    <th className="px-4 py-2 text-left font-medium">Status</th>
-                                    <th className="px-4 py-2 text-left font-medium">Kapasitas</th>
-                                    <th className="px-4 py-2 text-left font-medium">Alamat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Kontak</th>
-                                    <th className="px-4 py-2 text-left font-medium">Pembuat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Dibuat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
-                                    <th className="px-4 py-2 text-center font-medium">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {loading ? (
-                                    Array(itemsPerPage).fill(0).map((_, idx) => (
-                                        <tr key={`skeleton-${idx}`}>
-                                            <td colSpan={10} className="px-4 py-3">
-                                                <div className="h-6 w-full animate-pulse rounded bg-gray-200"></div>
-                                            </td>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Daftar Posko</CardTitle>
+                            <CardDescription>Posko yang telah ditambahkan</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left font-medium">Nama</th>
+                                            <th className="px-4 py-2 text-left font-medium">Jenis</th>
+                                            <th className="px-4 py-2 text-left font-medium">Status</th>
+                                            <th className="px-4 py-2 text-left font-medium">Kapasitas</th>
+                                            <th className="px-4 py-2 text-left font-medium">Alamat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Kontak</th>
+                                            <th className="px-4 py-2 text-left font-medium">Pembuat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Dibuat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
+                                            <th className="px-4 py-2 text-center font-medium">Aksi</th>
                                         </tr>
-                                    ))
-                                ) : poskoList.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={10} className="px-4 py-4 text-center text-gray-500">
-                                            Belum ada posko yang ditambahkan
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    poskoList.map((posko) => (
-                                        <tr key={posko.id}>
-                                            <td className="px-4 py-2">{posko.nama}</td>
-                                            <td className="px-4 py-2">
-                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{posko.jenis_posko}</span>
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                <span
-                                                    className={`rounded-full px-2 py-1 text-xs ${
-                                                        posko.status === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                    }`}
-                                                >
-                                                    {posko.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-2">{posko.kapasitas} orang</td>
-                                            <td className="px-4 py-2">{posko.alamat}</td>
-                                            <td className="px-4 py-2">{posko.kontak || '-'}</td>
-                                            <td className="px-4 py-2">{posko.user?.name || 'Unknown'}</td>
-                                            <td className="px-4 py-2 text-gray-500">{new Date(posko.created_at).toLocaleDateString()}</td>
-                                            <td className="px-4 py-2 text-gray-500">{new Date(posko.updated_at).toLocaleDateString()}</td>
-                                            <td className="px-4 py-2 text-center">
-                                                <div className="flex justify-center gap-2">
-                                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(posko)}>
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(posko.id)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {loading ? (
+                                            Array(itemsPerPage).fill(0).map((_, idx) => (
+                                                <tr key={`skeleton-${idx}`}>
+                                                    <td colSpan={10} className="px-4 py-3">
+                                                        <div className="h-6 w-full animate-pulse rounded bg-gray-200"></div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : poskoList.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={10} className="px-4 py-4 text-center text-gray-500">
+                                                    Belum ada posko yang ditambahkan
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            poskoList.map((posko) => (
+                                                <tr key={posko.id}>
+                                                    <td className="px-4 py-2">{posko.nama}</td>
+                                                    <td className="px-4 py-2">
+                                                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{posko.jenis_posko}</span>
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        <span
+                                                            className={`rounded-full px-2 py-1 text-xs ${
+                                                                posko.status === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                            }`}
+                                                        >
+                                                            {posko.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2">{posko.kapasitas} orang</td>
+                                                    <td className="px-4 py-2">{posko.alamat}</td>
+                                                    <td className="px-4 py-2">{posko.kontak || '-'}</td>
+                                                    <td className="px-4 py-2">{posko.user?.name || 'Unknown'}</td>
+                                                    <td className="px-4 py-2 text-gray-500">{new Date(posko.created_at).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-2 text-gray-500">{new Date(posko.updated_at).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        <div className="flex justify-center gap-2">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(posko)}>
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(posko.id)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
 
-                        {/* Pagination */}
-                        {paginationData && paginationData.last_page > 1 && (
-                            <div className="flex items-center justify-between border-t px-4 py-3">
-                                <div className="text-sm text-gray-500">
-                                    Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
-                                    {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of {paginationData.total}{' '}
-                                    entries
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                                        disabled={paginationData.current_page === 1}
-                                    >
-                                        Previous
-                                    </Button>
-                                    {[...Array(paginationData.last_page)].map((_, index) => {
-                                        const pageNumber = index + 1;
-                                        const showPage =
-                                            pageNumber === 1 ||
-                                            pageNumber === paginationData.last_page ||
-                                            Math.abs(pageNumber - paginationData.current_page) <= 1;
-
-                                        if (!showPage) {
-                                            if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
-                                                return (
-                                                    <span key={`dot-${pageNumber}`} className="px-2 py-1">
-                                                        ...
-                                                    </span>
-                                                );
-                                            }
-                                            return null;
-                                        }
-
-                                        return (
+                                {/* Pagination */}
+                                {paginationData && paginationData.last_page > 1 && (
+                                    <div className="flex items-center justify-between border-t px-4 py-3">
+                                        <div className="text-sm text-gray-500">
+                                            Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
+                                            {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of {paginationData.total}{' '}
+                                            entries
+                                        </div>
+                                        <div className="flex gap-2">
                                             <Button
-                                                key={pageNumber}
-                                                variant={paginationData.current_page === pageNumber ? 'default' : 'outline'}
+                                                variant="outline"
                                                 size="sm"
-                                                onClick={() => setCurrentPage(pageNumber)}
-                                                className="min-w-[32px]"
+                                                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                                disabled={paginationData.current_page === 1}
                                             >
-                                                {pageNumber}
+                                                Previous
                                             </Button>
-                                        );
-                                    })}
+                                            {[...Array(paginationData.last_page)].map((_, index) => {
+                                                const pageNumber = index + 1;
+                                                const showPage =
+                                                    pageNumber === 1 ||
+                                                    pageNumber === paginationData.last_page ||
+                                                    Math.abs(pageNumber - paginationData.current_page) <= 1;
 
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
-                                        disabled={paginationData.current_page === paginationData.last_page}
-                                    >
-                                        Next
-                                    </Button>
-                                </div>
+                                                if (!showPage) {
+                                                    if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
+                                                        return (
+                                                            <span key={`dot-${pageNumber}`} className="px-2 py-1">
+                                                                ...
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }
+
+                                                return (
+                                                    <Button
+                                                        key={pageNumber}
+                                                        variant={paginationData.current_page === pageNumber ? 'default' : 'outline'}
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(pageNumber)}
+                                                        className="min-w-[32px]"
+                                                    >
+                                                        {pageNumber}
+                                                    </Button>
+                                                );
+                                            })}
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
+                                                disabled={paginationData.current_page === paginationData.last_page}
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </AppLayout>
     );
 }

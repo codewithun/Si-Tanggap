@@ -13,10 +13,15 @@ class PoskosTableSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get IDs of users with 'relawan' role
-        $relawanIds = User::where('role', 'relawan')->pluck('id')->toArray();
+        // Ambil semua user yang punya role 'relawan' via Spatie Role
+        $relawanIds = User::role('relawan')->pluck('id')->toArray();
 
-        // Sample posko (aid posts)
+        if (empty($relawanIds)) {
+            $this->command->error('Seeder Poskos gagal: Tidak ada user dengan role relawan ditemukan.');
+            return;
+        }
+
+        // Data sample posko
         $poskos = [
             [
                 'nama' => 'Posko Kesehatan Sukamaju',
@@ -85,12 +90,13 @@ class PoskosTableSeeder extends Seeder
             ],
         ];
 
-        // Create the posko records
+        // Simpan data posko dengan assign user relawan random sebagai pembuat
         foreach ($poskos as $poskoData) {
-            // Assign a random relawan user as the creator
             $userId = $relawanIds[array_rand($relawanIds)];
 
             Posko::create(array_merge($poskoData, ['user_id' => $userId]));
         }
+
+        $this->command->info('Seeder Poskos berhasil dijalankan.');
     }
 }
