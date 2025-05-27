@@ -61,6 +61,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return to_route($request->user()->hasRole('masyarakat') ? 'masyarakat.dashboard' : 'dashboard');
+        return redirect(route('masyarakat.index'));
     }
 }

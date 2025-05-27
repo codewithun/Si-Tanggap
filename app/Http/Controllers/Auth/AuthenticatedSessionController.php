@@ -52,7 +52,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Arahkan semua ke dashboard umum
-        return redirect()->intended(route($request->user()->hasRole('masyarakat') ? 'masyarakat.dashboard' : 'dashboard'));
+        return redirect()->intended(route('masyarakat.index'));
     }
 
     /**

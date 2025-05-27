@@ -15,5 +15,5 @@ test('new users can register', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('masyarakat.dashboard', absolute: false));
+    $response->assertRedirect(route('masyarakat.index', absolute: false));
 });

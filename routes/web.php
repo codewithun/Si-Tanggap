@@ -53,7 +53,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // 👤 Masyarakat
     Route::name('masyarakat.')->prefix('akun-saya')->group(function () {
-        Route::get('/', fn() => Inertia::render('masyarakat/AkunSaya'))->name('dashboard');
+        Route::get('/', fn() => Inertia::render('masyarakat/AkunSaya'))->name('index');
         Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('laporan');
         Route::get('/buat-laporan', fn() => Inertia::render('masyarakat/BuatLaporan'))->name('buat-laporan');
     });
