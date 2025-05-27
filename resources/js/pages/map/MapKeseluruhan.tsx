@@ -48,6 +48,9 @@ type InfraLayerType =
     | 'batas_das'
     | 'batas_admin';
 
+// Define display types
+type DisplayType = 'bahaya' | 'kerentanan' | 'kapasitas' | 'risiko';
+
 // Interface for disaster data from API
 interface Bencana {
     id: number;
@@ -103,9 +106,11 @@ export default function MapKeseluruhan() {
 
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
     const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>(['gempabumi']);
-    const [previousHazardLayers, setPreviousHazardLayers] = useState<HazardLayerType[]>([]);
+    const [selectedInfraLayers, setSelectedInfraLayers] = useState<InfraLayerType[]>([]);
+    const [displayType, setDisplayType] = useState<DisplayType>('bahaya');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isFiltering, setIsFiltering] = useState(false);
+    const [previousHazardLayers, setPreviousHazardLayers] = useState<HazardLayerType[]>([]);
 
     // Transform disaster and earthquake data to marker format for MapComponent
     const markers = useMemo(() => [
