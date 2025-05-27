@@ -53,14 +53,6 @@ const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [25, 41]
     });
 };
 
-// Basic marker type icons
-const markerIcons = {
-    disaster: (status?: 'diverifikasi' | 'menunggu' | 'ditolak') => createCustomIcon('/icons/disaster-marker.svg', [30, 30], status),
-    evacuation: (status?: 'diverifikasi' | 'menunggu' | 'ditolak') => createCustomIcon('/icons/evacuation-marker.svg', [30, 30], status),
-    shelter: (status?: 'diverifikasi' | 'menunggu' | 'ditolak') => createCustomIcon('/icons/shelter-marker.svg', [30, 30], status),
-    default: (status?: 'diverifikasi' | 'menunggu' | 'ditolak') => createCustomIcon('/icons/default-marker.svg', [25, 41], status),
-};
-
 // Specific disaster type icons
 const disasterIcons: Record<string, (status?: 'diverifikasi' | 'menunggu' | 'ditolak') => L.DivIcon> = {
     banjir: (status) => createCustomIcon('/icons/banjir.svg', [30, 30], status),
@@ -184,7 +176,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
                             <Marker
                                 key={marker.id}
                                 position={marker.position}
-                                icon={createCustomIcon(marker.iconUrl, [30, 30], marker.status)}
+                                icon={disasterIcons[marker.iconUrl.split('/').pop()?.replace('.svg', '') || 'lainnya'](marker.status)}
                             >
                                 <Popup>
                                     <div>

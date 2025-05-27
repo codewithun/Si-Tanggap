@@ -365,6 +365,29 @@ export default function MapKeseluruhan() {
                     }`}
                 >
                     <div className="h-full overflow-y-auto">
+                        {/* Statistics Panel */}
+                        <div className="border-b border-slate-200 p-4">
+                            <h3 className="mb-3 text-lg font-medium">Statistik Area</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-lg bg-blue-50 p-3">
+                                    <div className="text-xs text-slate-500">Jumlah Kecamatan</div>
+                                    <div className="text-xl font-semibold text-blue-700">{statistics.jumlah_kecamatan}</div>
+                                </div>
+                                <div className="rounded-lg bg-blue-50 p-3">
+                                    <div className="text-xs text-slate-500">Luas Area Bahaya</div>
+                                    <div className="text-xl font-semibold text-blue-700">{statistics.luas_bahaya} km²</div>
+                                </div>
+                                <div className="rounded-lg bg-orange-50 p-3">
+                                    <div className="text-xs text-slate-500">Sekolah Zona Tinggi</div>
+                                    <div className="text-xl font-semibold text-orange-700">{statistics.data_sekolah.tinggi}</div>
+                                </div>
+                                <div className="rounded-lg bg-yellow-50 p-3">
+                                    <div className="text-xs text-slate-500">Sekolah Zona Sedang</div>
+                                    <div className="text-xl font-semibold text-yellow-700">{statistics.data_sekolah.sedang}</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex items-center justify-between border-b border-slate-200 p-4">
                             <h3 className="text-lg font-medium">Layer Control</h3>
                             <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0" onClick={() => setSidebarOpen(false)}>
