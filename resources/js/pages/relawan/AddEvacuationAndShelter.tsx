@@ -1,4 +1,3 @@
-import MapComponent from '@/components/MapComponent';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,18 @@ import axios from '@/lib/axios';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
+// Import Leaflet icon
+import { icon } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Add shelter icon definition just like in PoskoForm
+const shelterIcon = icon({
+    iconUrl: '/icons/shelter-marker.svg',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -28,6 +39,52 @@ interface FormPosko {
     latitude: number;
     longitude: number;
 }
+
+// Create a PolylineCreator component similar to EvacuationRouteForm
+const PolylineCreator = ({
+    points,
+    setPoints,
+    color = '#3B82F6',
+}: {
+    points: [number, number][];
+    setPoints: React.Dispatch<React.SetStateAction<[number, number][]>>;
+    color: string;
+}) => {
+    useMapEvents({
+        click: (e) => {
+            const { lat, lng } = e.latlng;
+            setPoints((current) => [...current, [lat, lng]]);
+        },
+    });
+
+    return (
+        <>
+            <Polyline positions={points} pathOptions={{ color }} />
+            {points.map((position, idx) => (
+                <Marker key={`marker-${idx}`} position={position} />
+            ))}
+        </>
+    );
+};
+
+// Create a MarkerCreator component for the posko tab
+const MarkerCreator = ({
+    selectedPoint,
+    setSelectedPoint,
+}: {
+    selectedPoint: { lat: number; lng: number } | null;
+    setSelectedPoint: React.Dispatch<React.SetStateAction<{ lat: number; lng: number } | null>>;
+}) => {
+    useMapEvents({
+        click: (e) => {
+            const { lat, lng } = e.latlng;
+            setSelectedPoint({ lat, lng });
+        },
+    });
+
+    // Use shelterIcon here for the marker
+    return selectedPoint ? <Marker position={[selectedPoint.lat, selectedPoint.lng]} icon={shelterIcon} /> : null;
+};
 
 export default function AddEvacuationAndShelter() {
     const [activeTab, setActiveTab] = useState<'jalur' | 'posko'>('jalur');
@@ -61,14 +118,6 @@ export default function AddEvacuationAndShelter() {
             }));
         }
     }, [selectedPoint, activeTab]); // Menghapus formPosko dari dependency list
-
-    const handleMapClick = (latLng: { lat: number; lng: number }) => {
-        if (activeTab === 'jalur') {
-            setJalurPoints([...jalurPoints, [latLng.lat, latLng.lng]]);
-        } else {
-            setSelectedPoint(latLng);
-        }
-    };
 
     const handlePoskoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -224,45 +273,6 @@ export default function AddEvacuationAndShelter() {
         setJalurNama('');
     };
 
-    // Prepare path for visualization
-    const paths =
-        jalurPoints.length > 1
-            ? [
-                  {
-                      id: 1,
-                      positions: jalurPoints,
-                      color: '#3B82F6',
-                      name: jalurNama || 'Jalur Baru',
-                  },
-              ]
-            : [];
-
-    // Prepare marker for visualization if a point is selected for posko
-    const markers =
-        selectedPoint && activeTab === 'posko'
-            ? [
-                  {
-                      id: 999,
-                      position: [selectedPoint.lat, selectedPoint.lng] as [number, number],
-                      title: formPosko.nama || 'Posko Baru',
-                      type: 'shelter',
-                      description: formPosko.deskripsi,
-                  },
-              ]
-            : [];
-
-    // Show temporary markers for jalur points
-    const jalurMarkers =
-        activeTab === 'jalur'
-            ? jalurPoints.map((point, index) => ({
-                  id: index,
-                  position: point,
-                  title: `Titik ${index + 1}`,
-                  type: 'default',
-                  description: `Latitude: ${point[0].toFixed(6)}, Longitude: ${point[1].toFixed(6)}`,
-              }))
-            : [];
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Tambah Jalur & Posko Evakuasi" />
@@ -327,15 +337,23 @@ export default function AddEvacuationAndShelter() {
                                             ? 'Klik pada peta untuk menambahkan titik jalur evakuasi'
                                             : 'Klik pada peta untuk menentukan lokasi posko evakuasi'}
                                     </div>
-                                    <MapComponent
-                                        height="300px"
-                                        className="sm:h-[400px]"
-                                        markers={[...markers, ...jalurMarkers]}
-                                        paths={paths}
-                                        zoom={7}
-                                        onClick={handleMapClick}
-                                        editable={true}
-                                    />
+
+                                    {/* Replace your MapComponent with MapContainer */}
+                                    <div className="h-[300px] w-full overflow-hidden rounded-md sm:h-[400px]">
+                                        <MapContainer center={[-7.150975, 110.140259]} zoom={7} style={{ height: '100%', width: '100%' }}>
+                                            <TileLayer
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+
+                                            {activeTab === 'jalur' ? (
+                                                <PolylineCreator points={jalurPoints} setPoints={setJalurPoints} color="#3B82F6" />
+                                            ) : (
+                                                <MarkerCreator selectedPoint={selectedPoint} setSelectedPoint={setSelectedPoint} />
+                                            )}
+                                        </MapContainer>
+                                    </div>
+
                                     {activeTab === 'jalur' && jalurPoints.length > 0 && (
                                         <div className="mt-4">
                                             <p className="mb-2 text-xs sm:text-sm">Titik yang dipilih: {jalurPoints.length}</p>

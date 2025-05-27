@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Laporan;
 use App\Models\Posko;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class StatistikController extends Controller
@@ -67,5 +67,34 @@ class StatistikController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Mendapatkan data statistik untuk dashboard relawan
+     */
+    public function relawanDashboardStats()
+    {
+        // Hitung total laporan dari tabel laporans
+        $totalLaporan = Laporan::count();
+
+        // Hitung laporan dengan status "diverifikasi"
+        $laporanDiverifikasi = Laporan::where('status', 'diverifikasi')->count();
+
+        // Hitung posko aktif dari tabel poskos
+        $poskoAktif = Posko::where('status', 'aktif')->count();
+
+        // Ambil 5 laporan terbaru yang masih berstatus menunggu
+        $laporanTerbaru = Laporan::where('status', 'menunggu')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get(['id', 'judul', 'jenis_bencana', 'lokasi', 'created_at']);
+
+        // Kembalikan data dalam format JSON
+        return response()->json([
+            'totalLaporan' => $totalLaporan,
+            'laporanDiverifikasi' => $laporanDiverifikasi,
+            'poskoAktif' => $poskoAktif,
+            'laporanTerbaru' => $laporanTerbaru
+        ]);
     }
 }

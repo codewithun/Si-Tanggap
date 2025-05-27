@@ -110,6 +110,10 @@ Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/laporan-saya', [LaporanController::class, 'getMyReports'])->name('api.laporan-saya');
     Route::put('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
     Route::get('/users', [UserController::class, 'index'])->name('api.users.index');
+    
+    // Tambahkan endpoint baru untuk dashboard relawan
+    Route::get('/relawan/dashboard-stats', [StatistikController::class, 'relawanDashboardStats'])
+        ->name('api.relawan.dashboard-stats');
 });
 
 // ------------------------

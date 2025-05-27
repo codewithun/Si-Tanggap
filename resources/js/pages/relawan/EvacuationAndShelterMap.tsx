@@ -102,13 +102,25 @@ export default function EvacuationAndShelterMap() {
                       Status: ${p.status || 'Aktif'}`,
     })); // Transform jalur evakuasi to path format with validation
     const paths = jalurEvakuasi
-        .filter((jalur) => jalur.koordinat && Array.isArray(jalur.koordinat) && jalur.koordinat.length > 0)
+        .filter((jalur) => {
+            // More thorough validation
+            return (
+                jalur.koordinat &&
+                Array.isArray(jalur.koordinat) &&
+                jalur.koordinat.length >= 2 && // Ensure at least 2 points for a line
+                jalur.koordinat.every((point) => point && typeof point.lat === 'number' && typeof point.lng === 'number')
+            );
+        })
         .map((jalur) => ({
             id: jalur.id,
             positions: jalur.koordinat.map((point) => [point.lat, point.lng] as [number, number]),
             color: jalur.warna || '#3B82F6', // Use defined color or blue as default
             name: jalur.nama,
         }));
+
+    // Debug logging to inspect the data
+    console.log('Filtered paths:', paths);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Jalur & Posko Evakuasi" />

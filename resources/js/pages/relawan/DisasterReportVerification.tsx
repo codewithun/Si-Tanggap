@@ -120,31 +120,34 @@ export default function DisasterReportVerification() {
 
     if (loading) {
         return (
-            <div className="space-y-4">
-                <h2 className="text-2xl font-bold">Verifikasi Laporan Bencana</h2>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {[...Array(3)].map((_, i) => (
-                        <Card key={i} className="animate-pulse">
-                            <CardHeader className="pb-2">
-                                <div className="h-5 w-3/4 rounded bg-gray-200"></div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    <div className="h-3 w-full rounded bg-gray-200"></div>
-                                    <div className="h-3 w-full rounded bg-gray-200"></div>
-                                </div>
-                                <div className="mt-4 h-32 rounded bg-gray-200"></div>
-                            </CardContent>
-                            <CardFooter>
-                                <div className="flex w-full justify-end space-x-2">
-                                    <div className="h-9 w-20 rounded bg-gray-200"></div>
-                                    <div className="h-9 w-20 rounded bg-gray-200"></div>
-                                </div>
-                            </CardFooter>
-                        </Card>
-                    ))}
+            <AppLayout breadcrumbs={breadcrumbs}>
+                <Head title="Verifikasi Laporan" />
+                <div className="space-y-4 p-6">
+                    <h2 className="text-xl font-bold sm:text-2xl">Verifikasi Laporan Bencana</h2>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {[...Array(3)].map((_, i) => (
+                            <Card key={i} className="animate-pulse">
+                                <CardHeader className="pb-2">
+                                    <div className="h-5 w-3/4 rounded bg-gray-200"></div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        <div className="h-3 w-full rounded bg-gray-200"></div>
+                                        <div className="h-3 w-full rounded bg-gray-200"></div>
+                                    </div>
+                                    <div className="mt-4 h-32 rounded bg-gray-200"></div>
+                                </CardContent>
+                                <CardFooter>
+                                    <div className="flex w-full justify-end space-x-2">
+                                        <div className="h-9 w-20 rounded bg-gray-200"></div>
+                                        <div className="h-9 w-20 rounded bg-gray-200"></div>
+                                    </div>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            </AppLayout>
         );
     }
 
