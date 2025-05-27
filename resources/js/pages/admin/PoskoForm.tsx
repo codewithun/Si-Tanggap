@@ -11,7 +11,8 @@ import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useCallback, useEffect, useState } from 'react';
+import { Edit2, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 
 // Define the breadcrumbs for the page
@@ -47,6 +48,14 @@ interface Posko {
     };
 }
 
+interface PaginationData {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    data: Posko[];
+}
+
 const shelterIcon = icon({
     iconUrl: '/icons/shelter-marker.svg',
     iconSize: [32, 32],
@@ -72,6 +81,7 @@ const MarkerCreator = ({
 
 export default function PoskoForm() {
     const [poskoList, setPoskoList] = useState<Posko[]>([]);
+    const [allPoskos, setAllPoskos] = useState<Posko[]>([]);
     const [position, setPosition] = useState<[number, number] | null>(null);
     const [poskoName, setPoskoName] = useState('');
     const [poskoDesc, setPoskoDesc] = useState('');
@@ -81,12 +91,46 @@ export default function PoskoForm() {
     const [poskoStatus, setPoskoStatus] = useState('aktif');
     const [poskoCapacity, setPoskoCapacity] = useState('');
     const [loading, setLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [paginationData, setPaginationData] = useState<PaginationData | null>(null);
     const { toast } = useToast();
 
+    // Untuk edit
+    const [editId, setEditId] = useState<number | null>(null);
+
+    const itemsPerPage = 10;
+    const fetchedAllRef = useRef(false);
+
+    // Fetch paginated posko for table
     const fetchExistingPoskos = useCallback(async () => {
         try {
-            const response = await axios.get('/poskos');
-            setPoskoList(response.data);
+            setLoading(true);
+            const response = await axios.get('/poskos', {
+                params: {
+                    page: currentPage,
+                    per_page: itemsPerPage,
+                },
+            });
+
+            if (response.data.data) {
+                setPoskoList(response.data.data);
+                setPaginationData({
+                    current_page: response.data.current_page ?? 1,
+                    last_page: response.data.last_page ?? 1,
+                    per_page: response.data.per_page ?? itemsPerPage,
+                    total: response.data.total ?? response.data.data.length,
+                    data: response.data.data,
+                });
+            } else {
+                setPoskoList(response.data);
+                setPaginationData({
+                    current_page: 1,
+                    last_page: 1,
+                    per_page: itemsPerPage,
+                    total: response.data.length,
+                    data: response.data,
+                });
+            }
         } catch (error) {
             console.error('Failed to fetch poskos:', error);
             toast({
@@ -94,8 +138,47 @@ export default function PoskoForm() {
                 description: 'Gagal memuat data posko',
                 variant: 'destructive',
             });
+            setPoskoList([]);
+        } finally {
+            setLoading(false);
         }
-    }, [toast]);
+    }, [toast, currentPage]);
+
+    // Fetch all poskos for map
+    const fetchAllPoskos = useCallback(async () => {
+        if (fetchedAllRef.current) return;
+        try {
+            let page = 1;
+            let allData: Posko[] = [];
+            let lastPage = 1;
+            do {
+                const response = await axios.get('/poskos', {
+                    params: { page, per_page: 100 },
+                });
+                allData = allData.concat(response.data.data ?? response.data);
+                lastPage = response.data.last_page || 1;
+                page++;
+            } while (page <= lastPage);
+            setAllPoskos(allData);
+            fetchedAllRef.current = true;
+        } catch {
+            setAllPoskos([]);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchExistingPoskos();
+    }, [fetchExistingPoskos]);
+
+    useEffect(() => {
+        fetchAllPoskos();
+    }, [fetchAllPoskos]);
+
+    // Refetch all poskos after add/delete
+    const refetchAllPoskos = async () => {
+        fetchedAllRef.current = false;
+        await fetchAllPoskos();
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -121,22 +204,43 @@ export default function PoskoForm() {
         setLoading(true);
 
         try {
-            await axios.post('/poskos', {
-                nama: poskoName,
-                deskripsi: poskoDesc,
-                alamat: poskoAddress,
-                kontak: poskoContact,
-                jenis_posko: poskoType,
-                status: poskoStatus,
-                latitude: position[0],
-                longitude: position[1],
-                kapasitas: parseInt(poskoCapacity),
-            });
+            if (editId) {
+                // Update
+                await axios.put(`/poskos/${editId}`, {
+                    nama: poskoName,
+                    deskripsi: poskoDesc,
+                    alamat: poskoAddress,
+                    kontak: poskoContact,
+                    jenis_posko: poskoType,
+                    status: poskoStatus,
+                    latitude: position[0],
+                    longitude: position[1],
+                    kapasitas: parseInt(poskoCapacity),
+                });
 
-            toast({
-                title: 'Berhasil',
-                description: 'Posko berhasil disimpan',
-            });
+                toast({
+                    title: 'Berhasil',
+                    description: 'Posko berhasil diperbarui',
+                });
+            } else {
+                // Add
+                await axios.post('/poskos', {
+                    nama: poskoName,
+                    deskripsi: poskoDesc,
+                    alamat: poskoAddress,
+                    kontak: poskoContact,
+                    jenis_posko: poskoType,
+                    status: poskoStatus,
+                    latitude: position[0],
+                    longitude: position[1],
+                    kapasitas: parseInt(poskoCapacity),
+                });
+
+                toast({
+                    title: 'Berhasil',
+                    description: 'Posko berhasil disimpan',
+                });
+            }
 
             // Reset form
             setPosition(null);
@@ -146,12 +250,14 @@ export default function PoskoForm() {
             setPoskoContact('');
             setPoskoType('');
             setPoskoCapacity('');
+            setEditId(null);
             fetchExistingPoskos();
+            refetchAllPoskos();
         } catch (error) {
             console.error('Failed to save posko:', error);
             toast({
                 title: 'Error',
-                description: 'Gagal menyimpan posko',
+                description: editId ? 'Gagal memperbarui posko' : 'Gagal menyimpan posko',
                 variant: 'destructive',
             });
         } finally {
@@ -159,11 +265,40 @@ export default function PoskoForm() {
         }
     };
 
-    useEffect(() => {
-        fetchExistingPoskos();
-    }, [fetchExistingPoskos]);
+    const handleDelete = async (id: number) => {
+        if (confirm('Apakah Anda yakin ingin menghapus posko ini?')) {
+            try {
+                await axios.delete(`/poskos/${id}`);
+                toast({
+                    title: 'Berhasil',
+                    description: 'Posko berhasil dihapus',
+                });
+                fetchExistingPoskos();
+                refetchAllPoskos();
+            } catch {
+                // Remove the error parameter entirely when not using it
+                toast({
+                    title: 'Error',
+                    description: 'Gagal menghapus posko',
+                    variant: 'destructive',
+                });
+            }
+        }
+    };
 
-    // Return the complete page with layout
+    const handleEdit = (posko: Posko) => {
+        setEditId(posko.id);
+        setPoskoName(posko.nama);
+        setPoskoDesc(posko.deskripsi);
+        setPoskoAddress(posko.alamat);
+        setPoskoContact(posko.kontak);
+        setPoskoType(posko.jenis_posko);
+        setPoskoStatus(posko.status);
+        setPoskoCapacity(posko.kapasitas.toString());
+        setPosition([posko.latitude, posko.longitude]);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Kelola Posko Evakuasi" />
@@ -175,7 +310,7 @@ export default function PoskoForm() {
                 <div className="space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Tambah Posko</CardTitle>
+                            <CardTitle>{editId ? 'Edit Posko' : 'Tambah Posko'}</CardTitle>
                             <CardDescription>Tentukan lokasi posko pada peta dengan mengklik titik yang diinginkan</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -187,9 +322,8 @@ export default function PoskoForm() {
                                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                         />
                                         <MarkerCreator position={position} setPosition={setPosition} />
-
-                                        {/* Display existing poskos */}
-                                        {poskoList.map((posko) => (
+                                        {/* Display all poskos, not just current page */}
+                                        {allPoskos.map((posko) => (
                                             <Marker key={posko.id} position={[posko.latitude, posko.longitude]} icon={shelterIcon} />
                                         ))}
                                     </MapContainer>
@@ -277,6 +411,25 @@ export default function PoskoForm() {
                                             </Select>
                                         </div>
                                     </div>
+                                    <div className="mt-4 flex items-center space-x-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setPosition(null);
+                                                setEditId(null);
+                                                setPoskoName('');
+                                                setPoskoDesc('');
+                                                setPoskoAddress('');
+                                                setPoskoContact('');
+                                                setPoskoType('');
+                                                setPoskoCapacity('');
+                                            }}
+                                        >
+                                            Reset Form
+                                        </Button>
+                                        <div className="text-sm text-gray-500">{position ? 'Lokasi sudah ditentukan' : 'Belum ada lokasi'}</div>
+                                    </div>
                                 </form>
                             </div>
                         </CardContent>
@@ -286,7 +439,7 @@ export default function PoskoForm() {
                                 onClick={handleSubmit}
                                 disabled={loading || !position || !poskoName || !poskoDesc || !poskoAddress || !poskoType || !poskoCapacity}
                             >
-                                {loading ? 'Menyimpan...' : 'Simpan Posko'}
+                                {loading ? (editId ? 'Menyimpan Perubahan...' : 'Menyimpan...') : editId ? 'Update Posko' : 'Simpan Posko'}
                             </Button>
                         </CardFooter>
                     </Card>
@@ -310,12 +463,23 @@ export default function PoskoForm() {
                                             <th className="px-4 py-2 text-left font-medium">Pembuat</th>
                                             <th className="px-4 py-2 text-left font-medium">Dibuat</th>
                                             <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
+                                            <th className="px-4 py-2 text-center font-medium">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
-                                        {poskoList.length === 0 ? (
+                                        {loading ? (
+                                            Array(itemsPerPage)
+                                                .fill(0)
+                                                .map((_, idx) => (
+                                                    <tr key={`skeleton-${idx}`}>
+                                                        <td colSpan={10} className="px-4 py-3">
+                                                            <div className="h-6 w-full animate-pulse rounded bg-gray-200"></div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                        ) : poskoList.length === 0 ? (
                                             <tr>
-                                                <td colSpan={9} className="px-4 py-4 text-center text-gray-500">
+                                                <td colSpan={10} className="px-4 py-4 text-center text-gray-500">
                                                     Belum ada posko yang ditambahkan
                                                 </td>
                                             </tr>
@@ -341,11 +505,81 @@ export default function PoskoForm() {
                                                     <td className="px-4 py-2">{posko.user?.name || 'Unknown'}</td>
                                                     <td className="px-4 py-2 text-gray-500">{new Date(posko.created_at).toLocaleDateString()}</td>
                                                     <td className="px-4 py-2 text-gray-500">{new Date(posko.updated_at).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        <div className="flex justify-center gap-2">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(posko)}>
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(posko.id)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             ))
                                         )}
                                     </tbody>
                                 </table>
+
+                                {/* Pagination */}
+                                {paginationData && paginationData.last_page > 1 && (
+                                    <div className="flex items-center justify-between border-t px-4 py-3">
+                                        <div className="text-sm text-gray-500">
+                                            Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
+                                            {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of{' '}
+                                            {paginationData.total} entries
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                                disabled={paginationData.current_page === 1}
+                                            >
+                                                Previous
+                                            </Button>
+                                            {[...Array(paginationData.last_page)].map((_, index) => {
+                                                const pageNumber = index + 1;
+                                                const showPage =
+                                                    pageNumber === 1 ||
+                                                    pageNumber === paginationData.last_page ||
+                                                    Math.abs(pageNumber - paginationData.current_page) <= 1;
+
+                                                if (!showPage) {
+                                                    if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
+                                                        return (
+                                                            <span key={`dot-${pageNumber}`} className="px-2 py-1">
+                                                                ...
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }
+
+                                                return (
+                                                    <Button
+                                                        key={pageNumber}
+                                                        variant={paginationData.current_page === pageNumber ? 'default' : 'outline'}
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(pageNumber)}
+                                                        className="min-w-[32px]"
+                                                    >
+                                                        {pageNumber}
+                                                    </Button>
+                                                );
+                                            })}
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
+                                                disabled={paginationData.current_page === paginationData.last_page}
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
