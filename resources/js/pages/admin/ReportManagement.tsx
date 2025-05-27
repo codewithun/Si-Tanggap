@@ -55,7 +55,7 @@ export default function ReportManagement() {
 
     const fetchReports = useCallback(async () => {
         try {
-            const response = await axios.get('/laporan-bencana');
+            const response = await axios.get('/laporans');
             if (response.data && response.data.data) {
                 setReports(response.data.data);
             }
@@ -101,7 +101,7 @@ export default function ReportManagement() {
 
         try {
             const endpoint =
-                verificationStatus === 'diverifikasi' ? `/laporans/${selectedReport.id}/verify` : `/laporans/${selectedReport.id}/reject`;
+                verificationStatus === 'diverifikasi' ? `/admin/laporans/${selectedReport.id}/verify` : `/admin/laporans/${selectedReport.id}/reject`;
 
             await axios.put(endpoint, {
                 catatan_admin: adminNote.trim() || null,

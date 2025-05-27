@@ -1,24 +1,9 @@
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import {
-    AlertTriangle,
-    BarChart,
-    Bell,
-    BookOpen,
-    FileText,
-    Folder,
-    LayoutGrid,
-    Map,
-    MapPinned,
-    ShieldCheck,
-    TentTree,
-    User,
-    Users,
-} from 'lucide-react';
+import { AlertTriangle, Bell, FileText, LayoutGrid, Map, MapPinned, ShieldCheck, TentTree, User, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 interface User {
@@ -99,11 +84,6 @@ export function AppSidebar() {
     } else if (user?.role === 'admin') {
         mainNavItems.push(
             {
-                title: 'Statistik',
-                href: '/admin/statistics',
-                icon: BarChart,
-            },
-            {
                 title: 'Peta Bencana',
                 href: '/admin/disaster-map',
                 icon: Map,
@@ -136,20 +116,6 @@ export function AppSidebar() {
         );
     }
 
-    // Footer nav items bisa tetap sama
-    const footerNavItems: NavItem[] = [
-        {
-            title: 'Repository',
-            href: 'https://github.com/laravel/react-starter-kit',
-            icon: Folder,
-        },
-        {
-            title: 'Documentation',
-            href: 'https://laravel.com/docs/starter-kits#react',
-            icon: BookOpen,
-        },
-    ];
-
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -169,7 +135,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
