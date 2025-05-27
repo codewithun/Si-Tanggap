@@ -35,24 +35,26 @@ class AuthenticatedSessionController extends Controller
         $user = $request->user();
 
         if ($request->wantsJson()) {
-            $token = $request->user()->createToken('api-token');
+            $token = $user->createToken('api-token');
             return response()->json([
-                'user' => $request->user(),
+                'user' => $user,
                 'token' => $token->plainTextToken,
                 'message' => 'Login successful'
             ]);
         }
 
-        // Validasi role opsional
-        $allowedRoles = ['admin', 'relawan', 'masyarakat'];
-        if (!$user->hasAnyRole($allowedRoles)) {
-            Auth::logout();
-            return redirect('/')
-                ->with('error', 'Role tidak diizinkan.');
+        // Validasi role opsional jika menggunakan Spatie
+        if (method_exists($user, 'hasAnyRole')) {
+            $allowedRoles = ['admin', 'relawan', 'masyarakat'];
+            if (!$user->hasAnyRole($allowedRoles)) {
+                Auth::logout();
+                return redirect('/')
+                    ->with('error', 'Role tidak diizinkan.');
+            }
         }
 
         // Arahkan semua ke dashboard umum
-        return redirect()->intended(route('masyarakat.index'));
+        return redirect()->intended(route('masyarakat.dashboard'));
     }
 
     /**

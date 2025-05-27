@@ -41,7 +41,22 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function createRoles()
 {
-    // ..
+    if (!class_exists(\Spatie\Permission\Models\Role::class)) {
+        return;
+    }
+    
+    $roles = ['admin', 'relawan', 'masyarakat'];
+    
+    foreach ($roles as $roleName) {
+        if (\Spatie\Permission\Models\Role::where('name', $roleName)->doesntExist()) {
+            \Spatie\Permission\Models\Role::create(['name' => $roleName]);
+        }
+    }
 }
+
+// Create roles before all tests
+beforeAll(function() {
+    createRoles();
+});

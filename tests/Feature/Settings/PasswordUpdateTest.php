@@ -3,6 +3,11 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
+beforeEach(function () {
+    // Ensure the required roles exist before each test
+    createRoles();
+});
+
 test('password can be updated', function () {
     $user = User::factory()->create();
 
