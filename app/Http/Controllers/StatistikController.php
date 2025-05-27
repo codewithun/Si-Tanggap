@@ -2,14 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use App\Models\Laporan;
 use App\Models\Posko;
-use App\Models\JalurEvakuasi;
-use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class StatistikController extends Controller
 {
@@ -18,65 +14,58 @@ class StatistikController extends Controller
      */
     public function index()
     {
-        // Statistik laporan berdasarkan jenis bencana
-        $laporanByJenis = Laporan::select('jenis_bencana', DB::raw('count(*) as total'))
-            ->groupBy('jenis_bencana')
-            ->get();
+        try {
+            // Count total disaster reports
+            $totalLaporan = Laporan::count();
 
-        // Statistik laporan berdasarkan status
-        $laporanByStatus = Laporan::select('status', DB::raw('count(*) as total'))
-            ->groupBy('status')
-            ->get();
+            // Count verified reports
+            $totalLaporanVerified = Laporan::where('status', 'diverifikasi')->count();
 
-        // Statistik laporan per bulan (12 bulan terakhir)
-        $laporanPerBulan = Laporan::select(
-            DB::raw('YEAR(created_at) as tahun'),
-            DB::raw('MONTH(created_at) as bulan'),
-            DB::raw('count(*) as total')
-        )
-            ->where('created_at', '>=', now()->subMonths(12))
-            ->groupBy('tahun', 'bulan')
-            ->orderBy('tahun')
-            ->orderBy('bulan')
-            ->get();
+            // Count distinct disaster locations (considering verified reports as disasters)
+            $totalBencana = Laporan::where('status', 'diverifikasi')
+                ->distinct('latitude', 'longitude')
+                ->count();
 
-        // Statistik posko berdasarkan jenis
-        $poskoByJenis = Posko::select('jenis_posko', DB::raw('count(*) as total'))
-            ->groupBy('jenis_posko')
-            ->get();
+            // Count total shelters
+            $totalPosko = Posko::count();
 
-        // Statistik jalur evakuasi berdasarkan jenis bencana
-        $jalurByJenis = JalurEvakuasi::select('jenis_bencana', DB::raw('count(*) as total'))
-            ->groupBy('jenis_bencana')
-            ->get();
+            // Count disasters by type
+            $bencanaBerdasarkanJenis = Laporan::where('status', 'diverifikasi')
+                ->select('jenis_bencana', DB::raw('count(*) as total'))
+                ->groupBy('jenis_bencana')
+                ->pluck('total', 'jenis_bencana')
+                ->toArray();
 
-        // Statistik user berdasarkan role
-        $usersByRole = User::select('role', DB::raw('count(*) as total'))
-            ->groupBy('role')
-            ->get();
+            // Get monthly report counts for the current year
+            $laporanBulanan = Laporan::select(
+                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+                DB::raw('count(*) as total')
+            )
+                ->whereYear('created_at', date('Y'))
+                ->groupBy('month')
+                ->pluck('total', 'month')
+                ->toArray();
 
-        // Statistik total
-        $totalLaporan = Laporan::count();
-        $totalPosko = Posko::count();
-        $totalJalurEvakuasi = JalurEvakuasi::count();
-        $totalUsers = User::count();
+            // Format the month names
+            $formattedLaporanBulanan = [];
+            foreach ($laporanBulanan as $month => $count) {
+                $date = \Carbon\Carbon::createFromFormat('Y-m', $month);
+                $formattedLaporanBulanan[$date->format('F')] = $count;
+            }
 
-        return response()->json([
-            'laporan_by_jenis' => $laporanByJenis,
-            'laporan_by_status' => $laporanByStatus,
-            'laporan_per_bulan' => $laporanPerBulan,
-            'posko_by_jenis' => $poskoByJenis,
-            'jalur_by_jenis' => $jalurByJenis,
-            'users_by_role' => $usersByRole,
-            'totals' => [
-                'laporan' => $totalLaporan,
-                'posko' => $totalPosko,
-                'jalur_evakuasi' => $totalJalurEvakuasi,
-                'users' => $totalUsers,
-            ]
-        ])
-            ->header('Access-Control-Allow-Origin', '*')
-            ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-            ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            return response()->json([
+                'totalBencana' => $totalBencana,
+                'totalLaporan' => $totalLaporan,
+                'totalLaporanVerified' => $totalLaporanVerified,
+                'totalPosko' => $totalPosko,
+                'bencanaBerdasarkanJenis' => $bencanaBerdasarkanJenis,
+                'laporanBulanan' => $formattedLaporanBulanan,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to retrieve statistics',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

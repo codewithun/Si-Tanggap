@@ -4,7 +4,21 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Map, MapPinned, ShieldCheck, TentTree, Users } from 'lucide-react';
+import {
+    AlertTriangle,
+    BarChart,
+    Bell,
+    BookOpen,
+    FileText,
+    Folder,
+    LayoutGrid,
+    Map,
+    MapPinned,
+    ShieldCheck,
+    TentTree,
+    User,
+    Users,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 interface User {
@@ -36,7 +50,30 @@ export function AppSidebar() {
     ];
 
     // Tambahkan menu berdasarkan role
-    if (user?.role === 'relawan') {
+    if (user?.role === 'masyarakat') {
+        mainNavItems.push(
+            {
+                title: 'Peta Bencana',
+                href: '/map',
+                icon: Map,
+            },
+            {
+                title: 'Laporan Bencana',
+                href: '/akun-saya/laporan-saya',
+                icon: FileText,
+            },
+            {
+                title: 'Buat Laporan',
+                href: '/akun-saya/buat-laporan',
+                icon: AlertTriangle,
+            },
+            {
+                title: 'Profil Saya',
+                href: '/settings/profile',
+                icon: User,
+            },
+        );
+    } else if (user?.role === 'relawan') {
         mainNavItems.push(
             {
                 title: 'Peta Bencana',
@@ -60,11 +97,43 @@ export function AppSidebar() {
             },
         );
     } else if (user?.role === 'admin') {
-        mainNavItems.push({
-            title: 'Kelola Pengguna',
-            href: '/admin/users',
-            icon: Users,
-        });
+        mainNavItems.push(
+            {
+                title: 'Statistik',
+                href: '/admin/statistics',
+                icon: BarChart,
+            },
+            {
+                title: 'Peta Bencana',
+                href: '/admin/disaster-map',
+                icon: Map,
+            },
+            {
+                title: 'Jalur Evakuasi',
+                href: '/admin/evacuation-routes',
+                icon: MapPinned,
+            },
+            {
+                title: 'Posko',
+                href: '/admin/shelters',
+                icon: TentTree,
+            },
+            {
+                title: 'Laporan Bencana',
+                href: '/admin/reports',
+                icon: ShieldCheck,
+            },
+            {
+                title: 'Kelola Pengguna',
+                href: '/admin/users',
+                icon: Users,
+            },
+            {
+                title: 'Kirim Notifikasi',
+                href: '/admin/notifications',
+                icon: Bell,
+            },
+        );
     }
 
     // Footer nav items bisa tetap sama

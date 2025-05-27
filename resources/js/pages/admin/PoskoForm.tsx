@@ -5,11 +5,26 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
+
+// Define the breadcrumbs for the page
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Admin',
+        href: '/admin/dashboard',
+    },
+    {
+        title: 'Kelola Posko Evakuasi',
+        href: '/admin/shelters',
+    },
+];
 
 interface Posko {
     id: number;
@@ -148,184 +163,194 @@ export default function PoskoForm() {
         fetchExistingPoskos();
     }, [fetchExistingPoskos]);
 
+    // Return the complete page with layout
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Tambah Posko</CardTitle>
-                    <CardDescription>Tentukan lokasi posko pada peta dengan mengklik titik yang diinginkan</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-6">
-                        <div className="h-[400px] w-full overflow-hidden rounded-md">
-                            <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
-                                <TileLayer
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                />
-                                <MarkerCreator position={position} setPosition={setPosition} />
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Kelola Posko Evakuasi" />
 
-                                {/* Display existing poskos */}
-                                {poskoList.map((posko) => (
-                                    <Marker key={posko.id} position={[posko.latitude, posko.longitude]} icon={shelterIcon} />
-                                ))}
-                            </MapContainer>
-                        </div>
+            <div className="p-6">
+                <h1 className="mb-4 text-2xl font-semibold text-gray-800">Kelola Posko Evakuasi</h1>
+                <p className="mb-6 text-gray-600">Tambah dan kelola posko evakuasi bencana yang akan ditampilkan di peta.</p>
 
-                        <form onSubmit={handleSubmit}>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoName">Nama Posko</Label>
-                                    <Input
-                                        id="poskoName"
-                                        value={poskoName}
-                                        onChange={(e) => setPoskoName(e.target.value)}
-                                        placeholder="Masukkan nama posko"
-                                    />
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Tambah Posko</CardTitle>
+                            <CardDescription>Tentukan lokasi posko pada peta dengan mengklik titik yang diinginkan</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-6">
+                                <div className="h-[400px] w-full overflow-hidden rounded-md">
+                                    <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        />
+                                        <MarkerCreator position={position} setPosition={setPosition} />
+
+                                        {/* Display existing poskos */}
+                                        {poskoList.map((posko) => (
+                                            <Marker key={posko.id} position={[posko.latitude, posko.longitude]} icon={shelterIcon} />
+                                        ))}
+                                    </MapContainer>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoType">Jenis Posko</Label>
-                                    <Select value={poskoType} onValueChange={setPoskoType}>
-                                        <SelectTrigger id="poskoType">
-                                            <SelectValue placeholder="Pilih jenis posko" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="pengungsian">Pengungsian</SelectItem>
-                                            <SelectItem value="kesehatan">Kesehatan</SelectItem>
-                                            <SelectItem value="logistik">Logistik</SelectItem>
-                                            <SelectItem value="dapur-umum">Dapur Umum</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <form onSubmit={handleSubmit}>
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoName">Nama Posko</Label>
+                                            <Input
+                                                id="poskoName"
+                                                value={poskoName}
+                                                onChange={(e) => setPoskoName(e.target.value)}
+                                                placeholder="Masukkan nama posko"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoAddress">Alamat</Label>
-                                    <Textarea
-                                        id="poskoAddress"
-                                        value={poskoAddress}
-                                        onChange={(e) => setPoskoAddress(e.target.value)}
-                                        placeholder="Masukkan alamat lengkap posko"
-                                    />
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoType">Jenis Posko</Label>
+                                            <Select value={poskoType} onValueChange={setPoskoType}>
+                                                <SelectTrigger id="poskoType">
+                                                    <SelectValue placeholder="Pilih jenis posko" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="pengungsian">Pengungsian</SelectItem>
+                                                    <SelectItem value="kesehatan">Kesehatan</SelectItem>
+                                                    <SelectItem value="logistik">Logistik</SelectItem>
+                                                    <SelectItem value="dapur-umum">Dapur Umum</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoDesc">Deskripsi</Label>
-                                    <Textarea
-                                        id="poskoDesc"
-                                        value={poskoDesc}
-                                        onChange={(e) => setPoskoDesc(e.target.value)}
-                                        placeholder="Masukkan deskripsi posko"
-                                    />
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoAddress">Alamat</Label>
+                                            <Textarea
+                                                id="poskoAddress"
+                                                value={poskoAddress}
+                                                onChange={(e) => setPoskoAddress(e.target.value)}
+                                                placeholder="Masukkan alamat lengkap posko"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoContact">Kontak</Label>
-                                    <Input
-                                        id="poskoContact"
-                                        value={poskoContact}
-                                        onChange={(e) => setPoskoContact(e.target.value)}
-                                        placeholder="Masukkan nomor kontak"
-                                    />
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoDesc">Deskripsi</Label>
+                                            <Textarea
+                                                id="poskoDesc"
+                                                value={poskoDesc}
+                                                onChange={(e) => setPoskoDesc(e.target.value)}
+                                                placeholder="Masukkan deskripsi posko"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoCapacity">Kapasitas</Label>
-                                    <Input
-                                        id="poskoCapacity"
-                                        type="number"
-                                        value={poskoCapacity}
-                                        onChange={(e) => setPoskoCapacity(e.target.value)}
-                                        placeholder="Masukkan kapasitas posko"
-                                        min="1"
-                                    />
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoContact">Kontak</Label>
+                                            <Input
+                                                id="poskoContact"
+                                                value={poskoContact}
+                                                onChange={(e) => setPoskoContact(e.target.value)}
+                                                placeholder="Masukkan nomor kontak"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="poskoStatus">Status</Label>
-                                    <Select value={poskoStatus} onValueChange={setPoskoStatus}>
-                                        <SelectTrigger id="poskoStatus">
-                                            <SelectValue placeholder="Pilih status posko" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="aktif">Aktif</SelectItem>
-                                            <SelectItem value="tidak_aktif">Tidak Aktif</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoCapacity">Kapasitas</Label>
+                                            <Input
+                                                id="poskoCapacity"
+                                                type="number"
+                                                value={poskoCapacity}
+                                                onChange={(e) => setPoskoCapacity(e.target.value)}
+                                                placeholder="Masukkan kapasitas posko"
+                                                min="1"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="poskoStatus">Status</Label>
+                                            <Select value={poskoStatus} onValueChange={setPoskoStatus}>
+                                                <SelectTrigger id="poskoStatus">
+                                                    <SelectValue placeholder="Pilih status posko" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="aktif">Aktif</SelectItem>
+                                                    <SelectItem value="tidak_aktif">Tidak Aktif</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
-                        </form>
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button
-                        type="submit"
-                        onClick={handleSubmit}
-                        disabled={loading || !position || !poskoName || !poskoDesc || !poskoAddress || !poskoType || !poskoCapacity}
-                    >
-                        {loading ? 'Menyimpan...' : 'Simpan Posko'}
-                    </Button>
-                </CardFooter>
-            </Card>
+                        </CardContent>
+                        <CardFooter>
+                            <Button
+                                type="submit"
+                                onClick={handleSubmit}
+                                disabled={loading || !position || !poskoName || !poskoDesc || !poskoAddress || !poskoType || !poskoCapacity}
+                            >
+                                {loading ? 'Menyimpan...' : 'Simpan Posko'}
+                            </Button>
+                        </CardFooter>
+                    </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Daftar Posko</CardTitle>
-                    <CardDescription>Posko yang telah ditambahkan</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-2 text-left font-medium">Nama</th>
-                                    <th className="px-4 py-2 text-left font-medium">Jenis</th>
-                                    <th className="px-4 py-2 text-left font-medium">Status</th>
-                                    <th className="px-4 py-2 text-left font-medium">Kapasitas</th>
-                                    <th className="px-4 py-2 text-left font-medium">Alamat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Kontak</th>
-                                    <th className="px-4 py-2 text-left font-medium">Pembuat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Dibuat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {poskoList.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={9} className="px-4 py-4 text-center text-gray-500">
-                                            Belum ada posko yang ditambahkan
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    poskoList.map((posko) => (
-                                        <tr key={posko.id}>
-                                            <td className="px-4 py-2">{posko.nama}</td>
-                                            <td className="px-4 py-2">
-                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{posko.jenis_posko}</span>
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                <span
-                                                    className={`rounded-full px-2 py-1 text-xs ${
-                                                        posko.status === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                    }`}
-                                                >
-                                                    {posko.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-2">{posko.kapasitas} orang</td>
-                                            <td className="px-4 py-2">{posko.alamat}</td>
-                                            <td className="px-4 py-2">{posko.kontak || '-'}</td>
-                                            <td className="px-4 py-2">{posko.user?.name || 'Unknown'}</td>
-                                            <td className="px-4 py-2 text-gray-500">{new Date(posko.created_at).toLocaleDateString()}</td>
-                                            <td className="px-4 py-2 text-gray-500">{new Date(posko.updated_at).toLocaleDateString()}</td>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Daftar Posko</CardTitle>
+                            <CardDescription>Posko yang telah ditambahkan</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left font-medium">Nama</th>
+                                            <th className="px-4 py-2 text-left font-medium">Jenis</th>
+                                            <th className="px-4 py-2 text-left font-medium">Status</th>
+                                            <th className="px-4 py-2 text-left font-medium">Kapasitas</th>
+                                            <th className="px-4 py-2 text-left font-medium">Alamat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Kontak</th>
+                                            <th className="px-4 py-2 text-left font-medium">Pembuat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Dibuat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {poskoList.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={9} className="px-4 py-4 text-center text-gray-500">
+                                                    Belum ada posko yang ditambahkan
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            poskoList.map((posko) => (
+                                                <tr key={posko.id}>
+                                                    <td className="px-4 py-2">{posko.nama}</td>
+                                                    <td className="px-4 py-2">
+                                                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{posko.jenis_posko}</span>
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        <span
+                                                            className={`rounded-full px-2 py-1 text-xs ${
+                                                                posko.status === 'aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                            }`}
+                                                        >
+                                                            {posko.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2">{posko.kapasitas} orang</td>
+                                                    <td className="px-4 py-2">{posko.alamat}</td>
+                                                    <td className="px-4 py-2">{posko.kontak || '-'}</td>
+                                                    <td className="px-4 py-2">{posko.user?.name || 'Unknown'}</td>
+                                                    <td className="px-4 py-2 text-gray-500">{new Date(posko.created_at).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-2 text-gray-500">{new Date(posko.updated_at).toLocaleDateString()}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </AppLayout>
     );
 }

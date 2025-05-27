@@ -76,7 +76,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 🛡️ Admin Only
     Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', fn() => Inertia::render('admin/AdminDashboard'))->name('dashboard');
-        Route::resource('users', UserController::class);
+
+        // New admin routes
+        Route::get('/statistics', fn() => Inertia::render('admin/DisasterStatistics'))->name('statistics');
+        Route::get('/disaster-map', fn() => Inertia::render('admin/DisasterMap'))->name('disaster-map');
+        Route::get('/evacuation-routes', fn() => Inertia::render('admin/EvacuationRouteForm'))->name('evacuation-routes');
+        Route::get('/shelters', fn() => Inertia::render('admin/PoskoForm'))->name('shelters');
+        Route::get('/reports', fn() => Inertia::render('admin/ReportManagement'))->name('reports');
+        Route::get('/notifications', fn() => Inertia::render('admin/SendNotification'))->name('notifications');
+
+        // Modified users route to avoid conflict
+        Route::get('/users', fn() => Inertia::render('admin/UserManagement'))->name('users.index');
+
+        // Resource routes - keep them after the explicit routes to avoid conflicts
+        Route::resource('users', UserController::class)->except(['index']);
         Route::put('laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
         Route::put('laporans/{laporan}/reject', [LaporanController::class, 'reject'])->name('laporans.reject');
         Route::delete('laporans/{laporan}', [LaporanController::class, 'destroy'])->name('laporans.destroy');
