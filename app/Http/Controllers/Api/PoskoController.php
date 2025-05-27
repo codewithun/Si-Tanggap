@@ -17,17 +17,15 @@ class PoskoController extends Controller
         $query = Posko::with('user:id,name,email')
             ->orderBy('created_at', 'desc');
 
-        // Filter berdasarkan jenis posko jika parameter ada
+        // Filter
         if ($request->has('jenis_posko')) {
             $query->where('jenis_posko', $request->jenis_posko);
         }
 
-        // Filter berdasarkan status jika parameter ada
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        // Pencarian berdasarkan nama atau alamat
         if ($request->has('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('nama', 'like', '%' . $request->search . '%')
@@ -35,8 +33,10 @@ class PoskoController extends Controller
             });
         }
 
-        $poskos = $query->get();
-        return response()->json($poskos);
+        $perPage = $request->input('per_page', 10); // default 10 jika tidak ada
+        $poskos = $query->paginate($perPage);
+
+        return response()->json($poskos); // Laravel paginate sudah format JSON sesuai kebutuhan
     }
 
     /**
@@ -95,29 +95,18 @@ class PoskoController extends Controller
                 'message' => 'Anda tidak diizinkan untuk mengubah posko ini'
             ], 403);
         }
+
         $validated = $request->validate([
             'nama' => 'sometimes|required|string|max:255',
             'deskripsi' => 'sometimes|required|string',
-            'latitude' => 'sometimes|required|numeric|between:-90,90',
-            'longitude' => 'sometimes|required|numeric|between:-180,180',
             'alamat' => 'sometimes|required|string|max:255',
             'kontak' => 'nullable|string|max:255',
             'jenis_posko' => 'sometimes|required|string|max:255',
-            'foto' => 'nullable|image|max:2048', // max 2MB
             'status' => 'nullable|in:aktif,tidak_aktif',
             'kapasitas' => 'sometimes|required|integer|min:1',
+            'latitude' => 'sometimes|required|numeric|between:-90,90',
+            'longitude' => 'sometimes|required|numeric|between:-180,180',
         ]);
-
-        if ($request->hasFile('foto')) {
-            // Hapus foto lama jika ada
-            if ($posko->foto) {
-                $oldPath = str_replace('/storage', 'public', $posko->foto);
-                Storage::delete($oldPath);
-            }
-
-            $path = $request->file('foto')->store('public/poskos');
-            $validated['foto'] = Storage::url($path);
-        }
 
         $posko->update($validated);
 
@@ -137,12 +126,6 @@ class PoskoController extends Controller
             return response()->json([
                 'message' => 'Anda tidak diizinkan untuk menghapus posko ini'
             ], 403);
-        }
-
-        // Hapus foto jika ada
-        if ($posko->foto) {
-            $path = str_replace('/storage', 'public', $posko->foto);
-            Storage::delete($path);
         }
 
         $posko->delete();

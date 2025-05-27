@@ -6,6 +6,7 @@ import PoskoForm from './PoskoForm';
 import ReportManagement from './ReportManagement';
 import SendNotification from './SendNotification';
 import UserManagement from './UserManagement';
+import BencanaMap from './BencanaMap';
 
 export default function AdminDashboard() {
     return (
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
                     <TabsTrigger value="map">Map</TabsTrigger>
                     <TabsTrigger value="evacuation-routes">Jalur Evakuasi</TabsTrigger>
                     <TabsTrigger value="shelters">Posko</TabsTrigger>
+                    <TabsTrigger value="bencana">Bencana</TabsTrigger>
                     <TabsTrigger value="reports">Laporan Bencana</TabsTrigger>
                     <TabsTrigger value="notifications">Notifikasi</TabsTrigger>
                 </TabsList>
@@ -39,6 +41,10 @@ export default function AdminDashboard() {
 
                 <TabsContent value="shelters" className="space-y-4">
                     <PoskoForm />
+                </TabsContent>
+
+                <TabsContent value="bencana" className="space-y-4">
+                    <BencanaMap />
                 </TabsContent>
 
                 <TabsContent value="reports" className="space-y-4">

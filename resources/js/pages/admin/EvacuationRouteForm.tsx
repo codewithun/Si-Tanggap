@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import axios from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { Edit2, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 import { useToast } from '../../hooks/useToast';
 
@@ -12,7 +13,7 @@ interface JalurEvakuasi {
     id: number;
     user_id: number;
     nama: string;
-    koordinat: [number, number][];
+    koordinat: { lat: number; lng: number }[];
     jenis_bencana: string;
     warna: string;
     created_at: string;
@@ -22,6 +23,14 @@ interface JalurEvakuasi {
         name: string;
         email: string;
     };
+}
+
+interface PaginationData {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    data: JalurEvakuasi[];
 }
 
 const PolylineCreator = ({
@@ -52,18 +61,23 @@ const PolylineCreator = ({
 
 export default function EvacuationRouteForm() {
     const [jalurList, setJalurList] = useState<JalurEvakuasi[]>([]);
+    const [allRoutes, setAllRoutes] = useState<JalurEvakuasi[]>([]);
     const [points, setPoints] = useState<[number, number][]>([]);
     const [routeName, setRouteName] = useState('');
     const [disasterType, setDisasterType] = useState('');
     const [routeColor, setRouteColor] = useState('#FF5733');
     const [loading, setLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [paginationData, setPaginationData] = useState<PaginationData | null>(null);
     const { toast } = useToast();
+    const fetchedAllRef = useRef(false);
 
+    // Fetch for table with pagination (current page only)
     const fetchExistingRoutes = useCallback(async () => {
         try {
-            const response = await axios.get('/jalur-evakuasi');
-            // Ensure we're getting the data array from the response
-            setJalurList(response.data?.data || []);
+            const response = await axios.get(`/jalur-evakuasi?page=${currentPage}&per_page=10`);
+            setPaginationData(response.data);
+            setJalurList(response.data.data);
         } catch (error) {
             console.error('Failed to fetch evacuation routes:', error);
             toast({
@@ -73,14 +87,42 @@ export default function EvacuationRouteForm() {
             });
             setJalurList([]);
         }
-    }, [toast]);
+    }, [currentPage, toast]);
 
-    // Replace empty array pattern in useEffect
+    // Fetch all routes for map display (run once, or after data change)
+    const fetchAllRoutes = useCallback(async () => {
+        if (fetchedAllRef.current) return; // prevent double fetch
+        try {
+            let page = 1;
+            let allData: JalurEvakuasi[] = [];
+            let lastPage = 1;
+            do {
+                const response = await axios.get(`/jalur-evakuasi?page=${page}&per_page=100`);
+                allData = allData.concat(response.data.data);
+                lastPage = response.data.last_page || 1;
+                page++;
+            } while (page <= lastPage);
+            setAllRoutes(allData);
+            fetchedAllRef.current = true;
+        } catch (error) {
+            setAllRoutes([]);
+        }
+    }, []);
+
     useEffect(() => {
         fetchExistingRoutes();
-    }, [fetchExistingRoutes]); // Add dependency since we're using useCallback
+    }, [fetchExistingRoutes]);
 
-    // Define a proper error interface
+    useEffect(() => {
+        fetchAllRoutes();
+    }, [fetchAllRoutes]);
+
+    // Refetch all routes after add/delete
+    const refetchAllRoutes = async () => {
+        fetchedAllRef.current = false;
+        await fetchAllRoutes();
+    };
+
     interface ApiError {
         response?: {
             data?: {
@@ -89,7 +131,6 @@ export default function EvacuationRouteForm() {
         };
     }
 
-    // Fix the error handling with proper type
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -116,7 +157,7 @@ export default function EvacuationRouteForm() {
         try {
             const formData = {
                 nama: routeName,
-                deskripsi: 'Jalur evakuasi', // Provide a default description
+                deskripsi: 'Jalur evakuasi',
                 koordinat: points.map(([lat, lng]) => ({
                     lat: parseFloat(lat.toFixed(6)),
                     lng: parseFloat(lng.toFixed(6)),
@@ -125,24 +166,18 @@ export default function EvacuationRouteForm() {
                 warna: routeColor,
             };
 
-            // Log the request data for debugging
-            console.log('Sending data:', formData);
-
-            const response = await axios.post('/jalur-evakuasi', formData);
-
-            // Log the response for debugging
-            console.log('Response:', response.data);
+            await axios.post('/jalur-evakuasi', formData);
 
             toast({
                 title: 'Berhasil',
                 description: 'Jalur evakuasi berhasil disimpan',
             });
 
-            // Reset form
             setPoints([]);
             setRouteName('');
             setDisasterType('');
             fetchExistingRoutes();
+            refetchAllRoutes();
         } catch (error: unknown) {
             console.error('Failed to save evacuation route:', error);
             const typedError = error as ApiError;
@@ -155,6 +190,34 @@ export default function EvacuationRouteForm() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (confirm('Apakah Anda yakin ingin menghapus jalur evakuasi ini?')) {
+            try {
+                await axios.delete(`/jalur-evakuasi/${id}`);
+                toast({
+                    title: 'Berhasil',
+                    description: 'Jalur evakuasi berhasil dihapus',
+                });
+                fetchExistingRoutes();
+                refetchAllRoutes();
+            } catch (error) {
+                toast({
+                    title: 'Error',
+                    description: 'Gagal menghapus jalur evakuasi',
+                    variant: 'destructive',
+                });
+            }
+        }
+    };
+
+    const handleEdit = (jalur: JalurEvakuasi) => {
+        setRouteName(jalur.nama);
+        setDisasterType(jalur.jenis_bencana);
+        setRouteColor(jalur.warna);
+        setPoints(jalur.koordinat.map((coord) => [coord.lat, coord.lng] as [number, number]));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     return (
@@ -174,11 +237,8 @@ export default function EvacuationRouteForm() {
                                 />
                                 <PolylineCreator points={points} setPoints={setPoints} color={routeColor} />
 
-                                {/* Display existing routes */}
-                                {jalurList.map((jalur) => {
-                                    // Debug log for each route
-                                    console.log(`Rendering route ${jalur.id}:`, jalur.koordinat);
-
+                                {/* Tampilkan semua jalur di map */}
+                                {allRoutes.map((jalur) => {
                                     return jalur.koordinat && jalur.koordinat.length > 0 ? (
                                         <Polyline
                                             key={jalur.id}
@@ -270,6 +330,7 @@ export default function EvacuationRouteForm() {
                                     <th className="px-4 py-2 text-left font-medium">Titik</th>
                                     <th className="px-4 py-2 text-left font-medium">Dibuat</th>
                                     <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
+                                    <th className="px-4 py-2 text-center font-medium">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -295,11 +356,78 @@ export default function EvacuationRouteForm() {
                                             <td className="px-4 py-2">{jalur.koordinat.length} titik</td>
                                             <td className="px-4 py-2 text-gray-500">{new Date(jalur.created_at).toLocaleDateString()}</td>
                                             <td className="px-4 py-2 text-gray-500">{new Date(jalur.updated_at).toLocaleDateString()}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                <div className="flex justify-center gap-2">
+                                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(jalur)}>
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(jalur.id)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))
                                 )}
                             </tbody>
                         </table>
+
+                        {/* Pagination */}
+                        {paginationData && paginationData.last_page > 1 && (
+                            <div className="flex items-center justify-between border-t px-4 py-3">
+                                <div className="text-sm text-gray-500">
+                                    Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
+                                    {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of {paginationData.total}{' '}
+                                    entries
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                        disabled={currentPage === 1}
+                                    >
+                                        Previous
+                                    </Button>
+                                    {[...Array(paginationData.last_page)].map((_, index) => {
+                                        const pageNumber = index + 1;
+                                        const showPage =
+                                            pageNumber === 1 || pageNumber === paginationData.last_page || Math.abs(pageNumber - currentPage) <= 1;
+
+                                        if (!showPage) {
+                                            if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
+                                                return (
+                                                    <span key={`dot-${pageNumber}`} className="px-2 py-1">
+                                                        ...
+                                                    </span>
+                                                );
+                                            }
+                                            return null;
+                                        }
+
+                                        return (
+                                            <Button
+                                                key={pageNumber}
+                                                variant={currentPage === pageNumber ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setCurrentPage(pageNumber)}
+                                                className="min-w-[32px]"
+                                            >
+                                                {pageNumber}
+                                            </Button>
+                                        );
+                                    })}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
+                                        disabled={currentPage === paginationData.last_page}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

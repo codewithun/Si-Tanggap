@@ -28,10 +28,14 @@ class JalurEvakuasiController extends Controller
                 $query->where('nama', 'like', '%' . $request->search . '%');
             }
 
-            $jalurEvakuasis = $query->get()->map(function ($jalur) {
+            // Paginate the results
+            $perPage = $request->input('per_page', 10);
+            $jalurEvakuasis = $query->paginate($perPage);
+
+            // Transform the data
+            $jalurEvakuasis->through(function ($jalur) {
                 $koordinat = [];
                 
-                // Ensure koordinat is an array and has valid format
                 if (!empty($jalur->koordinat)) {
                     if (is_string($jalur->koordinat)) {
                         $decoded = json_decode($jalur->koordinat, true);
@@ -43,17 +47,14 @@ class JalurEvakuasiController extends Controller
                     }
                 }
 
-                // Transform coordinates to {lat, lng} format if needed
                 $koordinat = collect($koordinat)->map(function ($coord) {
                     if (is_array($coord)) {
-                        // If already in [lat, lng] format, convert to {lat, lng}
                         if (count($coord) === 2 && is_numeric($coord[0]) && is_numeric($coord[1])) {
                             return [
                                 'lat' => (float)$coord[0],
                                 'lng' => (float)$coord[1]
                             ];
                         }
-                        // If already in {lat, lng} format, ensure values are float
                         else if (isset($coord['lat']) && isset($coord['lng'])) {
                             return [
                                 'lat' => (float)$coord['lat'],
@@ -64,15 +65,11 @@ class JalurEvakuasiController extends Controller
                     return null;
                 })->filter()->values()->all();
 
-                return array_merge($jalur->toArray(), ['koordinat' => $koordinat]);
+                $jalur->koordinat = $koordinat;
+                return $jalur;
             });
             
-            Log::info('Jalur Evakuasi data:', ['count' => $jalurEvakuasis->count(), 'data' => $jalurEvakuasis]);
-            
-            // Wrap the response in a data property
-            return response()->json([
-                'data' => $jalurEvakuasis
-            ]);
+            return response()->json($jalurEvakuasis);
         } catch (\Exception $e) {
             Log::error('JalurEvakuasi index error: ' . $e->getMessage());
             return response()->json([
