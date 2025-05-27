@@ -4,18 +4,26 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
 {
     /**
-     * Handle an incoming request.
+     * Handle an incoming request and check user roles using Spatie.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @param  mixed  ...$roles
+     * @return mixed
      */
-    public function handle($request, Closure $next, ...$roles)
+    public function handle(Request $request, Closure $next, ...$roles)
     {
-        if (!in_array($request->user()->role, $roles)) {
+        // Pastikan user sudah login
+        if (!$request->user()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Gunakan hasRole untuk cek apakah user punya salah satu role yg diperbolehkan
+        if (!$request->user()->hasRole($roles)) {
             abort(403, 'Unauthorized');
         }
 

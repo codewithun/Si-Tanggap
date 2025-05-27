@@ -2,35 +2,34 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\Api\{
+use App\Http\Controllers\{
+    UserController,
     JalurEvakuasiController,
     PoskoController,
     LaporanController,
     StatistikController,
     TitikBencanaController,
     NotifikasiController,
-    RegionController,
+    RegionController
 };
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Auth\{
     AuthenticatedSessionController,
-    RegisteredUserController,
+    RegisteredUserController
 };
 
 // ------------------------
-// 🔓 Public Web Routes
+// 🌐 Public Web Routes
 // ------------------------
+Route::get('/', fn() => Inertia::render('LandingPage'))->name('home');
+Route::get('/map', fn() => Inertia::render('map/MapKeseluruhan'))->name('map');
 
-Route::get('/', fn () => Inertia::render('LandingPage'))->name('home');
-Route::get('/map', fn () => Inertia::render('map/MapKeseluruhan'))->name('map');
-
-Route::prefix('jalur-evakuasi')->name('jalur-evakuasi.')->group(function () {
+Route::name('jalur-evakuasi.')->prefix('jalur-evakuasi')->group(function () {
     Route::get('/', [JalurEvakuasiController::class, 'index'])->name('index');
     Route::get('/{jalurEvakuasi}', [JalurEvakuasiController::class, 'show'])->name('show');
 });
 
-Route::prefix('poskos')->name('poskos.')->group(function () {
+Route::name('poskos.')->prefix('poskos')->group(function () {
     Route::get('/', [PoskoController::class, 'index'])->name('index');
     Route::get('/{posko}', [PoskoController::class, 'show'])->name('show');
 });
@@ -38,45 +37,45 @@ Route::prefix('poskos')->name('poskos.')->group(function () {
 Route::get('/titik-bencana', [TitikBencanaController::class, 'index'])->name('titik-bencana.index');
 Route::get('/statistik-bencana', [StatistikController::class, 'index'])->name('statistik.index');
 
-Route::prefix('laporans')->name('laporans.')->group(function () {
+Route::name('laporans.')->prefix('laporans')->group(function () {
     Route::get('/', [LaporanController::class, 'index'])->name('index');
     Route::get('/{laporan}', [LaporanController::class, 'show'])->name('show');
 });
 
 // ------------------------
-// 🔒 Protected Web Routes
+// 🔐 Protected Web Routes
 // ------------------------
-
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', fn () => Inertia::render('dashboard'))->name('dashboard');
+    Route::get('/dashboard', fn() => Inertia::render('dashboard'))->name('dashboard');
 
-    // Submit laporan
+    // Laporan oleh pengguna
     Route::post('/laporans', [LaporanController::class, 'store'])->name('laporans.store');
 
-    // Masyarakat routes
-    Route::prefix('akun-saya')->name('masyarakat.')->group(function () {
-        Route::get('/', fn () => Inertia::render('masyarakat/AkunSaya'))->name('akun-saya');
-        Route::get('/laporan-saya', fn () => Inertia::render('masyarakat/MasyarakatDashboard'))->name('laporan-saya');
-        Route::get('/buat-laporan', fn () => Inertia::render('masyarakat/BuatLaporan'))->name('laporan-bencana.create');
+    // 👤 Masyarakat
+    Route::name('masyarakat.')->prefix('akun-saya')->group(function () {
+        Route::get('/', fn() => Inertia::render('masyarakat/AkunSaya'))->name('dashboard');
+        Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('laporan');
+        Route::get('/buat-laporan', fn() => Inertia::render('masyarakat/BuatLaporan'))->name('buat-laporan');
     });
 
-    // Relawan routes
-    Route::middleware(['role:relawan'])->prefix('relawan')->as('relawan.')->group(function () {
-        Route::get('/dashboard', fn () => Inertia::render('relawan/RelawanDashboard'))->name('dashboard');
-        Route::get('/bencana-map', fn () => Inertia::render('relawan/BencanaMap'))->name('bencana-map');
-        Route::get('/evacuation-and-shelter-map', fn () => Inertia::render('relawan/EvacuationAndShelterMap'))->name('evacuation-map');
-        Route::get('/add-evacuation-and-shelter', fn () => Inertia::render('relawan/AddEvacuationAndShelter'))->name('add-evacuation');
-        Route::get('/disaster-report-verification', fn () => Inertia::render('relawan/DisasterReportVerification'))->name('report-verification');
+    // 🦺 Relawan
+    Route::middleware(['auth'])->prefix('relawan')->name('relawan.')->group(function () {
+        Route::get('/dashboard', fn() => Inertia::render('relawan/RelawanDashboard'))->name('dashboard');
+        Route::get('/bencana-map', fn() => Inertia::render('relawan/BencanaMap'))->name('bencana-map');
+        Route::get('/evacuation-and-shelter-map', fn() => Inertia::render('relawan/EvacuationAndShelterMap'))->name('evacuation-map');
+        Route::get('/add-evacuation-and-shelter', fn() => Inertia::render('relawan/AddEvacuationAndShelter'))->name('add-evacuation');
+        Route::get('/disaster-report-verification', fn() => Inertia::render('relawan/DisasterReportVerification'))->name('report-verification');
     });
 
-    // Shared Relawan & Admin
-    Route::middleware(['role:relawan|admin'])->group(function () {
+    // 🔄 Shared (Relawan + Admin)
+    Route::middleware(['auth'])->group(function () {
         Route::apiResource('jalur-evakuasi', JalurEvakuasiController::class)->except(['index', 'show']);
         Route::apiResource('poskos', PoskoController::class)->except(['index', 'show']);
     });
 
-    // Admin-only routes
-    Route::middleware(['role:admin'])->group(function () {
+    // 🛡️ Admin Only
+    Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/dashboard', fn() => Inertia::render('admin/AdminDashboard'))->name('dashboard');
         Route::resource('users', UserController::class);
         Route::put('laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
         Route::put('laporans/{laporan}/reject', [LaporanController::class, 'reject'])->name('laporans.reject');
@@ -86,18 +85,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // ------------------------
-// 🔒 Authenticated API Routes
+// 🔐 API Routes - Authenticated
 // ------------------------
-
-Route::prefix('api')->middleware('auth:sanctum')->group(function () {
+Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/laporan-saya', [LaporanController::class, 'getMyReports'])->name('api.laporan-saya');
     Route::put('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
 });
 
 // ------------------------
-// 🔓 Public API Routes (no auth required)
+// 🌐 API Routes - Public
 // ------------------------
-
 Route::prefix('api')->group(function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('api.login');
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('api.register');
@@ -106,8 +103,7 @@ Route::prefix('api')->group(function () {
 });
 
 // ------------------------
-// 📄 Include Additional Route Files
+// 🔗 Include Additional Routes
 // ------------------------
-
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';

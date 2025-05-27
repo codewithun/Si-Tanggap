@@ -32,6 +32,8 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
+        $user = $request->user();
+
         if ($request->wantsJson()) {
             $token = $request->user()->createToken('api-token');
             return response()->json([
@@ -42,9 +44,8 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Validasi role opsional
-        $user = $request->user();
         $allowedRoles = ['admin', 'relawan', 'masyarakat'];
-        if (!in_array($user->role, $allowedRoles)) {
+        if (!$user->hasAnyRole($allowedRoles)) {
             Auth::logout();
             return redirect('/')
                 ->with('error', 'Role tidak diizinkan.');

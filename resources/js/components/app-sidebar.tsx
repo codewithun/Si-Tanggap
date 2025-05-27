@@ -19,9 +19,11 @@ export function AppSidebar() {
     const user = auth?.user;
 
     // Fungsi helper untuk path dashboard berdasarkan role
+    // role dari Spatie sudah didapatkan dengan getRoleNames().first() di backend
     const dashboardHref = () => {
         if (user?.role === 'relawan') return '/relawan/dashboard';
-        return '/dashboard'; // admin & masyarakat (jika ada)
+        if (user?.role === 'admin') return '/admin/dashboard';
+        return '/dashboard'; // masyarakat dan default
     };
 
     // Menu utama default (Dashboard)
@@ -60,7 +62,7 @@ export function AppSidebar() {
     } else if (user?.role === 'admin') {
         mainNavItems.push({
             title: 'Kelola Pengguna',
-            href: '/users',
+            href: '/admin/users',
             icon: Users,
         });
     }

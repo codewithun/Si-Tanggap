@@ -1,6 +1,7 @@
 <?php
 
-namespace Database\Seeders; 
+namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
@@ -10,10 +11,7 @@ class UsersTableSeeder extends Seeder
 {
     public function run(): void
     {
-        // Buat role jika belum ada
-        Role::firstOrCreate(['name' => 'admin']);
-        Role::firstOrCreate(['name' => 'relawan']);
-        Role::firstOrCreate(['name' => 'masyarakat']);
+        // Roles are already created in RolePermissionSeeder
 
         // Admin
         $admin = User::create([
@@ -21,7 +19,6 @@ class UsersTableSeeder extends Seeder
             'email' => 'admin@example.com',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
-            'role' => 'admin', // optional, jika tetap ingin simpan di kolom
         ]);
         $admin->assignRole('admin');
 
@@ -31,7 +28,6 @@ class UsersTableSeeder extends Seeder
             'email' => 'relawan1@example.com',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
-            'role' => 'relawan',
         ]);
         $relawan1->assignRole('relawan');
 
@@ -40,7 +36,6 @@ class UsersTableSeeder extends Seeder
             'email' => 'relawan2@example.com',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
-            'role' => 'relawan',
         ]);
         $relawan2->assignRole('relawan');
 
@@ -50,7 +45,6 @@ class UsersTableSeeder extends Seeder
             'email' => 'warga1@example.com',
             'email_verified_at' => now(),
             'password' => Hash::make('password'),
-            'role' => 'masyarakat',
         ]);
         $warga1->assignRole('masyarakat');
 
