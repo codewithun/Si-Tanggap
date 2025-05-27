@@ -50,13 +50,35 @@ function createRoles()
     $roles = ['admin', 'relawan', 'masyarakat'];
     
     foreach ($roles as $roleName) {
-        if (\Spatie\Permission\Models\Role::where('name', $roleName)->doesntExist()) {
-            \Spatie\Permission\Models\Role::create(['name' => $roleName]);
+        try {
+            if (\Spatie\Permission\Models\Role::where('name', $roleName)->doesntExist()) {
+                \Spatie\Permission\Models\Role::create(['name' => $roleName]);
+            }
+        } catch (\Exception $e) {
+            // Log the error but continue testing
+            report("Failed to create role {$roleName}: " . $e->getMessage());
         }
     }
 }
 
 // Create roles before all tests
 beforeAll(function() {
-    createRoles();
+    // Always run migrations regardless of database type
+    try {
+        // For SQLite file database, ensure the file exists
+        $dbFile = config('database.connections.sqlite.database');
+        if (config('database.default') === 'sqlite' && $dbFile !== ':memory:') {
+            if (!file_exists($dbFile)) {
+                touch($dbFile);
+            }
+        }
+        
+        \Illuminate\Support\Facades\Artisan::call('migrate:fresh');
+        
+        // Create roles after migrations
+        createRoles();
+    } catch (\Exception $e) {
+        // Log the error but continue testing
+        report("Migration failed: " . $e->getMessage());
+    }
 });

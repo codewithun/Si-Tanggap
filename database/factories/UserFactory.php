@@ -46,10 +46,13 @@ class UserFactory extends Factory
                         \Spatie\Permission\Models\Role::create(['name' => 'masyarakat']);
                     }
                     
-                    $user->assignRole('masyarakat');
+                    // Only assign role if the table exists
+                    if (app(\Illuminate\Database\Schema\Builder::class)->hasTable('roles')) {
+                        $user->assignRole('masyarakat');
+                    }
                 } catch (\Exception $e) {
                     // If role assignment fails, log the error but continue
-                    report($e);
+                    report("Failed to assign role to user: " . $e->getMessage());
                 }
             }
         });
