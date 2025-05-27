@@ -32,25 +32,6 @@ type HazardLayerType =
     | 'tsunami'
     | 'covid19';
 
-// Define infrastructure layer types
-type InfraLayerType =
-    | 'topografi'
-    | 'fault'
-    | 'jalur_rel'
-    | 'jalan'
-    | 'pasar'
-    | 'masjid'
-    | 'kelenteng'
-    | 'pura'
-    | 'station'
-    | 'terminal'
-    | 'sungai'
-    | 'batas_das'
-    | 'batas_admin';
-
-// Define display types
-type DisplayType = 'bahaya' | 'kerentanan' | 'kapasitas' | 'risiko';
-
 // Interface for disaster data from API
 interface Bencana {
     id: number;
@@ -106,11 +87,7 @@ export default function MapKeseluruhan() {
 
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
     const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>(['gempabumi']);
-    const [selectedInfraLayers, setSelectedInfraLayers] = useState<InfraLayerType[]>([]);
-    const [displayType, setDisplayType] = useState<DisplayType>('bahaya');
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [isFiltering, setIsFiltering] = useState(false);
-    const [previousHazardLayers, setPreviousHazardLayers] = useState<HazardLayerType[]>([]);
 
     // Transform disaster and earthquake data to marker format for MapComponent
     const markers = useMemo(() => [
@@ -151,7 +128,6 @@ export default function MapKeseluruhan() {
         // Only proceed if we have markers to filter
         if (!markers.length) return;
 
-        setIsFiltering(true);
         const filtered = markers.filter(marker => {
             if (marker.id.startsWith('earthquake-')) {
                 return selectedHazardLayers.includes('gempabumi');
@@ -165,7 +141,6 @@ export default function MapKeseluruhan() {
         });
         
         setFilteredMarkers(filtered);
-        setIsFiltering(false);
     }, [markers, selectedHazardLayers, disasters]);
 
     // Get risk level based on description or other factors
@@ -255,17 +230,13 @@ export default function MapKeseluruhan() {
 
     // Handle hazard layer selection
     const handleHazardLayerChange = (type: HazardLayerType, checked: boolean) => {
-        // Store current selection for undo
-        setPreviousHazardLayers(selectedHazardLayers);
-
         if (checked) {
             setSelectedHazardLayers((prev) => [...prev, type]);
         } else {
             setSelectedHazardLayers((prev) => prev.filter((t) => t !== type));
         }
-
-        // Filter markers immediately when layer selection changes
-        setIsFiltering(true);
+        
+        // Filter markers when layer selection changes
         filterMarkers();
     };
 
@@ -444,9 +415,7 @@ export default function MapKeseluruhan() {
                                         size="sm"
                                         className="h-8 px-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                                         onClick={() => {
-                                            setPreviousHazardLayers(selectedHazardLayers);
                                             setSelectedHazardLayers([]);
-                                            setIsFiltering(false);
                                             setFilteredMarkers(markers);
                                         }}
                                     >
