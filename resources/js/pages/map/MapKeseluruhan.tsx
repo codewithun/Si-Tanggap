@@ -241,8 +241,8 @@ export default function MapKeseluruhan() {
             id: `disaster-${disaster.id}`,
             position: [disaster.latitude, disaster.longitude] as [number, number],
             title: disaster.judul || disaster.jenis_bencana,
-            type: disaster.jenis_bencana || 'lainnya', // This will map to our specific icons
-            className: `marker-status-${disaster.status}`, // Add status-based styling
+            iconUrl: `/icons/${disaster.jenis_bencana || 'lainnya'}.svg`, // Use direct icon path
+            status: disaster.status as 'diverifikasi' | 'menunggu' | 'ditolak', // Narrow the type
             description: `
                 Jenis: ${disaster.jenis_bencana || 'Tidak diketahui'}
                 Tanggal: ${new Date(disaster.created_at).toLocaleDateString('id-ID')}
@@ -256,7 +256,8 @@ export default function MapKeseluruhan() {
             id: `earthquake-${quake.properties.time}`,
             position: [quake.geometry.coordinates[1], quake.geometry.coordinates[0]] as [number, number],
             title: 'Gempa Bumi USGS',
-            type: 'gempa',
+            iconUrl: '/icons/gempa.svg',
+            status: 'diverifikasi' as 'diverifikasi' | 'menunggu' | 'ditolak', // USGS data is always considered verified
             description: `
                 Magnitude: ${quake.properties.mag}
                 Lokasi: ${quake.properties.place}
