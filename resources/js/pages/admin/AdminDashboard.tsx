@@ -1,32 +1,23 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/useToast';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import AdminMap from './AdminMap';
-import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { useToast } from '@/hooks/useToast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-    ArcElement,
-    BarElement, 
-    CategoryScale, 
-    Chart as ChartJS, 
-    Legend, 
-    LinearScale, 
-    Title, 
-    Tooltip 
-} from 'chart.js';
+import { ArcElement, BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Title, Tooltip } from 'chart.js';
+import { useCallback, useEffect, useState } from 'react';
 import { Bar, Pie } from 'react-chartjs-2';
+import AdminMap from './AdminMap';
 
 // Register all necessary chart components including ArcElement for Pie charts
 ChartJS.register(
-    CategoryScale, 
-    LinearScale, 
-    BarElement, 
-    ArcElement,  // Penting! Tambahkan ArcElement untuk Pie chart
-    Title, 
-    Tooltip, 
-    Legend
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    ArcElement, // Penting! Tambahkan ArcElement untuk Pie chart
+    Title,
+    Tooltip,
+    Legend,
 );
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -38,29 +29,29 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 // Standardisasi nama jenis bencana untuk tampilan
 const disasterTypeMap: Record<string, string> = {
-    'banjir': 'Banjir',
-    'gempa': 'Gempa Bumi',
-    'longsor': 'Tanah Longsor',
-    'tsunami': 'Tsunami',
+    banjir: 'Banjir',
+    gempa: 'Gempa Bumi',
+    longsor: 'Tanah Longsor',
+    tsunami: 'Tsunami',
     'angin-topan': 'Angin Topan',
-    'kebakaran': 'Kebakaran'
+    kebakaran: 'Kebakaran',
 };
 
 // Colors for each disaster type
 const disasterTypeColors: Record<string, { backgroundColor: string; borderColor: string }> = {
-    'banjir': {
+    banjir: {
         backgroundColor: 'rgba(54, 162, 235, 0.6)',
         borderColor: 'rgba(54, 162, 235, 1)',
     },
-    'gempa': {
+    gempa: {
         backgroundColor: 'rgba(255, 99, 132, 0.6)',
         borderColor: 'rgba(255, 99, 132, 1)',
     },
-    'longsor': {
-        backgroundColor: 'rgba(153, 102, 255, 0.6)', 
+    longsor: {
+        backgroundColor: 'rgba(153, 102, 255, 0.6)',
         borderColor: 'rgba(153, 102, 255, 1)',
     },
-    'tsunami': {
+    tsunami: {
         backgroundColor: 'rgba(75, 192, 192, 0.6)',
         borderColor: 'rgba(75, 192, 192, 1)',
     },
@@ -68,10 +59,10 @@ const disasterTypeColors: Record<string, { backgroundColor: string; borderColor:
         backgroundColor: 'rgba(255, 206, 86, 0.6)',
         borderColor: 'rgba(255, 206, 86, 1)',
     },
-    'kebakaran': {
+    kebakaran: {
         backgroundColor: 'rgba(255, 159, 64, 0.6)',
         borderColor: 'rgba(255, 159, 64, 1)',
-    }
+    },
 };
 
 interface StatisticsData {
@@ -91,36 +82,36 @@ export default function AdminDashboard() {
     const fetchStatistics = useCallback(async () => {
         try {
             const response = await axios.get('/statistik-bencana');
-            
+
             // Ensure all disaster types are represented in statistics
             const standardizedData = { ...response.data };
-            
+
             if (standardizedData.bencanaBerdasarkanJenis) {
                 // Create a standardized object with all disaster types initialized to 0
                 const standardizedCounts: Record<string, number> = {
-                    'banjir': 0,
-                    'gempa': 0,
-                    'longsor': 0,
-                    'tsunami': 0,
+                    banjir: 0,
+                    gempa: 0,
+                    longsor: 0,
+                    tsunami: 0,
                     'angin-topan': 0,
-                    'kebakaran': 0,
+                    kebakaran: 0,
                 };
-                
+
                 // Map the incoming data to our standardized structure
                 Object.entries(standardizedData.bencanaBerdasarkanJenis).forEach(([key, value]) => {
                     // Use original key if it exists in our map, otherwise keep as is
                     const normalizedKey = key.toLowerCase();
-                    if (standardizedCounts.hasOwnProperty(normalizedKey)) {
+                    if (Object.prototype.hasOwnProperty.call(standardizedCounts, normalizedKey)) {
                         standardizedCounts[normalizedKey] = value as number;
                     } else {
                         // Handle any unexpected disaster types
                         standardizedCounts[key] = value as number;
                     }
                 });
-                
+
                 standardizedData.bencanaBerdasarkanJenis = standardizedCounts;
             }
-            
+
             setStats(standardizedData);
         } catch (error) {
             if (axios.isAxiosError(error)) {
@@ -146,20 +137,16 @@ export default function AdminDashboard() {
     }, [fetchStatistics]);
 
     const disasterTypeChartData = {
-        labels: stats?.bencanaBerdasarkanJenis 
-            ? Object.keys(stats.bencanaBerdasarkanJenis).map(key => disasterTypeMap[key] || key) 
-            : [],
+        labels: stats?.bencanaBerdasarkanJenis ? Object.keys(stats.bencanaBerdasarkanJenis).map((key) => disasterTypeMap[key] || key) : [],
         datasets: [
             {
                 label: 'Jumlah Kejadian',
                 data: stats?.bencanaBerdasarkanJenis ? Object.values(stats.bencanaBerdasarkanJenis) : [],
-                backgroundColor: stats?.bencanaBerdasarkanJenis 
-                    ? Object.keys(stats.bencanaBerdasarkanJenis).map(key => 
-                        disasterTypeColors[key]?.backgroundColor || 'rgba(128, 128, 128, 0.6)') 
+                backgroundColor: stats?.bencanaBerdasarkanJenis
+                    ? Object.keys(stats.bencanaBerdasarkanJenis).map((key) => disasterTypeColors[key]?.backgroundColor || 'rgba(128, 128, 128, 0.6)')
                     : [],
-                borderColor: stats?.bencanaBerdasarkanJenis 
-                    ? Object.keys(stats.bencanaBerdasarkanJenis).map(key => 
-                        disasterTypeColors[key]?.borderColor || 'rgba(128, 128, 128, 1)') 
+                borderColor: stats?.bencanaBerdasarkanJenis
+                    ? Object.keys(stats.bencanaBerdasarkanJenis).map((key) => disasterTypeColors[key]?.borderColor || 'rgba(128, 128, 128, 1)')
                     : [],
                 borderWidth: 1,
             },
@@ -347,19 +334,19 @@ export default function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {stats?.bencanaBerdasarkanJenis && 
+                                    {stats?.bencanaBerdasarkanJenis &&
                                         Object.entries(stats.bencanaBerdasarkanJenis).map(([key, value]) => {
                                             const total = Object.values(stats.bencanaBerdasarkanJenis).reduce((a, b) => a + b, 0);
                                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                                            
+
                                             return (
                                                 <tr key={key} className="border-b">
                                                     <td className="px-4 py-2">
                                                         <div className="flex items-center gap-2">
-                                                            <div 
-                                                                className="h-3 w-3 rounded-full" 
-                                                                style={{ 
-                                                                    backgroundColor: disasterTypeColors[key]?.backgroundColor || 'grey' 
+                                                            <div
+                                                                className="h-3 w-3 rounded-full"
+                                                                style={{
+                                                                    backgroundColor: disasterTypeColors[key]?.backgroundColor || 'grey',
                                                                 }}
                                                             ></div>
                                                             {disasterTypeMap[key] || key}
@@ -369,17 +356,15 @@ export default function AdminDashboard() {
                                                     <td className="px-4 py-2">{percentage}%</td>
                                                 </tr>
                                             );
-                                        })
-                                    }
+                                        })}
                                 </tbody>
                                 <tfoot className="bg-muted/30">
                                     <tr>
                                         <td className="px-4 py-2 font-medium">Total</td>
                                         <td className="px-4 py-2 font-medium">
-                                            {stats?.bencanaBerdasarkanJenis 
+                                            {stats?.bencanaBerdasarkanJenis
                                                 ? Object.values(stats.bencanaBerdasarkanJenis).reduce((a, b) => a + b, 0)
-                                                : 0
-                                            }
+                                                : 0}
                                         </td>
                                         <td className="px-4 py-2 font-medium">100%</td>
                                     </tr>
@@ -401,18 +386,15 @@ export default function AdminDashboard() {
                     <h1 className="text-3xl font-semibold text-gray-800">Dashboard Admin</h1>
                     <p className="mt-1 text-gray-600">Kelola aplikasi WebGIS untuk tanggap bencana</p>
                 </div>
-                
+
                 {/* Statistik */}
-                <div className="mt-8">
-                    {renderStatisticsContent()}
-                </div>
+                <div className="mt-8">{renderStatisticsContent()}</div>
 
                 {/* Peta */}
                 <div className="mt-8">
                     <h2 className="mb-4 text-xl font-semibold text-gray-800">Peta Bencana</h2>
                     <AdminMap />
                 </div>
-                
             </div>
         </AppLayout>
     );

@@ -1,13 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
 import axios from '@/lib/axios';
-import { useCallback, useEffect, useState } from 'react';
-import { MapContainer, Marker, TileLayer, Popup, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { useCallback, useEffect, useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from 'react-leaflet';
 
 interface Bencana {
     id: number;
@@ -113,10 +113,11 @@ export default function BencanaMap() {
             setLokasi('');
             setPosition(null);
             setRefreshCount((c) => c + 1);
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { message?: string } } };
             toast({
                 title: 'Error',
-                description: error?.response?.data?.message || 'Gagal menambahkan bencana',
+                description: axiosError.response?.data?.message || 'Gagal menambahkan bencana',
                 variant: 'destructive',
             });
         } finally {
@@ -133,9 +134,9 @@ export default function BencanaMap() {
                 </Button>
             </div>
             {/* Form Tambah Bencana */}
-            <div className="bg-white rounded-lg shadow p-4">
+            <div className="rounded-lg bg-white p-4 shadow">
                 <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                             <Label htmlFor="judul">Judul</Label>
                             <Input id="judul" value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul bencana" />
@@ -159,7 +160,12 @@ export default function BencanaMap() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="deskripsi">Deskripsi</Label>
-                            <Textarea id="deskripsi" value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} placeholder="Deskripsi bencana" />
+                            <Textarea
+                                id="deskripsi"
+                                value={deskripsi}
+                                onChange={(e) => setDeskripsi(e.target.value)}
+                                placeholder="Deskripsi bencana"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="lokasi">Lokasi</Label>
@@ -168,7 +174,7 @@ export default function BencanaMap() {
                     </div>
                     <div className="mt-4">
                         <Label>Pilih Titik pada Peta</Label>
-                        <div className="h-[300px] w-full overflow-hidden rounded-md mt-2">
+                        <div className="mt-2 h-[300px] w-full overflow-hidden rounded-md">
                             <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
                                 <TileLayer
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -182,10 +188,7 @@ export default function BencanaMap() {
                         </div>
                     </div>
                     <div className="mt-4 flex justify-end">
-                        <Button
-                            type="submit"
-                            disabled={saving || !judul || !jenisBencana || !deskripsi || !lokasi || !position}
-                        >
+                        <Button type="submit" disabled={saving || !judul || !jenisBencana || !deskripsi || !lokasi || !position}>
                             {saving ? 'Menyimpan...' : 'Tambah Bencana'}
                         </Button>
                     </div>
@@ -193,7 +196,7 @@ export default function BencanaMap() {
             </div>
             {/* Peta Titik Bencana */}
             <div className="space-y-2 sm:space-y-4">
-                <h3 className="font-semibold text-lg">Peta Titik Bencana Terverifikasi</h3>
+                <h3 className="text-lg font-semibold">Peta Titik Bencana Terverifikasi</h3>
                 {loading ? (
                     <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200 sm:h-[600px]"></div>
                 ) : bencanaPoints.length === 0 ? (
@@ -210,19 +213,23 @@ export default function BencanaMap() {
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
                         {bencanaPoints.map((bencana) => (
-                            <Marker
-                                key={bencana.id}
-                                position={[bencana.latitude, bencana.longitude]}
-                                icon={disasterIcon}
-                            >
+                            <Marker key={bencana.id} position={[bencana.latitude, bencana.longitude]} icon={disasterIcon}>
                                 <Popup>
                                     <div className="font-bold">{bencana.judul || bencana.jenis_bencana}</div>
                                     <div className="text-xs">{bencana.deskripsi}</div>
-                                    <div className="text-xs mt-2">
-                                        <div><span className="font-semibold">Jenis:</span> {bencana.jenis_bencana || 'Tidak diketahui'}</div>
-                                        <div><span className="font-semibold">Tanggal:</span> {new Date(bencana.created_at).toLocaleDateString('id-ID')}</div>
-                                        <div><span className="font-semibold">Lokasi:</span> {bencana.lokasi || 'Tidak diketahui'}</div>
-                                        <div><span className="font-semibold">Status:</span> {bencana.status || 'Belum diverifikasi'}</div>
+                                    <div className="mt-2 text-xs">
+                                        <div>
+                                            <span className="font-semibold">Jenis:</span> {bencana.jenis_bencana || 'Tidak diketahui'}
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold">Tanggal:</span> {new Date(bencana.created_at).toLocaleDateString('id-ID')}
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold">Lokasi:</span> {bencana.lokasi || 'Tidak diketahui'}
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold">Status:</span> {bencana.status || 'Belum diverifikasi'}
+                                        </div>
                                     </div>
                                 </Popup>
                             </Marker>

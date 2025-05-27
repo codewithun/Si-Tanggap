@@ -9,9 +9,9 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { Edit2, Trash2 } from 'lucide-react';
 import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Edit2, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 
@@ -108,8 +108,8 @@ export default function PoskoForm() {
             const response = await axios.get('/poskos', {
                 params: {
                     page: currentPage,
-                    per_page: itemsPerPage
-                }
+                    per_page: itemsPerPage,
+                },
             });
 
             if (response.data.data) {
@@ -153,7 +153,7 @@ export default function PoskoForm() {
             let lastPage = 1;
             do {
                 const response = await axios.get('/poskos', {
-                    params: { page, per_page: 100 }
+                    params: { page, per_page: 100 },
                 });
                 allData = allData.concat(response.data.data ?? response.data);
                 lastPage = response.data.last_page || 1;
@@ -161,7 +161,7 @@ export default function PoskoForm() {
             } while (page <= lastPage);
             setAllPoskos(allData);
             fetchedAllRef.current = true;
-        } catch (error) {
+        } catch {
             setAllPoskos([]);
         }
     }, []);
@@ -178,10 +178,6 @@ export default function PoskoForm() {
     const refetchAllPoskos = async () => {
         fetchedAllRef.current = false;
         await fetchAllPoskos();
-    };
-
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -279,7 +275,8 @@ export default function PoskoForm() {
                 });
                 fetchExistingPoskos();
                 refetchAllPoskos();
-            } catch (error) {
+            } catch {
+                // Remove the error parameter entirely when not using it
                 toast({
                     title: 'Error',
                     description: 'Gagal menghapus posko',
@@ -415,16 +412,20 @@ export default function PoskoForm() {
                                         </div>
                                     </div>
                                     <div className="mt-4 flex items-center space-x-2">
-                                        <Button type="button" variant="outline" onClick={() => {
-                                            setPosition(null);
-                                            setEditId(null);
-                                            setPoskoName('');
-                                            setPoskoDesc('');
-                                            setPoskoAddress('');
-                                            setPoskoContact('');
-                                            setPoskoType('');
-                                            setPoskoCapacity('');
-                                        }}>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setPosition(null);
+                                                setEditId(null);
+                                                setPoskoName('');
+                                                setPoskoDesc('');
+                                                setPoskoAddress('');
+                                                setPoskoContact('');
+                                                setPoskoType('');
+                                                setPoskoCapacity('');
+                                            }}
+                                        >
                                             Reset Form
                                         </Button>
                                         <div className="text-sm text-gray-500">{position ? 'Lokasi sudah ditentukan' : 'Belum ada lokasi'}</div>
@@ -438,7 +439,7 @@ export default function PoskoForm() {
                                 onClick={handleSubmit}
                                 disabled={loading || !position || !poskoName || !poskoDesc || !poskoAddress || !poskoType || !poskoCapacity}
                             >
-                                {loading ? (editId ? 'Menyimpan Perubahan...' : 'Menyimpan...') : (editId ? 'Update Posko' : 'Simpan Posko')}
+                                {loading ? (editId ? 'Menyimpan Perubahan...' : 'Menyimpan...') : editId ? 'Update Posko' : 'Simpan Posko'}
                             </Button>
                         </CardFooter>
                     </Card>
@@ -467,13 +468,15 @@ export default function PoskoForm() {
                                     </thead>
                                     <tbody className="divide-y">
                                         {loading ? (
-                                            Array(itemsPerPage).fill(0).map((_, idx) => (
-                                                <tr key={`skeleton-${idx}`}>
-                                                    <td colSpan={10} className="px-4 py-3">
-                                                        <div className="h-6 w-full animate-pulse rounded bg-gray-200"></div>
-                                                    </td>
-                                                </tr>
-                                            ))
+                                            Array(itemsPerPage)
+                                                .fill(0)
+                                                .map((_, idx) => (
+                                                    <tr key={`skeleton-${idx}`}>
+                                                        <td colSpan={10} className="px-4 py-3">
+                                                            <div className="h-6 w-full animate-pulse rounded bg-gray-200"></div>
+                                                        </td>
+                                                    </tr>
+                                                ))
                                         ) : poskoList.length === 0 ? (
                                             <tr>
                                                 <td colSpan={10} className="px-4 py-4 text-center text-gray-500">
@@ -523,8 +526,8 @@ export default function PoskoForm() {
                                     <div className="flex items-center justify-between border-t px-4 py-3">
                                         <div className="text-sm text-gray-500">
                                             Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
-                                            {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of {paginationData.total}{' '}
-                                            entries
+                                            {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of{' '}
+                                            {paginationData.total} entries
                                         </div>
                                         <div className="flex gap-2">
                                             <Button

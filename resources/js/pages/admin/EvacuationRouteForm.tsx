@@ -120,7 +120,8 @@ export default function EvacuationRouteForm() {
             } while (page <= lastPage);
             setAllRoutes(allData);
             fetchedAllRef.current = true;
-        } catch (error) {
+        } catch {
+            // Remove the error parameter entirely when not using it
             setAllRoutes([]);
         }
     }, []);
@@ -240,7 +241,8 @@ export default function EvacuationRouteForm() {
                 }
                 fetchExistingRoutes();
                 refetchAllRoutes();
-            } catch (error) {
+            } catch {
+                // Remove the error parameter entirely when not using it
                 toast({
                     title: 'Error',
                     description: 'Gagal menghapus jalur evakuasi',
@@ -254,10 +256,10 @@ export default function EvacuationRouteForm() {
         setRouteName(jalur.nama);
         setDisasterType(jalur.jenis_bencana);
         setRouteColor(jalur.warna);
-        
+
         // Check the structure of koordinat and convert appropriately
         let pointsArray: [number, number][] = [];
-        
+
         if (Array.isArray(jalur.koordinat)) {
             if (jalur.koordinat.length > 0) {
                 if (typeof jalur.koordinat[0] === 'number') {
@@ -270,13 +272,11 @@ export default function EvacuationRouteForm() {
                     pointsArray = jalur.koordinat as unknown as [number, number][];
                 } else if (jalur.koordinat[0] && 'lat' in jalur.koordinat[0] && 'lng' in jalur.koordinat[0]) {
                     // Format is [{lat, lng}, {lat, lng}, ...] (array of objects)
-                    pointsArray = jalur.koordinat.map(coord => 
-                        [coord.lat, coord.lng] as [number, number]
-                    );
+                    pointsArray = jalur.koordinat.map((coord) => [coord.lat, coord.lng] as [number, number]);
                 }
             }
         }
-        
+
         setPoints(pointsArray);
         setEditRouteId(jalur.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -306,22 +306,22 @@ export default function EvacuationRouteForm() {
                                         />
                                         <PolylineCreator points={points} setPoints={setPoints} color={routeColor} />
 
-                                {/* Tampilkan semua jalur di map */}
-                                {allRoutes.map((jalur) => {
-                                    return jalur.koordinat && jalur.koordinat.length > 0 ? (
-                                        <Polyline
-                                            key={jalur.id}
-                                            positions={jalur.koordinat}
-                                            pathOptions={{
-                                                color: jalur.warna || '#FF0000',
-                                                weight: 3,
-                                                opacity: 0.8,
-                                            }}
-                                        />
-                                    ) : null;
-                                })}
-                            </MapContainer>
-                        </div>
+                                        {/* Tampilkan semua jalur di map */}
+                                        {allRoutes.map((jalur) => {
+                                            return jalur.koordinat && jalur.koordinat.length > 0 ? (
+                                                <Polyline
+                                                    key={jalur.id}
+                                                    positions={jalur.koordinat}
+                                                    pathOptions={{
+                                                        color: jalur.warna || '#FF0000',
+                                                        weight: 3,
+                                                        opacity: 0.8,
+                                                    }}
+                                                />
+                                            ) : null;
+                                        })}
+                                    </MapContainer>
+                                </div>
 
                                 <form onSubmit={handleSubmit}>
                                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -388,123 +388,125 @@ export default function EvacuationRouteForm() {
                         </CardFooter>
                     </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Daftar Jalur Evakuasi</CardTitle>
-                    <CardDescription>Jalur evakuasi yang telah ditambahkan</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-2 text-left font-medium">Nama</th>
-                                    <th className="px-4 py-2 text-left font-medium">Jenis Bencana</th>
-                                    <th className="px-4 py-2 text-left font-medium">Pembuat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Titik</th>
-                                    <th className="px-4 py-2 text-left font-medium">Dibuat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
-                                    <th className="px-4 py-2 text-center font-medium">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {jalurList.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
-                                            Belum ada jalur evakuasi yang ditambahkan
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    jalurList.map((jalur) => (
-                                        <tr key={jalur.id}>
-                                            <td className="px-4 py-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: jalur.warna }} />
-                                                    {jalur.nama}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{jalur.jenis_bencana}</span>
-                                            </td>
-                                            <td className="px-4 py-2">{jalur.user?.name || 'Unknown'}</td>
-                                            <td className="px-4 py-2">{jalur.koordinat.length} titik</td>
-                                            <td className="px-4 py-2 text-gray-500">{new Date(jalur.created_at).toLocaleDateString()}</td>
-                                            <td className="px-4 py-2 text-gray-500">{new Date(jalur.updated_at).toLocaleDateString()}</td>
-                                            <td className="px-4 py-2 text-center">
-                                                <div className="flex justify-center gap-2">
-                                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(jalur)}>
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(jalur.id)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </td>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Daftar Jalur Evakuasi</CardTitle>
+                            <CardDescription>Jalur evakuasi yang telah ditambahkan</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left font-medium">Nama</th>
+                                            <th className="px-4 py-2 text-left font-medium">Jenis Bencana</th>
+                                            <th className="px-4 py-2 text-left font-medium">Pembuat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Titik</th>
+                                            <th className="px-4 py-2 text-left font-medium">Dibuat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
+                                            <th className="px-4 py-2 text-center font-medium">Aksi</th>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {jalurList.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
+                                                    Belum ada jalur evakuasi yang ditambahkan
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            jalurList.map((jalur) => (
+                                                <tr key={jalur.id}>
+                                                    <td className="px-4 py-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: jalur.warna }} />
+                                                            {jalur.nama}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{jalur.jenis_bencana}</span>
+                                                    </td>
+                                                    <td className="px-4 py-2">{jalur.user?.name || 'Unknown'}</td>
+                                                    <td className="px-4 py-2">{jalur.koordinat.length} titik</td>
+                                                    <td className="px-4 py-2 text-gray-500">{new Date(jalur.created_at).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-2 text-gray-500">{new Date(jalur.updated_at).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        <div className="flex justify-center gap-2">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(jalur)}>
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(jalur.id)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
 
-                        {/* Pagination */}
-                        {paginationData && paginationData.last_page > 1 && (
-                            <div className="flex items-center justify-between border-t px-4 py-3">
-                                <div className="text-sm text-gray-500">
-                                    Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
-                                    {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of {paginationData.total}{' '}
-                                    entries
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                                        disabled={currentPage === 1}
-                                    >
-                                        Previous
-                                    </Button>
-                                    {[...Array(paginationData.last_page)].map((_, index) => {
-                                        const pageNumber = index + 1;
-                                        const showPage =
-                                            pageNumber === 1 || pageNumber === paginationData.last_page || Math.abs(pageNumber - currentPage) <= 1;
-
-                                        if (!showPage) {
-                                            if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
-                                                return (
-                                                    <span key={`dot-${pageNumber}`} className="px-2 py-1">
-                                                        ...
-                                                    </span>
-                                                );
-                                            }
-                                            return null;
-                                        }
-
-                                        return (
+                                {/* Pagination */}
+                                {paginationData && paginationData.last_page > 1 && (
+                                    <div className="flex items-center justify-between border-t px-4 py-3">
+                                        <div className="text-sm text-gray-500">
+                                            Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
+                                            {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of{' '}
+                                            {paginationData.total} entries
+                                        </div>
+                                        <div className="flex gap-2">
                                             <Button
-                                                key={pageNumber}
-                                                variant={currentPage === pageNumber ? 'default' : 'outline'}
+                                                variant="outline"
                                                 size="sm"
-                                                onClick={() => setCurrentPage(pageNumber)}
-                                                className="min-w-[32px]"
+                                                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                                disabled={currentPage === 1}
                                             >
-                                                {pageNumber}
+                                                Previous
                                             </Button>
-                                        );
-                                    })}
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
-                                        disabled={currentPage === paginationData.last_page}
-                                    >
-                                        Next
-                                    </Button>
-                                </div>
+                                            {[...Array(paginationData.last_page)].map((_, index) => {
+                                                const pageNumber = index + 1;
+                                                const showPage =
+                                                    pageNumber === 1 ||
+                                                    pageNumber === paginationData.last_page ||
+                                                    Math.abs(pageNumber - currentPage) <= 1;
+
+                                                if (!showPage) {
+                                                    if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
+                                                        return (
+                                                            <span key={`dot-${pageNumber}`} className="px-2 py-1">
+                                                                ...
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }
+
+                                                return (
+                                                    <Button
+                                                        key={pageNumber}
+                                                        variant={currentPage === pageNumber ? 'default' : 'outline'}
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(pageNumber)}
+                                                        className="min-w-[32px]"
+                                                    >
+                                                        {pageNumber}
+                                                    </Button>
+                                                );
+                                            })}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
+                                                disabled={currentPage === paginationData.last_page}
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </AppLayout>

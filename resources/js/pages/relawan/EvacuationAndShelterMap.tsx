@@ -65,23 +65,23 @@ export default function EvacuationAndShelterMap() {
     }, [toast]);
 
     const fetchPosko = useCallback(async () => {
-    try {
-        const response = await axios.get('/poskos');
-        const poskoData = Array.isArray(response.data) ? response.data : response.data.data;
-        setPosko(poskoData || []);
-        return poskoData || [];
-    } catch (error: unknown) {
-        console.error('Failed to fetch evacuation shelters:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data posko evakuasi';
-        toast({
-            title: 'Error',
-            description: errorMessage,
-            variant: 'destructive',
-        });
-        setPosko([]);
-        return [];
-    }
-}, [toast]);
+        try {
+            const response = await axios.get('/poskos');
+            const poskoData = Array.isArray(response.data) ? response.data : response.data.data;
+            setPosko(poskoData || []);
+            return poskoData || [];
+        } catch (error: unknown) {
+            console.error('Failed to fetch evacuation shelters:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data posko evakuasi';
+            toast({
+                title: 'Error',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+            setPosko([]);
+            return [];
+        }
+    }, [toast]);
 
     useEffect(() => {
         Promise.all([fetchJalurEvakuasi(), fetchPosko()])

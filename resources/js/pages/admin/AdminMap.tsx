@@ -82,17 +82,25 @@ function CustomMap({
                         <Popup>
                             <div style={{ minWidth: 270, minHeight: 110, display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 16 }}>
                                 <div style={{ flex: 1 }}>
-                                    <div className="font-bold text-base mb-1">{marker.nama}</div>
-                                    <div className="text-sm mb-1">{marker.deskripsi}</div>
-                                    <div className="text-xs text-gray-600 mt-2">
-                                        <div><span className="font-semibold">Alamat:</span> {marker.alamat || 'Tidak tersedia'}</div>
-                                        <div><span className="font-semibold">Kontak:</span> {marker.kontak || 'Tidak tersedia'}</div>
+                                    <div className="mb-1 text-base font-bold">{marker.nama}</div>
+                                    <div className="mb-1 text-sm">{marker.deskripsi}</div>
+                                    <div className="mt-2 text-xs text-gray-600">
+                                        <div>
+                                            <span className="font-semibold">Alamat:</span> {marker.alamat || 'Tidak tersedia'}
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold">Kontak:</span> {marker.kontak || 'Tidak tersedia'}
+                                        </div>
                                     </div>
                                 </div>
                                 <div style={{ flex: 0.7 }}>
                                     <div className="text-xs">
-                                        <div><span className="font-semibold">Jenis:</span> {marker.jenis_posko || 'Tidak tersedia'}</div>
-                                        <div><span className="font-semibold">Status:</span> {marker.status || 'Aktif'}</div>
+                                        <div>
+                                            <span className="font-semibold">Jenis:</span> {marker.jenis_posko || 'Tidak tersedia'}
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold">Status:</span> {marker.status || 'Aktif'}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -101,7 +109,15 @@ function CustomMap({
                 ))}
                 {/* Jalur Evakuasi Polylines */}
                 {jalurEvakuasi
-                    .filter((jalur) => jalur.koordinat && Array.isArray(jalur.koordinat) && jalur.koordinat.length > 0)
+                    .filter((jalur) => {
+                        // More thorough validation of coordinates
+                        return (
+                            jalur.koordinat &&
+                            Array.isArray(jalur.koordinat) &&
+                            jalur.koordinat.length > 1 && // Need at least 2 points for a line
+                            jalur.koordinat.every((point) => point && typeof point.lat === 'number' && typeof point.lng === 'number')
+                        );
+                    })
                     .map((jalur) => (
                         <Polyline
                             key={`jalur-${jalur.id}`}
@@ -118,17 +134,13 @@ function CustomMap({
                     ))}
                 {/* Titik Bencana Markers */}
                 {bencanaPoints.map((bencana) => (
-                    <Marker
-                        key={`bencana-${bencana.id}`}
-                        position={[bencana.latitude, bencana.longitude]}
-                        icon={disasterIcon}
-                    >
+                    <Marker key={`bencana-${bencana.id}`} position={[bencana.latitude, bencana.longitude]} icon={disasterIcon}>
                         <Popup>
                             <div style={{ minWidth: 220, display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
                                 <div style={{ flex: 1 }}>
-                                    <div className="font-bold text-base mb-1">{bencana.judul || bencana.jenis_bencana || '(Tanpa judul)'}</div>
-                                    <div className="text-xs mb-1">{bencana.deskripsi}</div>
-                                    <div className="text-xs mt-2">
+                                    <div className="mb-1 text-base font-bold">{bencana.judul || bencana.jenis_bencana || '(Tanpa judul)'}</div>
+                                    <div className="mb-1 text-xs">{bencana.deskripsi}</div>
+                                    <div className="mt-2 text-xs">
                                         <div>
                                             <span className="font-semibold">Jenis:</span> {bencana.jenis_bencana || 'Tidak diketahui'}
                                         </div>
