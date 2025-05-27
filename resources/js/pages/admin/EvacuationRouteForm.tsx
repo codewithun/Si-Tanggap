@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -227,28 +228,39 @@ export default function EvacuationRouteForm() {
         setEditRouteId(null);
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm('Apakah Anda yakin ingin menghapus jalur evakuasi ini?')) {
-            try {
-                await axios.delete(`/jalur-evakuasi/${id}`);
-                toast({
-                    title: 'Berhasil',
-                    description: 'Jalur evakuasi berhasil dihapus',
-                });
-                // If currently editing this route, reset the form
-                if (editRouteId === id) {
-                    resetForm();
-                }
-                fetchExistingRoutes();
-                refetchAllRoutes();
-            } catch {
-                // Remove the error parameter entirely when not using it
-                toast({
-                    title: 'Error',
-                    description: 'Gagal menghapus jalur evakuasi',
-                    variant: 'destructive',
-                });
+    // State for delete confirmation dialog
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
+    const handleDeleteClick = (id: number) => {
+        setDeleteTargetId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDelete = async () => {
+        if (deleteTargetId === null) return;
+
+        try {
+            await axios.delete(`/jalur-evakuasi/${deleteTargetId}`);
+            toast({
+                title: 'Berhasil',
+                description: 'Jalur evakuasi berhasil dihapus',
+            });
+            // If currently editing this route, reset the form
+            if (editRouteId === deleteTargetId) {
+                resetForm();
             }
+            fetchExistingRoutes();
+            refetchAllRoutes();
+        } catch {
+            toast({
+                title: 'Error',
+                description: 'Gagal menghapus jalur evakuasi',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setDeleteTargetId(null);
         }
     };
 
@@ -435,7 +447,7 @@ export default function EvacuationRouteForm() {
                                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(jalur)}>
                                                                 <Edit2 className="h-4 w-4" />
                                                             </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(jalur.id)}>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(jalur.id)}>
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </div>
@@ -509,6 +521,26 @@ export default function EvacuationRouteForm() {
                     </Card>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Hapus Jalur Evakuasi</DialogTitle>
+                        <DialogDescription>
+                            Apakah Anda yakin ingin menghapus jalur evakuasi ini? Tindakan ini tidak dapat dibatalkan.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete}>
+                            Hapus
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

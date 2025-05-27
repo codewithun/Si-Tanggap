@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -97,6 +98,10 @@ export default function PoskoForm() {
 
     // Untuk edit
     const [editId, setEditId] = useState<number | null>(null);
+
+    // Add these new state variables for delete confirmation dialog
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
     const itemsPerPage = 10;
     const fetchedAllRef = useRef(false);
@@ -265,24 +270,43 @@ export default function PoskoForm() {
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm('Apakah Anda yakin ingin menghapus posko ini?')) {
-            try {
-                await axios.delete(`/poskos/${id}`);
-                toast({
-                    title: 'Berhasil',
-                    description: 'Posko berhasil dihapus',
-                });
-                fetchExistingPoskos();
-                refetchAllPoskos();
-            } catch {
-                // Remove the error parameter entirely when not using it
-                toast({
-                    title: 'Error',
-                    description: 'Gagal menghapus posko',
-                    variant: 'destructive',
-                });
+    // Replace the current handleDelete function with these two functions
+    const handleDeleteClick = (id: number) => {
+        setDeleteTargetId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDelete = async () => {
+        if (deleteTargetId === null) return;
+
+        try {
+            await axios.delete(`/poskos/${deleteTargetId}`);
+            toast({
+                title: 'Berhasil',
+                description: 'Posko berhasil dihapus',
+            });
+            // If currently editing this posko, reset the form
+            if (editId === deleteTargetId) {
+                setPosition(null);
+                setPoskoName('');
+                setPoskoDesc('');
+                setPoskoAddress('');
+                setPoskoContact('');
+                setPoskoType('');
+                setPoskoCapacity('');
+                setEditId(null);
             }
+            fetchExistingPoskos();
+            refetchAllPoskos();
+        } catch {
+            toast({
+                title: 'Error',
+                description: 'Gagal menghapus posko',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setDeleteTargetId(null);
         }
     };
 
@@ -510,7 +534,7 @@ export default function PoskoForm() {
                                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(posko)}>
                                                                 <Edit2 className="h-4 w-4" />
                                                             </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(posko.id)}>
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(posko.id)}>
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </div>
@@ -585,6 +609,24 @@ export default function PoskoForm() {
                     </Card>
                 </div>
             </div>
+
+            {/* Add the delete confirmation dialog at the end of your component, right before closing the AppLayout tag */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Hapus Posko</DialogTitle>
+                        <DialogDescription>Apakah Anda yakin ingin menghapus posko ini? Tindakan ini tidak dapat dibatalkan.</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                            Batal
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete}>
+                            Hapus
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
