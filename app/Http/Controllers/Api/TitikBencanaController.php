@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Laporan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TitikBencanaController extends Controller
 {
@@ -69,7 +70,7 @@ class TitikBencanaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Error in TitikBencanaController@index: ' . $e->getMessage());
+            Log::error('Error in TitikBencanaController@index: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Terjadi kesalahan saat mengambil data titik bencana',
                 'error' => $e->getMessage()

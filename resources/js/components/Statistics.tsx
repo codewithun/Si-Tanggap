@@ -20,15 +20,13 @@ const Statistics: React.FC = () => {
         const fetchStatistics = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get('/statistik');
+                const response = await axios.get('/statistik-bencana');
 
-                // Transform API response to our component's data structure
+                // Transform API response to match the interface
                 setStats({
-                    totalBencana: response.data.totals.laporan || 0,
-                    laporanTerverifikasi:
-                        response.data.laporan_by_status.find((item: { status: string; total: number }) => item.status === 'terverifikasi')?.total ||
-                        0,
-                    jumlahPosko: response.data.totals.posko || 0,
+                    totalBencana: response.data.totalBencana || 0,
+                    laporanTerverifikasi: response.data.totalLaporanVerified || 0,
+                    jumlahPosko: response.data.totalPosko || 0,
                 });
 
                 setError(null);

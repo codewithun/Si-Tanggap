@@ -83,8 +83,25 @@ interface StatisticsData {
     };
 }
 
+// Interface for USGS earthquake data
+interface EarthquakeFeature {
+    type: 'Feature';
+    properties: {
+        mag: number;
+        place: string;
+        time: number;
+        url: string;
+        title: string;
+    };
+    geometry: {
+        type: 'Point';
+        coordinates: [number, number];  // [longitude, latitude, depth]
+    };
+}
+
 export default function MapKeseluruhan() {
     const [disasters, setDisasters] = useState<Bencana[]>([]);
+    const [earthquakes, setEarthquakes] = useState<EarthquakeFeature[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
@@ -145,7 +162,7 @@ export default function MapKeseluruhan() {
                 },
             });
 
-            const data = response.data || [];
+            const data = response.data?.data || [];
             console.log('Disaster data loaded:', data);
 
             // Add risk level to each disaster
@@ -170,9 +187,35 @@ export default function MapKeseluruhan() {
         }
     }, [toast]);
 
+    // Fetch USGS earthquake data
+    const fetchEarthquakeData = useCallback(async () => {
+        try {
+            const today = new Date();
+            const endtime = today.toISOString().split("T")[0];
+
+            const pastDate = new Date();
+            pastDate.setFullYear(today.getFullYear() - 5);
+            const starttime = pastDate.toISOString().split("T")[0];
+
+            const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${starttime}&endtime=${endtime}&minlatitude=-11&maxlatitude=6.1&minlongitude=94&maxlongitude=141&orderby=time&limit=100`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+            setEarthquakes(data.features || []);
+        } catch (error) {
+            console.error("Gagal ambil data gempa:", error);
+            toast({
+                title: 'Error',
+                description: 'Gagal memuat data gempa USGS',
+                variant: 'destructive',
+            });
+        }
+    }, [toast]);
+
     useEffect(() => {
         fetchDisasters();
-    }, [fetchDisasters]);
+        fetchEarthquakeData();
+    }, [fetchDisasters, fetchEarthquakeData]);
 
     // Handle hazard layer selection
     const handleHazardLayerChange = (type: HazardLayerType, checked: boolean) => {
@@ -192,20 +235,37 @@ export default function MapKeseluruhan() {
         }
     };
 
-    // Transform disaster data to marker format for MapComponent
-    const markers = disasters.map((disaster) => ({
-        id: disaster.id,
-        position: [disaster.latitude, disaster.longitude] as [number, number],
-        title: disaster.judul || disaster.jenis_bencana,
-        type: 'disaster',
-        description: `
-            Jenis: ${disaster.jenis_bencana || 'Tidak diketahui'}
-            Tanggal: ${new Date(disaster.created_at).toLocaleDateString('id-ID')}
-            Lokasi: ${disaster.lokasi || 'Tidak diketahui'}
-            Tingkat Bahaya: ${disaster.tingkat_bahaya || 'Tidak diketahui'}
-            Deskripsi: ${disaster.deskripsi || 'Tidak ada deskripsi'}
-        `,
-    }));
+    // Transform disaster and earthquake data to marker format for MapComponent
+    const markers = [
+        ...disasters.map((disaster) => ({
+            id: `disaster-${disaster.id}`,
+            position: [disaster.latitude, disaster.longitude] as [number, number],
+            title: disaster.judul || disaster.jenis_bencana,
+            iconUrl: `/icons/${disaster.jenis_bencana || 'lainnya'}.svg`, // Use direct icon path
+            status: disaster.status as 'diverifikasi' | 'menunggu' | 'ditolak', // Narrow the type
+            description: `
+                Jenis: ${disaster.jenis_bencana || 'Tidak diketahui'}
+                Tanggal: ${new Date(disaster.created_at).toLocaleDateString('id-ID')}
+                Lokasi: ${disaster.lokasi || 'Tidak diketahui'}
+                Status: ${disaster.status || 'Tidak diketahui'}
+                Tingkat Bahaya: ${disaster.tingkat_bahaya || 'Tidak diketahui'}
+                Deskripsi: ${disaster.deskripsi || 'Tidak ada deskripsi'}
+            `,
+        })),
+        ...earthquakes.map((quake) => ({
+            id: `earthquake-${quake.properties.time}`,
+            position: [quake.geometry.coordinates[1], quake.geometry.coordinates[0]] as [number, number],
+            title: 'Gempa Bumi USGS',
+            iconUrl: '/icons/gempa.svg',
+            status: 'diverifikasi' as 'diverifikasi' | 'menunggu' | 'ditolak', // USGS data is always considered verified
+            description: `
+                Magnitude: ${quake.properties.mag}
+                Lokasi: ${quake.properties.place}
+                Waktu: ${new Date(quake.properties.time).toLocaleString('id-ID')}
+                Info lebih lanjut: ${quake.properties.url}
+            `,
+        })),
+    ];
 
     return (
         <div className="flex min-h-screen flex-col bg-slate-50">
@@ -305,6 +365,29 @@ export default function MapKeseluruhan() {
                     }`}
                 >
                     <div className="h-full overflow-y-auto">
+                        {/* Statistics Panel */}
+                        <div className="border-b border-slate-200 p-4">
+                            <h3 className="mb-3 text-lg font-medium">Statistik Area</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-lg bg-blue-50 p-3">
+                                    <div className="text-xs text-slate-500">Jumlah Kecamatan</div>
+                                    <div className="text-xl font-semibold text-blue-700">{statistics.jumlah_kecamatan}</div>
+                                </div>
+                                <div className="rounded-lg bg-blue-50 p-3">
+                                    <div className="text-xs text-slate-500">Luas Area Bahaya</div>
+                                    <div className="text-xl font-semibold text-blue-700">{statistics.luas_bahaya} km²</div>
+                                </div>
+                                <div className="rounded-lg bg-orange-50 p-3">
+                                    <div className="text-xs text-slate-500">Sekolah Zona Tinggi</div>
+                                    <div className="text-xl font-semibold text-orange-700">{statistics.data_sekolah.tinggi}</div>
+                                </div>
+                                <div className="rounded-lg bg-yellow-50 p-3">
+                                    <div className="text-xs text-slate-500">Sekolah Zona Sedang</div>
+                                    <div className="text-xl font-semibold text-yellow-700">{statistics.data_sekolah.sedang}</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex items-center justify-between border-b border-slate-200 p-4">
                             <h3 className="text-lg font-medium">Layer Control</h3>
                             <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0" onClick={() => setSidebarOpen(false)}>
@@ -421,58 +504,90 @@ export default function MapKeseluruhan() {
                 </div>
             </div>
 
-            {/* Statistics Dashboard */}
+            {/* Map Legend */}
             <div className="border-t border-slate-200 bg-white shadow-md">
                 <div className="container mx-auto py-4">
-                    <div className="grid grid-cols-5 gap-4 px-4">
+                    <div className="grid grid-cols-4 gap-4 px-4">
+                        {/* Primary Disaster Icons */}
                         <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Jumlah Kecamatan</div>
-                            <div className="text-2xl font-bold text-blue-800">{statistics.jumlah_kecamatan}</div>
-                        </div>
-
-                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Luas Bahaya (Ha)</div>
-                            <div className="text-2xl font-bold text-blue-800">{statistics.luas_bahaya.toLocaleString()}</div>
-                        </div>
-
-                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Data Sekolah</div>
-                            <div className="flex justify-around">
-                                <div className="text-center">
-                                    <div className="text-xs text-slate-500">Sedang</div>
-                                    <div className="text-lg font-bold text-blue-800">{statistics.data_sekolah.sedang}</div>
+                            <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Icon Bencana</div>
+                            <div className="flex flex-col space-y-2">
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/banjir.svg" alt="Banjir" className="h-6 w-6" />
+                                    <span className="text-sm">= Banjir</span>
                                 </div>
-                                <div className="text-center">
-                                    <div className="text-xs text-slate-500">Tinggi</div>
-                                    <div className="text-lg font-bold text-blue-800">{statistics.data_sekolah.tinggi}</div>
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/gempa.svg" alt="Gempa" className="h-6 w-6" />
+                                    <span className="text-sm">= Gempa</span>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Rumah Sakit</div>
-                            <div className="flex justify-around">
-                                <div className="text-center">
-                                    <div className="text-xs text-slate-500">Sedang</div>
-                                    <div className="text-lg font-bold text-blue-800">{statistics.data_rumah_sakit.sedang}</div>
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/tsunami.svg" alt="Tsunami" className="h-6 w-6" />
+                                    <span className="text-sm">= Tsunami</span>
                                 </div>
-                                <div className="text-center">
-                                    <div className="text-xs text-slate-500">Tinggi</div>
-                                    <div className="text-lg font-bold text-blue-800">{statistics.data_rumah_sakit.tinggi}</div>
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/longsor.svg" alt="Longsor" className="h-6 w-6" />
+                                    <span className="text-sm">= Longsor</span>
                                 </div>
                             </div>
                         </div>
 
+                        {/* Secondary Disaster Icons */}
                         <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">Puskesmas</div>
-                            <div className="flex justify-around">
-                                <div className="text-center">
-                                    <div className="text-xs text-slate-500">Sedang</div>
-                                    <div className="text-lg font-bold text-blue-800">{statistics.data_puskesmas.sedang}</div>
+                            <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Icon Bencana Lainnya</div>
+                            <div className="flex flex-col space-y-2">
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/kebakaran.svg" alt="Kebakaran" className="h-6 w-6" />
+                                    <span className="text-sm">= Kebakaran</span>
                                 </div>
-                                <div className="text-center">
-                                    <div className="text-xs text-slate-500">Tinggi</div>
-                                    <div className="text-lg font-bold text-blue-800">{statistics.data_puskesmas.tinggi}</div>
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/kekeringan.svg" alt="Kekeringan" className="h-6 w-6" />
+                                    <span className="text-sm">= Kekeringan</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/angin-topan.svg" alt="Angin Topan" className="h-6 w-6" />
+                                    <span className="text-sm">= Angin Topan</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/lainnya.svg" alt="Lainnya" className="h-6 w-6" />
+                                    <span className="text-sm">= Lainnya</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Marker Types */}
+                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
+                            <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Tipe Marker</div>
+                            <div className="flex flex-col space-y-2">
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/disaster-marker.svg" alt="Lokasi Bencana" className="h-6 w-6" />
+                                    <span className="text-sm">= Lokasi Bencana</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/shelter-marker.svg" alt="Shelter" className="h-6 w-6" />
+                                    <span className="text-sm">= Shelter/Posko</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <img src="/icons/default-marker.svg" alt="Default" className="h-6 w-6" />
+                                    <span className="text-sm">= Lokasi Umum</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Status Indicators */}
+                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
+                            <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Status Laporan</div>
+                            <div className="flex flex-col space-y-2">
+                                <div className="flex items-center space-x-2">
+                                    <span className="inline-block h-3 w-3 rounded-full bg-green-500"></span>
+                                    <span className="text-sm">= Terverifikasi</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <span className="inline-block h-3 w-3 rounded-full bg-yellow-500"></span>
+                                    <span className="text-sm">= Menunggu</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <span className="inline-block h-3 w-3 rounded-full bg-red-500"></span>
+                                    <span className="text-sm">= Ditolak</span>
                                 </div>
                             </div>
                         </div>

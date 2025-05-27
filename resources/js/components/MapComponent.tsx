@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import React from 'react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMapEvents } from 'react-leaflet';
 import ErrorBoundary from './ErrorBoundary';
@@ -11,10 +12,11 @@ interface MapComponentProps {
     minZoom?: number;
     maxBounds?: [[number, number], [number, number]];
     markers?: Array<{
-        id: number;
+        id: number | string;
         position: [number, number];
         title: string;
-        type: string;
+        iconUrl: string;
+        status?: 'diverifikasi' | 'menunggu' | 'ditolak';
         description?: string;
         popupContent?: React.ReactNode;
     }>;
@@ -26,25 +28,41 @@ interface MapComponentProps {
     }>;
     onClick?: (latLng: { lat: number; lng: number }) => void;
     editable?: boolean;
-    mapType?: 'standard' | 'satellite' | 'terrain'; // New prop for map type
+    mapType?: 'standard' | 'satellite' | 'terrain';
 }
 
 // Custom marker icons
-const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [25, 41]) => {
-    return L.icon({
-        iconUrl,
+const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [25, 41], status?: 'diverifikasi' | 'menunggu' | 'ditolak') => {
+    const color = status === 'diverifikasi' ? '#22c55e' 
+                : status === 'menunggu' ? '#eab308'
+                : status === 'ditolak' ? '#ef4444'
+                : undefined;
+
+    const html = `
+        <div style="position: relative; filter: drop-shadow(0 0 4px ${color || 'transparent'})">
+            <img src="${iconUrl}" width="${iconSize[0]}" height="${iconSize[1]}" style="display: block;" />
+        </div>
+    `;
+
+    return L.divIcon({
+        html,
+        className: 'custom-marker-icon',
         iconSize,
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
+        iconAnchor: [iconSize[0]/2, iconSize[1]],
+        popupAnchor: [0, -iconSize[1]],
     });
 };
 
-const markerIcons = {
-    disaster: createCustomIcon('/icons/disaster-marker.svg', [30, 30]),
-    evacuation: createCustomIcon('/icons/evacuation-marker.svg', [30, 30]),
-    shelter: createCustomIcon('/icons/shelter-marker.svg', [30, 30]),
-    default: createCustomIcon('/icons/default-marker.svg', [25, 41]),
+// Specific disaster type icons
+const disasterIcons: Record<string, (status?: 'diverifikasi' | 'menunggu' | 'ditolak') => L.DivIcon> = {
+    banjir: (status) => createCustomIcon('/icons/banjir.svg', [30, 30], status),
+    gempa: (status) => createCustomIcon('/icons/gempa.svg', [30, 30], status),
+    tsunami: (status) => createCustomIcon('/icons/tsunami.svg', [30, 30], status),
+    longsor: (status) => createCustomIcon('/icons/longsor.svg', [30, 30], status),
+    kebakaran: (status) => createCustomIcon('/icons/kebakaran.svg', [30, 30], status),
+    kekeringan: (status) => createCustomIcon('/icons/kekeringan.svg', [30, 30], status),
+    angin_topan: (status) => createCustomIcon('/icons/angin-topan.svg', [30, 30], status),
+    lainnya: (status) => createCustomIcon('/icons/lainnya.svg', [30, 30], status),
 };
 
 // Map click handler component
@@ -153,16 +171,17 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     <MapWithBoundaries maxLatitude={80}>
                         {getTileLayer()}
 
+                        {/* Render markers */}
                         {markers.map((marker) => (
                             <Marker
                                 key={marker.id}
                                 position={marker.position}
-                                icon={markerIcons[marker.type as keyof typeof markerIcons] || markerIcons.default}
+                                icon={disasterIcons[marker.iconUrl.split('/').pop()?.replace('.svg', '') || 'lainnya'](marker.status)}
                             >
                                 <Popup>
                                     <div>
                                         <h3 className="text-lg font-bold">{marker.title}</h3>
-                                        {marker.description && <p className="mt-1">{marker.description}</p>}
+                                        {marker.description && <p className="mt-1 whitespace-pre-line">{marker.description}</p>}
                                         {marker.popupContent}
                                     </div>
                                 </Popup>
