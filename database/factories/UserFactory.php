@@ -31,6 +31,32 @@ class UserFactory extends Factory
             'remember_token' => Str::random(10),
         ];
     }
+    
+    /**
+     * Configure the model factory.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function ($user) {
+            // Assign the masyarakat role by default
+            if (class_exists(\Spatie\Permission\Models\Role::class)) {
+                try {
+                    // First ensure the role exists
+                    if (\Spatie\Permission\Models\Role::where('name', 'masyarakat')->doesntExist()) {
+                        \Spatie\Permission\Models\Role::create(['name' => 'masyarakat']);
+                    }
+                    
+                    // Only assign role if the table exists
+                    if (app(\Illuminate\Database\Schema\Builder::class)->hasTable('roles')) {
+                        $user->assignRole('masyarakat');
+                    }
+                } catch (\Exception $e) {
+                    // If role assignment fails, log the error but continue
+                    report("Failed to assign role to user: " . $e->getMessage());
+                }
+            }
+        });
+    }
 
     /**
      * Indicate that the model's email address should be unverified.

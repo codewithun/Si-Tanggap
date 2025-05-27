@@ -4,8 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
+import AppLayout from '@/layouts/app-layout';
 import axios from '@/lib/axios';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Relawan',
+        href: '/relawan/dashboard',
+    },
+    {
+        title: 'Tambah Jalur & Posko',
+        href: '/relawan/add-evacuation-and-shelter',
+    },
+];
 
 interface FormPosko {
     nama: string;
@@ -250,190 +264,202 @@ export default function AddEvacuationAndShelter() {
             : [];
 
     return (
-        <div className="space-y-4 sm:space-y-6">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold sm:text-2xl">Tambah Jalur & Posko Evakuasi</h2>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        if (activeTab === 'jalur') {
-                            resetJalur();
-                        } else {
-                            setFormPosko({
-                                nama: '',
-                                deskripsi: '',
-                                kapasitas: 0,
-                                latitude: 0,
-                                longitude: 0,
-                            });
-                            setSelectedPoint(null);
-                        }
-                    }}
-                >
-                    Reset Form
-                </Button>
-            </div>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Tambah Jalur & Posko Evakuasi" />
+            <div className="p-6">
+                <div className="space-y-4 sm:space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold sm:text-2xl">Tambah Jalur & Posko Evakuasi</h2>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                if (activeTab === 'jalur') {
+                                    resetJalur();
+                                } else {
+                                    setFormPosko({
+                                        nama: '',
+                                        deskripsi: '',
+                                        kapasitas: 0,
+                                        latitude: 0,
+                                        longitude: 0,
+                                    });
+                                    setSelectedPoint(null);
+                                }
+                            }}
+                        >
+                            Reset Form
+                        </Button>
+                    </div>
 
-            {/* Tab navigation */}
-            <div className="flex space-x-2 border-b">
-                <button
-                    className={`px-4 py-2 text-xs sm:text-sm ${
-                        activeTab === 'jalur' ? 'border-b-2 border-blue-500 font-medium text-blue-600' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    onClick={() => setActiveTab('jalur')}
-                >
-                    Jalur Evakuasi
-                </button>
-                <button
-                    className={`px-4 py-2 text-xs sm:text-sm ${
-                        activeTab === 'posko' ? 'border-b-2 border-blue-500 font-medium text-blue-600' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                    onClick={() => setActiveTab('posko')}
-                >
-                    Posko Evakuasi
-                </button>
-            </div>
+                    {/* Tab navigation */}
+                    <div className="flex space-x-2 border-b">
+                        <button
+                            className={`px-4 py-2 text-xs sm:text-sm ${
+                                activeTab === 'jalur' ? 'border-b-2 border-blue-500 font-medium text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                            onClick={() => setActiveTab('jalur')}
+                        >
+                            Jalur Evakuasi
+                        </button>
+                        <button
+                            className={`px-4 py-2 text-xs sm:text-sm ${
+                                activeTab === 'posko' ? 'border-b-2 border-blue-500 font-medium text-blue-600' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                            onClick={() => setActiveTab('posko')}
+                        >
+                            Posko Evakuasi
+                        </button>
+                    </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
-                {/* Map */}
-                <div>
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-lg">{activeTab === 'jalur' ? 'Tentukan Jalur Evakuasi' : 'Pilih Lokasi Posko'}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="mb-2 text-xs text-gray-500 sm:text-sm">
-                                {activeTab === 'jalur'
-                                    ? 'Klik pada peta untuk menambahkan titik jalur evakuasi'
-                                    : 'Klik pada peta untuk menentukan lokasi posko evakuasi'}
-                            </div>
-                            <MapComponent
-                                height="300px"
-                                className="sm:h-[400px]"
-                                markers={[...markers, ...jalurMarkers]}
-                                paths={paths}
-                                zoom={7}
-                                onClick={handleMapClick}
-                                editable={true}
-                            />
-                            {activeTab === 'jalur' && jalurPoints.length > 0 && (
-                                <div className="mt-4">
-                                    <p className="mb-2 text-xs sm:text-sm">Titik yang dipilih: {jalurPoints.length}</p>
-                                    <Button variant="outline" size="sm" onClick={resetJalur}>
-                                        Reset Jalur
-                                    </Button>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Form */}
-                <div>
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-lg">{activeTab === 'jalur' ? 'Detail Jalur Evakuasi' : 'Detail Posko Evakuasi'}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {activeTab === 'jalur' ? (
-                                <form onSubmit={handleSubmitJalur} className="space-y-4">
-                                    <div>
-                                        <label htmlFor="nama" className="mb-2 block text-xs font-medium sm:text-sm">
-                                            Nama Jalur Evakuasi
-                                        </label>
-                                        <Input
-                                            id="nama"
-                                            value={jalurNama}
-                                            onChange={(e) => setJalurNama(e.target.value)}
-                                            placeholder="Contoh: Jalur Evakuasi Gunung Merapi Sisi Barat"
-                                            required
-                                        />
+                    <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
+                        {/* Map */}
+                        <div>
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-lg">
+                                        {activeTab === 'jalur' ? 'Tentukan Jalur Evakuasi' : 'Pilih Lokasi Posko'}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="mb-2 text-xs text-gray-500 sm:text-sm">
+                                        {activeTab === 'jalur'
+                                            ? 'Klik pada peta untuk menambahkan titik jalur evakuasi'
+                                            : 'Klik pada peta untuk menentukan lokasi posko evakuasi'}
                                     </div>
-                                    <div>
-                                        <p className="mb-2 text-xs font-medium sm:text-sm">Titik Jalur Evakuasi</p>
-                                        <div className="rounded border p-3">
-                                            {jalurPoints.length === 0 ? (
-                                                <p className="text-xs text-gray-500 sm:text-sm">
-                                                    Belum ada titik yang dipilih. Klik pada peta untuk menambahkan titik.
-                                                </p>
-                                            ) : (
-                                                <div className="max-h-40 overflow-y-auto text-xs">
-                                                    {jalurPoints.map((point, index) => (
-                                                        <div key={index} className="mb-1">
-                                                            Titik {index + 1}: {point[0].toFixed(6)}, {point[1].toFixed(6)}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                    <MapComponent
+                                        height="300px"
+                                        className="sm:h-[400px]"
+                                        markers={[...markers, ...jalurMarkers]}
+                                        paths={paths}
+                                        zoom={7}
+                                        onClick={handleMapClick}
+                                        editable={true}
+                                    />
+                                    {activeTab === 'jalur' && jalurPoints.length > 0 && (
+                                        <div className="mt-4">
+                                            <p className="mb-2 text-xs sm:text-sm">Titik yang dipilih: {jalurPoints.length}</p>
+                                            <Button variant="outline" size="sm" onClick={resetJalur}>
+                                                Reset Jalur
+                                            </Button>
                                         </div>
-                                    </div>
-                                    <Button type="submit" disabled={isSubmitting || jalurPoints.length < 2 || !jalurNama}>
-                                        {isSubmitting ? 'Menyimpan...' : 'Simpan Jalur Evakuasi'}
-                                    </Button>
-                                </form>
-                            ) : (
-                                <form onSubmit={handleSubmitPosko} className="space-y-4">
-                                    <div>
-                                        <label htmlFor="nama" className="mb-2 block text-xs font-medium sm:text-sm">
-                                            Nama Posko
-                                        </label>
-                                        <Input
-                                            id="nama"
-                                            name="nama"
-                                            value={formPosko.nama}
-                                            onChange={handlePoskoChange}
-                                            placeholder="Contoh: Posko Evakuasi Balai Desa"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="deskripsi" className="mb-2 block text-xs font-medium sm:text-sm">
-                                            Deskripsi
-                                        </label>
-                                        <Textarea
-                                            id="deskripsi"
-                                            name="deskripsi"
-                                            value={formPosko.deskripsi}
-                                            onChange={handlePoskoChange}
-                                            placeholder="Deskripsi tentang posko evakuasi"
-                                            rows={3}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="kapasitas" className="mb-2 block text-xs font-medium sm:text-sm">
-                                            Kapasitas (orang)
-                                        </label>
-                                        <Input
-                                            id="kapasitas"
-                                            name="kapasitas"
-                                            type="number"
-                                            value={formPosko.kapasitas || ''}
-                                            onChange={handlePoskoChange}
-                                            min={1}
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <p className="mb-2 text-xs font-medium sm:text-sm">Lokasi Posko</p>
-                                        {selectedPoint ? (
-                                            <div className="rounded border p-3 text-xs sm:text-sm">
-                                                <p>Latitude: {selectedPoint.lat.toFixed(6)}</p>
-                                                <p>Longitude: {selectedPoint.lng.toFixed(6)}</p>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Form */}
+                        <div>
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-lg">
+                                        {activeTab === 'jalur' ? 'Detail Jalur Evakuasi' : 'Detail Posko Evakuasi'}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {activeTab === 'jalur' ? (
+                                        <form onSubmit={handleSubmitJalur} className="space-y-4">
+                                            <div>
+                                                <label htmlFor="nama" className="mb-2 block text-xs font-medium sm:text-sm">
+                                                    Nama Jalur Evakuasi
+                                                </label>
+                                                <Input
+                                                    id="nama"
+                                                    value={jalurNama}
+                                                    onChange={(e) => setJalurNama(e.target.value)}
+                                                    placeholder="Contoh: Jalur Evakuasi Gunung Merapi Sisi Barat"
+                                                    required
+                                                />
                                             </div>
-                                        ) : (
-                                            <p className="text-xs text-gray-500 sm:text-sm">Klik pada peta untuk menentukan lokasi posko</p>
-                                        )}
-                                    </div>
-                                    <Button type="submit" disabled={isSubmitting || !formPosko.nama || !formPosko.kapasitas || !selectedPoint}>
-                                        {isSubmitting ? 'Menyimpan...' : 'Simpan Posko Evakuasi'}
-                                    </Button>
-                                </form>
-                            )}
-                        </CardContent>
-                    </Card>
+                                            <div>
+                                                <p className="mb-2 text-xs font-medium sm:text-sm">Titik Jalur Evakuasi</p>
+                                                <div className="rounded border p-3">
+                                                    {jalurPoints.length === 0 ? (
+                                                        <p className="text-xs text-gray-500 sm:text-sm">
+                                                            Belum ada titik yang dipilih. Klik pada peta untuk menambahkan titik.
+                                                        </p>
+                                                    ) : (
+                                                        <div className="max-h-40 overflow-y-auto text-xs">
+                                                            {jalurPoints.map((point, index) => (
+                                                                <div key={index} className="mb-1">
+                                                                    Titik {index + 1}: {point[0].toFixed(6)}, {point[1].toFixed(6)}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <Button type="submit" disabled={isSubmitting || jalurPoints.length < 2 || !jalurNama}>
+                                                {isSubmitting ? 'Menyimpan...' : 'Simpan Jalur Evakuasi'}
+                                            </Button>
+                                        </form>
+                                    ) : (
+                                        <form onSubmit={handleSubmitPosko} className="space-y-4">
+                                            <div>
+                                                <label htmlFor="nama" className="mb-2 block text-xs font-medium sm:text-sm">
+                                                    Nama Posko
+                                                </label>
+                                                <Input
+                                                    id="nama"
+                                                    name="nama"
+                                                    value={formPosko.nama}
+                                                    onChange={handlePoskoChange}
+                                                    placeholder="Contoh: Posko Evakuasi Balai Desa"
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="deskripsi" className="mb-2 block text-xs font-medium sm:text-sm">
+                                                    Deskripsi
+                                                </label>
+                                                <Textarea
+                                                    id="deskripsi"
+                                                    name="deskripsi"
+                                                    value={formPosko.deskripsi}
+                                                    onChange={handlePoskoChange}
+                                                    placeholder="Deskripsi tentang posko evakuasi"
+                                                    rows={3}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="kapasitas" className="mb-2 block text-xs font-medium sm:text-sm">
+                                                    Kapasitas (orang)
+                                                </label>
+                                                <Input
+                                                    id="kapasitas"
+                                                    name="kapasitas"
+                                                    type="number"
+                                                    value={formPosko.kapasitas || ''}
+                                                    onChange={handlePoskoChange}
+                                                    min={1}
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="mb-2 text-xs font-medium sm:text-sm">Lokasi Posko</p>
+                                                {selectedPoint ? (
+                                                    <div className="rounded border p-3 text-xs sm:text-sm">
+                                                        <p>Latitude: {selectedPoint.lat.toFixed(6)}</p>
+                                                        <p>Longitude: {selectedPoint.lng.toFixed(6)}</p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-gray-500 sm:text-sm">Klik pada peta untuk menentukan lokasi posko</p>
+                                                )}
+                                            </div>
+                                            <Button
+                                                type="submit"
+                                                disabled={isSubmitting || !formPosko.nama || !formPosko.kapasitas || !selectedPoint}
+                                            >
+                                                {isSubmitting ? 'Menyimpan...' : 'Simpan Posko Evakuasi'}
+                                            </Button>
+                                        </form>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </AppLayout>
     );
 }

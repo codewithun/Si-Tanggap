@@ -3,10 +3,24 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 import { useToast } from '../../hooks/useToast';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Admin',
+        href: '/admin/dashboard',
+    },
+    {
+        title: 'Kelola Jalur Evakuasi',
+        href: '/admin/evacuation-routes',
+    },
+];
 
 interface JalurEvakuasi {
     id: number;
@@ -158,151 +172,156 @@ export default function EvacuationRouteForm() {
     };
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Tambah Jalur Evakuasi</CardTitle>
-                    <CardDescription>Tentukan jalur evakuasi pada peta dengan mengklik beberapa titik untuk membuat polyline</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-6">
-                        <div className="h-[400px] w-full overflow-hidden rounded-md">
-                            <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
-                                <TileLayer
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                />
-                                <PolylineCreator points={points} setPoints={setPoints} color={routeColor} />
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Kelola Jalur Evakuasi" />
 
-                                {/* Display existing routes */}
-                                {jalurList.map((jalur) => {
-                                    // Debug log for each route
-                                    console.log(`Rendering route ${jalur.id}:`, jalur.koordinat);
+            <div className="p-6">
+                <h1 className="mb-4 text-2xl font-semibold text-gray-800">Kelola Jalur Evakuasi</h1>
+                <p className="mb-6 text-gray-600">Tambah dan kelola jalur evakuasi bencana yang akan ditampilkan di peta.</p>
 
-                                    return jalur.koordinat && jalur.koordinat.length > 0 ? (
-                                        <Polyline
-                                            key={jalur.id}
-                                            positions={jalur.koordinat}
-                                            pathOptions={{
-                                                color: jalur.warna || '#FF0000',
-                                                weight: 3,
-                                                opacity: 0.8,
-                                            }}
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Tambah Jalur Evakuasi</CardTitle>
+                            <CardDescription>Tentukan jalur evakuasi pada peta dengan mengklik beberapa titik untuk membuat polyline</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-6">
+                                <div className="h-[400px] w-full overflow-hidden rounded-md">
+                                    <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                         />
-                                    ) : null;
-                                })}
-                            </MapContainer>
-                        </div>
+                                        <PolylineCreator points={points} setPoints={setPoints} color={routeColor} />
 
-                        <form onSubmit={handleSubmit}>
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="routeName">Nama Jalur</Label>
-                                    <Input
-                                        id="routeName"
-                                        value={routeName}
-                                        onChange={(e) => setRouteName(e.target.value)}
-                                        placeholder="Masukkan nama jalur evakuasi"
-                                    />
+                                        {jalurList.map((jalur) => {
+                                            return jalur.koordinat && jalur.koordinat.length > 0 ? (
+                                                <Polyline
+                                                    key={jalur.id}
+                                                    positions={jalur.koordinat}
+                                                    pathOptions={{
+                                                        color: jalur.warna || '#FF0000',
+                                                        weight: 3,
+                                                        opacity: 0.8,
+                                                    }}
+                                                />
+                                            ) : null;
+                                        })}
+                                    </MapContainer>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="disasterType">Jenis Bencana</Label>
-                                    <Select value={disasterType} onValueChange={setDisasterType}>
-                                        <SelectTrigger id="disasterType">
-                                            <SelectValue placeholder="Pilih jenis bencana" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="banjir">Banjir</SelectItem>
-                                            <SelectItem value="gempa">Gempa Bumi</SelectItem>
-                                            <SelectItem value="longsor">Tanah Longsor</SelectItem>
-                                            <SelectItem value="tsunami">Tsunami</SelectItem>
-                                            <SelectItem value="angin-topan">Angin Topan</SelectItem>
-                                            <SelectItem value="kebakaran">Kebakaran</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <form onSubmit={handleSubmit}>
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="routeName">Nama Jalur</Label>
+                                            <Input
+                                                id="routeName"
+                                                value={routeName}
+                                                onChange={(e) => setRouteName(e.target.value)}
+                                                placeholder="Masukkan nama jalur evakuasi"
+                                            />
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="routeColor">Warna Jalur</Label>
-                                    <div className="flex items-center space-x-2">
-                                        <Input
-                                            type="color"
-                                            id="routeColor"
-                                            value={routeColor}
-                                            onChange={(e) => setRouteColor(e.target.value)}
-                                            className="h-8 w-12 cursor-pointer p-0"
-                                        />
-                                        <span className="text-sm text-gray-500">{routeColor}</span>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="disasterType">Jenis Bencana</Label>
+                                            <Select value={disasterType} onValueChange={setDisasterType}>
+                                                <SelectTrigger id="disasterType">
+                                                    <SelectValue placeholder="Pilih jenis bencana" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="banjir">Banjir</SelectItem>
+                                                    <SelectItem value="gempa">Gempa Bumi</SelectItem>
+                                                    <SelectItem value="longsor">Tanah Longsor</SelectItem>
+                                                    <SelectItem value="tsunami">Tsunami</SelectItem>
+                                                    <SelectItem value="angin-topan">Angin Topan</SelectItem>
+                                                    <SelectItem value="kebakaran">Kebakaran</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="routeColor">Warna Jalur</Label>
+                                            <div className="flex items-center space-x-2">
+                                                <Input
+                                                    type="color"
+                                                    id="routeColor"
+                                                    value={routeColor}
+                                                    onChange={(e) => setRouteColor(e.target.value)}
+                                                    className="h-8 w-12 cursor-pointer p-0"
+                                                />
+                                                <span className="text-sm text-gray-500">{routeColor}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            <div className="mt-4 flex items-center space-x-2">
-                                <Button type="button" variant="outline" onClick={() => setPoints([])}>
-                                    Reset Titik
-                                </Button>
-                                <div className="text-sm text-gray-500">{points.length} titik ditentukan</div>
+                                    <div className="mt-4 flex items-center space-x-2">
+                                        <Button type="button" variant="outline" onClick={() => setPoints([])}>
+                                            Reset Titik
+                                        </Button>
+                                        <div className="text-sm text-gray-500">{points.length} titik ditentukan</div>
+                                    </div>
+                                </form>
                             </div>
-                        </form>
-                    </div>
-                </CardContent>
-                <CardFooter>
-                    <Button type="submit" onClick={handleSubmit} disabled={loading || points.length < 2 || !routeName || !disasterType}>
-                        {loading ? 'Menyimpan...' : 'Simpan Jalur Evakuasi'}
-                    </Button>
-                </CardFooter>
-            </Card>
+                        </CardContent>
+                        <CardFooter>
+                            <Button type="submit" onClick={handleSubmit} disabled={loading || points.length < 2 || !routeName || !disasterType}>
+                                {loading ? 'Menyimpan...' : 'Simpan Jalur Evakuasi'}
+                            </Button>
+                        </CardFooter>
+                    </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Daftar Jalur Evakuasi</CardTitle>
-                    <CardDescription>Jalur evakuasi yang telah ditambahkan</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <table className="w-full text-sm">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-2 text-left font-medium">Nama</th>
-                                    <th className="px-4 py-2 text-left font-medium">Jenis Bencana</th>
-                                    <th className="px-4 py-2 text-left font-medium">Pembuat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Titik</th>
-                                    <th className="px-4 py-2 text-left font-medium">Dibuat</th>
-                                    <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {jalurList.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
-                                            Belum ada jalur evakuasi yang ditambahkan
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    jalurList.map((jalur) => (
-                                        <tr key={jalur.id}>
-                                            <td className="px-4 py-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: jalur.warna }} />
-                                                    {jalur.nama}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{jalur.jenis_bencana}</span>
-                                            </td>
-                                            <td className="px-4 py-2">{jalur.user?.name || 'Unknown'}</td>
-                                            <td className="px-4 py-2">{jalur.koordinat.length} titik</td>
-                                            <td className="px-4 py-2 text-gray-500">{new Date(jalur.created_at).toLocaleDateString()}</td>
-                                            <td className="px-4 py-2 text-gray-500">{new Date(jalur.updated_at).toLocaleDateString()}</td>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Daftar Jalur Evakuasi</CardTitle>
+                            <CardDescription>Jalur evakuasi yang telah ditambahkan</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left font-medium">Nama</th>
+                                            <th className="px-4 py-2 text-left font-medium">Jenis Bencana</th>
+                                            <th className="px-4 py-2 text-left font-medium">Pembuat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Titik</th>
+                                            <th className="px-4 py-2 text-left font-medium">Dibuat</th>
+                                            <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {jalurList.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
+                                                    Belum ada jalur evakuasi yang ditambahkan
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            jalurList.map((jalur) => (
+                                                <tr key={jalur.id}>
+                                                    <td className="px-4 py-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: jalur.warna }} />
+                                                            {jalur.nama}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{jalur.jenis_bencana}</span>
+                                                    </td>
+                                                    <td className="px-4 py-2">{jalur.user?.name || 'Unknown'}</td>
+                                                    <td className="px-4 py-2">{jalur.koordinat.length} titik</td>
+                                                    <td className="px-4 py-2 text-gray-500">{new Date(jalur.created_at).toLocaleDateString()}</td>
+                                                    <td className="px-4 py-2 text-gray-500">{new Date(jalur.updated_at).toLocaleDateString()}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </AppLayout>
     );
 }

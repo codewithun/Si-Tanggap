@@ -30,19 +30,31 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request)
     {
         $request->authenticate();
+        $request->session()->regenerate();
+
+        $user = $request->user();
 
         if ($request->wantsJson()) {
-            $token = $request->user()->createToken('api-token');
+            $token = $user->createToken('api-token');
             return response()->json([
-                'user' => $request->user(),
+                'user' => $user,
                 'token' => $token->plainTextToken,
                 'message' => 'Login successful'
             ]);
         }
 
-        $request->session()->regenerate();
+        // Validasi role opsional jika menggunakan Spatie
+        if (method_exists($user, 'hasAnyRole')) {
+            $allowedRoles = ['admin', 'relawan', 'masyarakat'];
+            if (!$user->hasAnyRole($allowedRoles)) {
+                Auth::logout();
+                return redirect('/')
+                    ->with('error', 'Role tidak diizinkan.');
+            }
+        }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Arahkan semua ke dashboard umum
+        return redirect()->intended(route('masyarakat.dashboard'));
     }
 
     /**

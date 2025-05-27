@@ -2,8 +2,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/useToast';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Relawan',
+        href: '/relawan/dashboard',
+    },
+    {
+        title: 'Verifikasi Laporan',
+        href: '/relawan/disaster-report-verification',
+    },
+];
 
 interface Laporan {
     id: number;
@@ -135,70 +149,77 @@ export default function DisasterReportVerification() {
     }
 
     return (
-        <div className="space-y-2 sm:space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold sm:text-2xl">Verifikasi Laporan Bencana</h2>
-                <Button variant="outline" size="sm" onClick={() => fetchReports()} disabled={loading}>
-                    {loading ? 'Memuat...' : 'Refresh'}
-                </Button>
-            </div>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Verifikasi Laporan" />
+            <div className="space-y-4 p-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold sm:text-2xl">Verifikasi Laporan Bencana</h2>
+                    <Button variant="outline" size="sm" onClick={() => fetchReports()} disabled={loading}>
+                        {loading ? 'Memuat...' : 'Refresh'}
+                    </Button>
+                </div>
 
-            {reports.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-4 text-center sm:p-8">
-                    <p className="text-base font-medium text-gray-600 sm:text-lg">Tidak ada laporan yang perlu diverifikasi</p>
-                    <p className="text-xs text-gray-500 sm:text-sm">Semua laporan sudah ditinjau</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {reports.map((report) => (
-                        <Card key={report.id}>
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-lg">{report.judul}</CardTitle>
-                                    <Badge variant="outline">{report.jenis_bencana}</Badge>
-                                </div>
-                                <p className="text-xs text-gray-500">
-                                    Dilaporkan pada{' '}
-                                    {new Date(report.created_at).toLocaleDateString('id-ID', {
-                                        day: 'numeric',
-                                        month: 'long',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                    })}
-                                </p>
-                                <p className="text-xs text-gray-500">Oleh: {report.user?.name || 'Tidak diketahui'}</p>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                <div>
-                                    <p className="text-sm font-medium">Lokasi:</p>
-                                    <p className="text-sm">{report.lokasi}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium">Deskripsi:</p>
-                                    <p className="text-sm">{report.deskripsi}</p>
-                                </div>{' '}
-                                {report.foto && (
-                                    <div className="mt-2">
-                                        <p className="mb-1 text-sm font-medium">Foto Kejadian:</p>
-                                        <img src={report.foto} alt={report.judul} className="h-40 w-full rounded-md object-cover" />
+                {reports.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-center sm:p-8">
+                        <p className="text-base font-medium text-gray-600 sm:text-lg">Tidak ada laporan yang perlu diverifikasi</p>
+                        <p className="text-xs text-gray-500 sm:text-sm">Semua laporan sudah ditinjau</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {reports.map((report) => (
+                            <Card key={report.id}>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg">{report.judul}</CardTitle>
+                                        <Badge variant="outline">{report.jenis_bencana}</Badge>
                                     </div>
-                                )}
-                            </CardContent>
-                            <CardFooter>
-                                <div className="flex w-full justify-end space-x-2">
-                                    <Button variant="outline" onClick={() => handleReject(report.id)} disabled={processingIds.includes(report.id)}>
-                                        Tolak
-                                    </Button>
-                                    <Button onClick={() => handleVerify(report.id)} disabled={processingIds.includes(report.id)}>
-                                        Verifikasi
-                                    </Button>
-                                </div>
-                            </CardFooter>
-                        </Card>
-                    ))}
-                </div>
-            )}
-        </div>
+                                    <p className="text-xs text-gray-500">
+                                        Dilaporkan pada{' '}
+                                        {new Date(report.created_at).toLocaleDateString('id-ID', {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                        })}
+                                    </p>
+                                    <p className="text-xs text-gray-500">Oleh: {report.user?.name || 'Tidak diketahui'}</p>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <div>
+                                        <p className="text-sm font-medium">Lokasi:</p>
+                                        <p className="text-sm">{report.lokasi}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">Deskripsi:</p>
+                                        <p className="text-sm">{report.deskripsi}</p>
+                                    </div>{' '}
+                                    {report.foto && (
+                                        <div className="mt-2">
+                                            <p className="mb-1 text-sm font-medium">Foto Kejadian:</p>
+                                            <img src={report.foto} alt={report.judul} className="h-40 w-full rounded-md object-cover" />
+                                        </div>
+                                    )}
+                                </CardContent>
+                                <CardFooter>
+                                    <div className="flex w-full justify-end space-x-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleReject(report.id)}
+                                            disabled={processingIds.includes(report.id)}
+                                        >
+                                            Tolak
+                                        </Button>
+                                        <Button onClick={() => handleVerify(report.id)} disabled={processingIds.includes(report.id)}>
+                                            Verifikasi
+                                        </Button>
+                                    </div>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </AppLayout>
     );
 }
