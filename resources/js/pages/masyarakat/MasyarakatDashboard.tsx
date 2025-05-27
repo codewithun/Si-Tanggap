@@ -3,13 +3,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { router } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router } from '@inertiajs/react';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
 type StatusType = 'menunggu' | 'diverifikasi' | 'ditolak';
 type TabType = 'semua' | StatusType;
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Masyarakat',
+        href: '/dashboard-masyarakat',
+    },
+];
 
 interface Laporan {
     id: number;
@@ -134,106 +143,109 @@ export default function MasyarakatDashboard() {
     };
 
     return (
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Dashboard Masyarakat</CardTitle>
-                    <CardDescription>
-                        Selamat datang di Si-Tanggap. Di sini Anda dapat melihat dan mengelola laporan bencana yang pernah Anda kirimkan.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {/* Action Button */}
-                    <div className="flex items-center justify-between">
-                        <Button onClick={handleCreateReport} className="font-medium">
-                            + Buat Laporan Baru
-                        </Button>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Dashboard Masyarakat" />
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Dashboard Masyarakat</CardTitle>
+                        <CardDescription>
+                            Selamat datang di Si-Tanggap. Di sini Anda dapat melihat dan mengelola laporan bencana yang pernah Anda kirimkan.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {/* Action Button */}
+                        <div className="flex items-center justify-between">
+                            <Button onClick={handleCreateReport} className="font-medium">
+                                + Buat Laporan Baru
+                            </Button>
 
-                        {/* Summary Stats */}
-                        <div className="text-muted-foreground text-sm">Total laporan: {laporans.length}</div>
-                    </div>
+                            {/* Summary Stats */}
+                            <div className="text-muted-foreground text-sm">Total laporan: {laporans.length}</div>
+                        </div>
 
-                    {/* Tabs for filtering */}
-                    <Tabs value={activeTab} onValueChange={handleTabChange}>
-                        <TabsList className="grid w-full grid-cols-4">
-                            {(['semua', 'menunggu', 'diverifikasi', 'ditolak'] as TabType[]).map((tab) => (
-                                <TabsTrigger key={tab} value={tab}>
-                                    {getTabLabel(tab)}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
+                        {/* Tabs for filtering */}
+                        <Tabs value={activeTab} onValueChange={handleTabChange}>
+                            <TabsList className="grid w-full grid-cols-4">
+                                {(['semua', 'menunggu', 'diverifikasi', 'ditolak'] as TabType[]).map((tab) => (
+                                    <TabsTrigger key={tab} value={tab}>
+                                        {getTabLabel(tab)}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
 
-                        <TabsContent value={activeTab} className="mt-6">
-                            {loading ? (
-                                <div className="flex flex-col items-center justify-center py-12">
-                                    <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
-                                    <p className="text-muted-foreground mt-2 text-sm">Memuat data laporan...</p>
-                                </div>
-                            ) : laporans.length > 0 ? (
-                                <div className="rounded-md border">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="font-semibold">Judul</TableHead>
-                                                <TableHead className="font-semibold">Jenis Bencana</TableHead>
-                                                <TableHead className="font-semibold">Lokasi</TableHead>
-                                                <TableHead className="font-semibold">Status</TableHead>
-                                                <TableHead className="font-semibold">Tanggal</TableHead>
-                                                <TableHead className="text-center font-semibold">Aksi</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {laporans.map((laporan) => (
-                                                <TableRow key={laporan.id} className="hover:bg-muted/50">
-                                                    <TableCell className="font-medium">{laporan.judul}</TableCell>
-                                                    <TableCell>
-                                                        <span className="capitalize">{laporan.jenis_bencana}</span>
-                                                    </TableCell>
-                                                    <TableCell>{laporan.lokasi}</TableCell>
-                                                    <TableCell>{getStatusBadge(laporan.status)}</TableCell>
-                                                    <TableCell className="text-sm">{formatDate(laporan.created_at)}</TableCell>
-                                                    <TableCell className="text-center">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleViewDetail(laporan.id)}
-                                                            className="hover:bg-primary hover:text-primary-foreground"
-                                                        >
-                                                            Lihat Detail
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <div className="bg-muted mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
-                                        <svg className="text-muted-foreground h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                            />
-                                        </svg>
+                            <TabsContent value={activeTab} className="mt-6">
+                                {loading ? (
+                                    <div className="flex flex-col items-center justify-center py-12">
+                                        <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
+                                        <p className="text-muted-foreground mt-2 text-sm">Memuat data laporan...</p>
                                     </div>
-                                    <h3 className="text-muted-foreground mb-2 text-lg font-medium">
-                                        {activeTab === 'semua' ? 'Belum Ada Laporan' : 'Tidak Ada Data'}
-                                    </h3>
-                                    <p className="text-muted-foreground mb-4 max-w-sm text-sm">{getEmptyStateMessage()}</p>
-                                    {activeTab === 'semua' && (
-                                        <Button onClick={handleCreateReport} size="sm">
-                                            Buat Laporan Pertama
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
-                        </TabsContent>
-                    </Tabs>
-                </CardContent>
-            </Card>
-        </div>
+                                ) : laporans.length > 0 ? (
+                                    <div className="rounded-md border">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="font-semibold">Judul</TableHead>
+                                                    <TableHead className="font-semibold">Jenis Bencana</TableHead>
+                                                    <TableHead className="font-semibold">Lokasi</TableHead>
+                                                    <TableHead className="font-semibold">Status</TableHead>
+                                                    <TableHead className="font-semibold">Tanggal</TableHead>
+                                                    <TableHead className="text-center font-semibold">Aksi</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {laporans.map((laporan) => (
+                                                    <TableRow key={laporan.id} className="hover:bg-muted/50">
+                                                        <TableCell className="font-medium">{laporan.judul}</TableCell>
+                                                        <TableCell>
+                                                            <span className="capitalize">{laporan.jenis_bencana}</span>
+                                                        </TableCell>
+                                                        <TableCell>{laporan.lokasi}</TableCell>
+                                                        <TableCell>{getStatusBadge(laporan.status)}</TableCell>
+                                                        <TableCell className="text-sm">{formatDate(laporan.created_at)}</TableCell>
+                                                        <TableCell className="text-center">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleViewDetail(laporan.id)}
+                                                                className="hover:bg-primary hover:text-primary-foreground"
+                                                            >
+                                                                Lihat Detail
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                        <div className="bg-muted mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
+                                            <svg className="text-muted-foreground h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-muted-foreground mb-2 text-lg font-medium">
+                                            {activeTab === 'semua' ? 'Belum Ada Laporan' : 'Tidak Ada Data'}
+                                        </h3>
+                                        <p className="text-muted-foreground mb-4 max-w-sm text-sm">{getEmptyStateMessage()}</p>
+                                        {activeTab === 'semua' && (
+                                            <Button onClick={handleCreateReport} size="sm">
+                                                Buat Laporan Pertama
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </TabsContent>
+                        </Tabs>
+                    </CardContent>
+                </Card>
+            </div>
+        </AppLayout>
     );
 }

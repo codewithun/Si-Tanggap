@@ -2,6 +2,11 @@
 
 use App\Models\User;
 
+beforeEach(function () {
+    // Ensure the required roles exist before each test
+    createRoles();
+});
+
 test('confirm password screen can be rendered', function () {
     $user = User::factory()->create();
 

@@ -1,58 +1,77 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import AdminMap from './AdminMap';
 import DisasterStatistics from './DisasterStatistics';
-import EvacuationRouteForm from './EvacuationRouteForm';
-import PoskoForm from './PoskoForm';
-import ReportManagement from './ReportManagement';
-import SendNotification from './SendNotification';
-import UserManagement from './UserManagement';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Admin',
+        href: '/admin/dashboard',
+    },
+];
 
 export default function AdminDashboard() {
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col space-y-2">
-                <h2 className="text-2xl font-bold tracking-tight">Dashboard Admin WebGIS</h2>
-                <p className="text-muted-foreground">Kelola aplikasi WebGIS untuk tanggap bencana</p>
-            </div>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Dashboard Admin" />
 
-            <Tabs defaultValue="statistics" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-6">
-                    <TabsTrigger value="statistics">Statistik</TabsTrigger>
-                    <TabsTrigger value="map">Map</TabsTrigger>
-                    <TabsTrigger value="evacuation-routes">Jalur Evakuasi</TabsTrigger>
-                    <TabsTrigger value="shelters">Posko</TabsTrigger>
-                    <TabsTrigger value="reports">Laporan Bencana</TabsTrigger>
-                    <TabsTrigger value="notifications">Notifikasi</TabsTrigger>
-                </TabsList>
+            <div className="p-6">
+                <div className="mb-6">
+                    <h1 className="text-3xl font-semibold text-gray-800">Dashboard Admin</h1>
+                    <p className="mt-1 text-gray-600">Kelola aplikasi WebGIS untuk tanggap bencana</p>
+                </div>
 
-                <TabsContent value="statistics" className="space-y-4">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {/* Statistik Ringkas */}
+                    <div className="rounded-xl border bg-white p-5 shadow">
+                        <h2 className="text-lg font-semibold text-gray-700">Total Pengguna</h2>
+                        <p className="mt-2 text-2xl font-bold text-blue-600">125</p>
+                    </div>
+
+                    <div className="rounded-xl border bg-white p-5 shadow">
+                        <h2 className="text-lg font-semibold text-gray-700">Laporan Bencana</h2>
+                        <p className="mt-2 text-2xl font-bold text-green-600">56</p>
+                    </div>
+
+                    <div className="rounded-xl border bg-white p-5 shadow">
+                        <h2 className="text-lg font-semibold text-gray-700">Posko Aktif</h2>
+                        <p className="mt-2 text-2xl font-bold text-purple-600">12</p>
+                    </div>
+                </div>
+
+                {/* Statistik */}
+                <div className="mt-8">
                     <DisasterStatistics />
-                </TabsContent>
+                </div>
 
-                <TabsContent value="map" className="space-y-4">
+                {/* Peta */}
+                <div className="mt-8">
                     <AdminMap />
-                </TabsContent>
+                </div>
 
-                <TabsContent value="evacuation-routes" className="space-y-4">
-                    <EvacuationRouteForm />
-                </TabsContent>
-
-                <TabsContent value="shelters" className="space-y-4">
-                    <PoskoForm />
-                </TabsContent>
-
-                <TabsContent value="reports" className="space-y-4">
-                    <ReportManagement />
-                </TabsContent>
-
-                <TabsContent value="users" className="space-y-4">
-                    <UserManagement />
-                </TabsContent>
-
-                <TabsContent value="notifications" className="space-y-4">
-                    <SendNotification />
-                </TabsContent>
-            </Tabs>
-        </div>
+                {/* Tombol Navigasi Cepat */}
+                <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <a
+                        href="/admin/evacuation-routes"
+                        className="block rounded-lg bg-blue-100 p-4 font-medium text-blue-800 shadow hover:bg-blue-200"
+                    >
+                        🗺️ Kelola Jalur Evakuasi
+                    </a>
+                    <a href="/admin/shelters" className="block rounded-lg bg-green-100 p-4 font-medium text-green-800 shadow hover:bg-green-200">
+                        🏠 Kelola Posko
+                    </a>
+                    <a href="/admin/reports" className="block rounded-lg bg-yellow-100 p-4 font-medium text-yellow-800 shadow hover:bg-yellow-200">
+                        📑 Kelola Laporan Bencana
+                    </a>
+                    <a href="/admin/users" className="block rounded-lg bg-purple-100 p-4 font-medium text-purple-800 shadow hover:bg-purple-200">
+                        👥 Manajemen Pengguna
+                    </a>
+                    <a href="/admin/notifications" className="block rounded-lg bg-red-100 p-4 font-medium text-red-800 shadow hover:bg-red-200">
+                        🔔 Kirim Notifikasi
+                    </a>
+                </div>
+            </div>
+        </AppLayout>
     );
 }

@@ -14,7 +14,7 @@ class LaporansTableSeeder extends Seeder
     public function run(): void
     {
         // Get IDs of users with 'masyarakat' role
-        $masyarakatIds = User::where('role', 'masyarakat')->pluck('id')->toArray();
+        $masyarakatIds = User::role('masyarakat')->pluck('id')->toArray();
         // Sample disaster reports
         $laporans = [
             [
@@ -104,7 +104,7 @@ class LaporansTableSeeder extends Seeder
         ];
 
         // Create the laporan records
-        foreach ($laporans as $index => $laporanData) {
+        foreach ($laporans as $laporanData) {
             // Assign a random masyarakat user as the creator
             $userId = $masyarakatIds[array_rand($masyarakatIds)];
 

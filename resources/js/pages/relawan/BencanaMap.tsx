@@ -1,8 +1,22 @@
 import MapComponent from '@/components/MapComponent';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/useToast';
+import AppLayout from '@/layouts/app-layout';
 import axios from '@/lib/axios';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Relawan',
+        href: '/relawan/dashboard',
+    },
+    {
+        title: 'Peta Bencana',
+        href: '/relawan/bencana-map',
+    },
+];
 
 interface Bencana {
     id: number;
@@ -80,25 +94,28 @@ export default function BencanaMap() {
                      Status: ${bencana.status || 'Belum diverifikasi'}`,
     }));
     return (
-        <div className="space-y-2 sm:space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold sm:text-2xl">Peta Titik Bencana</h2>
-                <Button variant="outline" size="sm" onClick={() => fetchBencanaPoints()} disabled={loading}>
-                    {loading ? 'Memuat...' : 'Refresh'}
-                </Button>
-            </div>
-            {loading ? (
-                <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200 sm:h-[600px]"></div>
-            ) : bencanaPoints.length === 0 ? (
-                <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed sm:h-[600px]">
-                    <div className="text-center">
-                        <p className="text-lg font-medium text-gray-600">Tidak ada data bencana</p>
-                        <p className="text-sm text-gray-500">Belum ada laporan bencana yang terverifikasi</p>
-                    </div>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Peta Bencana" />
+            <div className="space-y-2 p-6 sm:space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold sm:text-2xl">Peta Titik Bencana</h2>
+                    <Button variant="outline" size="sm" onClick={() => fetchBencanaPoints()} disabled={loading}>
+                        {loading ? 'Memuat...' : 'Refresh'}
+                    </Button>
                 </div>
-            ) : (
-                <MapComponent height="400px" className="sm:h-[600px]" markers={markers} zoom={6} />
-            )}
-        </div>
+                {loading ? (
+                    <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200 sm:h-[600px]"></div>
+                ) : bencanaPoints.length === 0 ? (
+                    <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed sm:h-[600px]">
+                        <div className="text-center">
+                            <p className="text-lg font-medium text-gray-600">Tidak ada data bencana</p>
+                            <p className="text-sm text-gray-500">Belum ada laporan bencana yang terverifikasi</p>
+                        </div>
+                    </div>
+                ) : (
+                    <MapComponent height="400px" className="sm:h-[600px]" markers={markers} zoom={6} />
+                )}
+            </div>
+        </AppLayout>
     );
 }
