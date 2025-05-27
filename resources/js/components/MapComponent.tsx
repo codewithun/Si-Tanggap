@@ -17,6 +17,7 @@ interface MapComponentProps {
         type: string;
         description?: string;
         popupContent?: React.ReactNode;
+        className?: string; // New field for status-based styling
     }>;
     paths?: Array<{
         id: number;
@@ -40,11 +41,25 @@ const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [25, 41]
     });
 };
 
+// Specific disaster type icons
+const disasterIcons = {
+    banjir: createCustomIcon('/icons/banjir.svg', [30, 30]),
+    gempa: createCustomIcon('/icons/gempa.svg', [30, 30]),
+    tsunami: createCustomIcon('/icons/tsunami.svg', [30, 30]),
+    longsor: createCustomIcon('/icons/longsor.svg', [30, 30]),
+    kebakaran: createCustomIcon('/icons/kebakaran.svg', [30, 30]),
+    kekeringan: createCustomIcon('/icons/kekeringan.svg', [30, 30]),
+    angin_topan: createCustomIcon('/icons/angin-topan.svg', [30, 30]),
+    lainnya: createCustomIcon('/icons/lainnya.svg', [30, 30]),
+};
+
+// General marker type icons
 const markerIcons = {
     disaster: createCustomIcon('/icons/disaster-marker.svg', [30, 30]),
     evacuation: createCustomIcon('/icons/evacuation-marker.svg', [30, 30]),
     shelter: createCustomIcon('/icons/shelter-marker.svg', [30, 30]),
     default: createCustomIcon('/icons/default-marker.svg', [25, 41]),
+    ...disasterIcons, // Include all specific disaster icons
 };
 
 // Map click handler component
@@ -153,16 +168,18 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     <MapWithBoundaries maxLatitude={80}>
                         {getTileLayer()}
 
+                        {/* Render markers */}
                         {markers.map((marker) => (
                             <Marker
                                 key={marker.id}
                                 position={marker.position}
                                 icon={markerIcons[marker.type as keyof typeof markerIcons] || markerIcons.default}
+                                className={marker.className} // Support status-based styling
                             >
                                 <Popup>
                                     <div>
                                         <h3 className="text-lg font-bold">{marker.title}</h3>
-                                        {marker.description && <p className="mt-1">{marker.description}</p>}
+                                        {marker.description && <p className="mt-1 whitespace-pre-line">{marker.description}</p>}
                                         {marker.popupContent}
                                     </div>
                                 </Popup>

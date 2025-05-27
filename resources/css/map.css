@@ -1,0 +1,28 @@
+/* Map marker status styling */
+.marker-status-diverifikasi {
+    filter: drop-shadow(0 0 4px #22c55e); /* green-500 */
+}
+
+.marker-status-menunggu {
+    filter: drop-shadow(0 0 4px #eab308); /* yellow-500 */
+}
+
+.marker-status-ditolak {
+    filter: drop-shadow(0 0 4px #ef4444); /* red-500 */
+}
+
+/* Make sure markers are still clickable */
+.marker-status-diverifikasi,
+.marker-status-menunggu,
+.marker-status-ditolak {
+    pointer-events: auto;
+}
+
+/* Add hover effect to make markers more interactive */
+.marker-status-diverifikasi:hover,
+.marker-status-menunggu:hover,
+.marker-status-ditolak:hover {
+    filter: brightness(1.2) drop-shadow(0 0 6px currentColor);
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
