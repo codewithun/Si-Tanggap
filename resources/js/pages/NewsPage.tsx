@@ -11,6 +11,15 @@ import { format } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUp, CalendarIcon, ChevronLeft, Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
+
+interface BnpbNews {
+    title: string;
+    description: string;
+    link: string;
+    image: string;
+    date?: string; // Add date as optional, since you fallback to new Date().toISOString()
+}
 
 interface NewsItem {
     id: number;
@@ -21,6 +30,7 @@ interface NewsItem {
     author: string;
     date: string;
     slug: string;
+    link?: string; // Add the link property as optional
 }
 
 export default function NewsPage() {
@@ -66,159 +76,86 @@ export default function NewsPage() {
     const fetchNews = useCallback(async () => {
         try {
             setLoading(true);
-            // For the demo we'll use mock data, but in production this would be an API call
-            // const response = await axios.get('/api/news');
-            // setNews(response.data);
+            
+            // Fetch news from the BNPB API endpoint with pages parameter
+            const response = await axios.get('/berita-bnpb?pages=10');
+            
+            // Check if we have berita data and it's an array
+            if (response.data.berita && Array.isArray(response.data.berita)) {
+                console.log(`Fetched ${response.data.berita.length} news items from API`);
+                
+                // Transform the data to match our NewsItem format
+                const transformedNews = response.data.berita.map((item: BnpbNews, index: number) => ({
+                    id: index + 1,
+                    title: item.title,
+                    content: item.description,
+                    image: item.image || 'https://via.placeholder.com/800x400?text=No+Image',
+                    category: determineCategory(item.title),
+                    author: 'BNPB',
+                    date: item.date || new Date().toISOString(),
+                    slug: generateSlug(item.title),
+                    link: item.link || '',
+                }));
 
-            // Mock data for demonstration
-            const mockData: NewsItem[] = [
-                {
-                    id: 1,
-                    title: 'Pemulihan Pasca Banjir di Jakarta Timur',
-                    content:
-                        'Upaya pemulihan infrastruktur di kawasan Jakarta Timur terus dilakukan setelah banjir besar minggu lalu. Tim relawan dari berbagai organisasi bersama dengan warga lokal bergotong royong membersihkan puing dan mengembalikan kondisi lingkungan seperti semula.\n\nDinas Sosial juga telah mendirikan tenda darurat dan menyalurkan bantuan untuk warga yang terdampak. Menurut data terakhir, sekitar 70% wilayah terdampak telah berhasil dipulihkan dalam waktu yang relatif singkat berkat koordinasi yang baik antar lembaga.',
-                    image: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'pemulihan',
-                    author: 'Dinas Penanggulangan Bencana',
-                    date: '2023-11-15T08:30:00Z',
-                    slug: 'pemulihan-pasca-banjir-jakarta-timur',
-                },
-                {
-                    id: 2,
-                    title: 'Peringatan Dini: Potensi Longsor di Kawasan Perbukitan',
-                    content:
-                        'BMKG mengeluarkan peringatan dini terkait potensi longsor di beberapa kawasan perbukitan Indonesia. Hal ini dikarenakan intensitas hujan yang terus meningkat dalam seminggu terakhir.\n\nMasyarakat yang tinggal di kawasan perbukitan diminta untuk waspada terhadap tanda-tanda longsor seperti retakan tanah, pergerakan tanah, dan perubahan struktur bangunan. Pihak berwenang juga telah menyiapkan lokasi evakuasi sementara sebagai langkah antisipasi.',
-                    image: 'https://images.unsplash.com/photo-1573209676048-4b48051b3881?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'peringatan dini',
-                    author: 'BMKG',
-                    date: '2023-11-17T14:15:00Z',
-                    slug: 'peringatan-dini-potensi-longsor-perbukitan',
-                },
-                {
-                    id: 3,
-                    title: 'Workshop Kesigapan Menghadapi Gempa Bumi',
-                    content:
-                        'Dinas Pendidikan bekerja sama dengan BNPB menggelar workshop kesigapan menghadapi gempa bumi di sekolah-sekolah. Program ini bertujuan untuk memberikan pemahaman dan keterampilan dasar bagi siswa dan guru tentang tindakan yang tepat saat terjadi gempa.\n\nDalam workshop tersebut, peserta dilatih untuk melakukan teknik berlindung, evakuasi, dan penanganan pertama pada korban. Inisiatif ini merupakan bagian dari kampanye nasional untuk meningkatkan kesadaran dan kesiapsiagaan masyarakat dalam menghadapi bencana alam.',
-                    image: 'https://images.unsplash.com/photo-1629949005190-585d78a6915b?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'edukasi',
-                    author: 'BNPB',
-                    date: '2023-11-10T09:45:00Z',
-                    slug: 'workshop-kesigapan-menghadapi-gempa-bumi',
-                },
-                {
-                    id: 4,
-                    title: 'Jalur Evakuasi Baru di Kawasan Gunung Berapi',
-                    content:
-                        'Pemerintah daerah telah meresmikan jalur evakuasi baru di kawasan pemukiman sekitar Gunung Merapi. Jalur ini didesain untuk memudahkan masyarakat melakukan evakuasi cepat saat terjadi peningkatan aktivitas gunung berapi.\n\nSelain jalur fisik, sistem informasi digital juga telah diimplementasikan untuk memberikan petunjuk arah evakuasi melalui aplikasi smartphone. Jalur ini telah diuji melalui simulasi evakuasi yang melibatkan ribuan warga dan terbukti dapat mempercepat proses evakuasi hingga 40% dibandingkan jalur sebelumnya.',
-                    image: 'https://images.unsplash.com/photo-1599809322458-32a3de599521?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'evakuasi',
-                    author: 'Badan Geologi',
-                    date: '2023-11-05T16:20:00Z',
-                    slug: 'jalur-evakuasi-baru-kawasan-gunung-berapi',
-                },
-                {
-                    id: 5,
-                    title: 'Sistem Peringatan Tsunami Terbaru Dipasang di Pesisir Barat',
-                    content:
-                        'Sistem peringatan tsunami terbaru telah dipasang di sepanjang pesisir barat Sumatera untuk meningkatkan kesiapsiagaan menghadapi bencana tsunami. Sistem ini menggunakan teknologi terkini yang dapat mendeteksi gelombang tsunami lebih awal dan memberikan peringatan lebih cepat kepada masyarakat.\n\nDengan adanya sistem ini, diharapkan waktu evakuasi dapat lebih panjang sehingga dapat mengurangi jumlah korban jiwa jika terjadi tsunami. Sistem ini telah terhubung dengan pusat data nasional dan regional untuk memastikan koordinasi yang efektif.',
-                    image: 'https://images.unsplash.com/photo-1544825490-6feafaad6e85?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'peringatan dini',
-                    author: 'BMKG',
-                    date: '2023-10-28T11:10:00Z',
-                    slug: 'sistem-peringatan-tsunami-terbaru-pesisir-barat',
-                },
-                {
-                    id: 6,
-                    title: 'Bencana Tanah Longsor di Kabupaten Garut',
-                    content:
-                        'Bencana tanah longsor telah melanda beberapa desa di Kabupaten Garut akibat curah hujan yang tinggi selama beberapa hari terakhir. Longsor tersebut telah mengakibatkan kerusakan infrastruktur dan pemukiman warga.\n\nTim SAR masih melakukan pencarian korban yang diperkirakan tertimbun. Sementara itu, otoritas setempat telah membuka posko pengungsian untuk warga terdampak. Bantuan logistik, medis, dan kebutuhan dasar terus didistribusikan ke lokasi bencana.',
-                    image: 'https://images.unsplash.com/photo-1621617208998-3cf36d48cb70?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'bencana alam',
-                    author: 'BNPB',
-                    date: '2023-10-20T18:05:00Z',
-                    slug: 'bencana-tanah-longsor-kabupaten-garut',
-                },
-                {
-                    id: 7,
-                    title: 'Sosialisasi Mitigasi Bencana untuk Anak Sekolah',
-                    content:
-                        'Program sosialisasi mitigasi bencana untuk anak sekolah telah diluncurkan di 100 sekolah dasar dan menengah di seluruh Indonesia. Program ini bertujuan untuk membangun kesadaran dan kesiapan generasi muda dalam menghadapi bencana alam.\n\nMelalui metode pembelajaran interaktif seperti simulasi, permainan edukatif, dan cerita, anak-anak diajarkan tentang berbagai jenis bencana alam dan tindakan yang tepat saat menghadapinya. Program ini merupakan kolaborasi antara Kementerian Pendidikan dan BNPB.',
-                    image: 'https://images.unsplash.com/photo-1602839911108-bf70f0b04a27?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'edukasi',
-                    author: 'Kementerian Pendidikan',
-                    date: '2023-10-15T09:30:00Z',
-                    slug: 'sosialisasi-mitigasi-bencana-anak-sekolah',
-                },
-                {
-                    id: 8,
-                    title: 'Pemulihan Ekonomi Pasca Gempa di Sulawesi Barat',
-                    content:
-                        'Program pemulihan ekonomi untuk masyarakat terdampak gempa di Sulawesi Barat mulai menunjukkan hasil positif. Berbagai UMKM lokal telah kembali beroperasi dengan bantuan modal dan pelatihan dari pemerintah serta lembaga non-pemerintah.\n\nSelain itu, sektor pariwisata juga mulai bangkit dengan promosi destinasi wisata baru yang aman dari bencana. Program ini tidak hanya berfokus pada pemulihan ekonomi jangka pendek, tetapi juga membangun ketahanan ekonomi masyarakat dalam menghadapi bencana di masa depan.',
-                    image: 'https://images.unsplash.com/photo-1569577074291-3168f1e8944d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'pemulihan',
-                    author: 'Kementerian UMKM',
-                    date: '2023-10-10T14:20:00Z',
-                    slug: 'pemulihan-ekonomi-pasca-gempa-sulawesi-barat',
-                },
-                {
-                    id: 9,
-                    title: 'Kebakaran Hutan dan Lahan di Kalimantan Timur',
-                    content:
-                        'Kebakaran hutan dan lahan kembali terjadi di beberapa titik di Kalimantan Timur. Kondisi cuaca yang panas dan kering menjadi faktor utama penyebaran api yang cepat.\n\nTim pemadaman dari BNPB, TNI, dan Polri telah dikerahkan untuk memadamkan api, sementara pesawat water bombing juga digunakan untuk area yang sulit dijangkau darat. Masyarakat di sekitar area kebakaran diminta untuk memakai masker dan mengurangi aktivitas di luar ruangan karena kualitas udara yang buruk.',
-                    image: 'https://images.unsplash.com/photo-1572974251010-accbd530c298?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'bencana alam',
-                    author: 'Dinas Kehutanan',
-                    date: '2023-10-05T16:45:00Z',
-                    slug: 'kebakaran-hutan-lahan-kalimantan-timur',
-                },
-                {
-                    id: 10,
-                    title: 'Rumah Tahan Gempa untuk Daerah Rawan Bencana',
-                    content:
-                        'Inovasi desain rumah tahan gempa telah diperkenalkan untuk masyarakat yang tinggal di daerah rawan gempa. Rumah-rumah ini dirancang dengan struktur khusus yang dapat menahan goncangan gempa hingga skala tertentu.\n\nSelain aspek keamanan, desain rumah ini juga memperhatikan aspek keterjangkauan biaya dan kemudahan pembangunan agar dapat diimplementasikan secara luas di masyarakat. Proyek percontohan telah dibangun di beberapa daerah dan mendapatkan respons positif dari masyarakat.',
-                    image: 'https://images.unsplash.com/photo-1578284642086-494e15fcff68?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'edukasi',
-                    author: 'Kementerian PUPR',
-                    date: '2023-09-28T10:50:00Z',
-                    slug: 'rumah-tahan-gempa-daerah-rawan-bencana',
-                },
-                {
-                    id: 11,
-                    title: 'Distribusi Bantuan untuk Korban Banjir Bandang',
-                    content:
-                        'Distribusi bantuan untuk korban banjir bandang di beberapa kabupaten terus dilakukan. Bantuan berupa makanan, selimut, obat-obatan, dan kebutuhan dasar lainnya telah disalurkan ke pengungsian-pengungsian.\n\nProses distribusi bantuan ini melibatkan berbagai pihak termasuk pemerintah, TNI/Polri, relawan, dan organisasi kemanusiaan. Tantangan utama dalam distribusi adalah akses ke beberapa lokasi yang masih terisolir akibat rusaknya infrastruktur jalan dan jembatan.',
-                    image: 'https://images.unsplash.com/photo-1622032493533-6323725bf6c1?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'pemulihan',
-                    author: 'BNPB',
-                    date: '2023-09-20T08:15:00Z',
-                    slug: 'distribusi-bantuan-korban-banjir-bandang',
-                },
-                {
-                    id: 12,
-                    title: 'Aplikasi Mobile untuk Peringatan Dini Bencana',
-                    content:
-                        'Aplikasi mobile baru untuk peringatan dini bencana telah diluncurkan oleh BMKG. Aplikasi ini memberikan informasi real-time tentang potensi bencana dan rekomendasi tindakan yang perlu dilakukan.\n\nFitur utama aplikasi ini termasuk notifikasi darurat, peta risiko bencana, panduan evakuasi, dan informasi kontak penting. Aplikasi ini juga memungkinkan pengguna untuk melaporkan kejadian bencana secara langsung, sehingga membantu otoritas dalam respons cepat.',
-                    image: 'https://images.unsplash.com/photo-1617976083875-7e45359e6f21?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-                    category: 'peringatan dini',
-                    author: 'BMKG',
-                    date: '2023-09-15T13:40:00Z',
-                    slug: 'aplikasi-mobile-peringatan-dini-bencana',
-                },
-            ];
-
-            setNews(mockData);
-            setFilteredNews(mockData);
+                setNews(transformedNews);
+                setFilteredNews(transformedNews);
+                
+                // Log the number of items loaded into state
+                console.log(`Successfully loaded ${transformedNews.length} news items into state`);
+            } else {
+                // Handle the case when no berita data or empty array
+                console.error('Invalid berita data format:', response.data);
+                toast({
+                    title: 'Error',
+                    description: 'Format data berita tidak valid.',
+                    variant: 'destructive',
+                });
+            }
+            
             setLoading(false);
         } catch (error) {
             console.error('Error fetching news:', error);
             toast({
                 title: 'Error',
-                description: 'Gagal memuat data berita.',
+                description: 'Gagal memuat data berita dari BNPB.',
                 variant: 'destructive',
             });
             setLoading(false);
         }
     }, [toast]);
+
+    // Helper function to generate a slug from title
+    const generateSlug = (title: string): string => {
+        return title
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .substring(0, 50);
+    };
+
+    // Helper function to determine category based on title keywords
+    const determineCategory = (title: string): string => {
+        const lowerTitle = title.toLowerCase();
+        
+        if (lowerTitle.includes('bencana') || lowerTitle.includes('banjir') || 
+            lowerTitle.includes('gempa') || lowerTitle.includes('longsor') || 
+            lowerTitle.includes('tsunami')) {
+            return 'bencana alam';
+        } else if (lowerTitle.includes('peringatan') || lowerTitle.includes('warning') || 
+                 lowerTitle.includes('siaga') || lowerTitle.includes('waspada')) {
+            return 'peringatan dini';
+        } else if (lowerTitle.includes('evakuasi') || lowerTitle.includes('pengungsian')) {
+            return 'evakuasi';
+        } else if (lowerTitle.includes('pemulihan') || lowerTitle.includes('rehabilitasi') || 
+                 lowerTitle.includes('rekonstruksi') || lowerTitle.includes('bantuan')) {
+            return 'pemulihan';
+        } else if (lowerTitle.includes('edukasi') || lowerTitle.includes('latihan') || 
+                 lowerTitle.includes('simulasi') || lowerTitle.includes('workshop')) {
+            return 'edukasi';
+        } else {
+            return 'edukasi'; // Default category
+        }
+    };
 
     useEffect(() => {
         fetchNews();
@@ -229,15 +166,15 @@ export default function NewsPage() {
 
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [fetchNews]); // Added fetchNews as a dependency
+    }, [fetchNews]);
 
     useEffect(() => {
         filterNews();
-    }, [filterNews]); // Added filterNews as a dependency
+    }, [filterNews]);
 
     useEffect(() => {
         setTotalPages(Math.ceil(filteredNews.length / itemsPerPage));
-    }, [filteredNews, itemsPerPage]); // Added itemsPerPage as a dependency since it's used in the calculation
+    }, [filteredNews, itemsPerPage]);
 
     const getCurrentPageItems = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
@@ -317,6 +254,18 @@ export default function NewsPage() {
         },
     };
 
+    useEffect(() => {
+        // Debug untuk menampilkan jumlah artikel
+        console.log(`Filtered news length: ${filteredNews.length}`);
+        console.log(`Current page: ${currentPage}`);
+        console.log(`Items per page: ${itemsPerPage}`);
+        console.log(`Total pages: ${totalPages}`);
+        
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        console.log(`Current page items: ${startIndex}-${endIndex}`);
+    }, [filteredNews, currentPage, itemsPerPage, totalPages]);
+
     return (
         <>
             <Head title="Berita & Informasi Bencana - GeoSiaga" />
@@ -374,7 +323,7 @@ export default function NewsPage() {
                                 }}
                             >
                                 <motion.h1 className="mb-4 text-4xl font-bold sm:text-5xl" variants={fadeInUp}>
-                                    Berita & Informasi Bencana
+                                    Berita & Informasi BNPB
                                 </motion.h1>
 
                                 <motion.p className="mb-8 text-lg text-blue-100 sm:text-xl" variants={fadeInUp}>
@@ -487,15 +436,23 @@ export default function NewsPage() {
                             ) : filteredNews.length > 0 ? (
                                 <>
                                     <motion.div
-                                        className="mb-8 flex items-center justify-between"
+                                        className="mb-8 flex flex-wrap items-center justify-between gap-2"
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.5 }}
                                     >
                                         <h2 className="text-2xl font-bold text-gray-800">
-                                            {category === 'all' ? 'Semua Berita' : `Berita - ${category}`}
+                                            {category === 'all' ? 'Semua Berita BNPB' : `Berita - ${category}`}
                                         </h2>
-                                        <span className="text-sm text-gray-500">{filteredNews.length} artikel ditemukan</span>
+                                        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                                            <span className="rounded-full bg-blue-50 px-3 py-1">
+                                                {filteredNews.length} artikel ditemukan
+                                            </span>
+                                            <span>
+                                                Menampilkan {(currentPage - 1) * itemsPerPage + 1}-
+                                                {Math.min(currentPage * itemsPerPage, filteredNews.length)} dari {filteredNews.length}
+                                            </span>
+                                        </div>
                                     </motion.div>
 
                                     <motion.div
@@ -519,6 +476,10 @@ export default function NewsPage() {
                                                         className="h-full w-full object-cover"
                                                         whileHover={{ scale: 1.08 }}
                                                         transition={{ duration: 0.4 }}
+                                                        onError={(e) => {
+                                                            // Fallback if image fails to load
+                                                            e.currentTarget.src = 'https://via.placeholder.com/800x400?text=BNPB';
+                                                        }}
                                                     />
                                                 </div>
                                                 <div className="p-6">
@@ -536,7 +497,7 @@ export default function NewsPage() {
                                                     >
                                                         {item.title}
                                                     </h3>
-                                                    <p className="mb-4 line-clamp-3 text-gray-600">{item.content.split('\n\n')[0]}</p>
+                                                    <p className="mb-4 line-clamp-3 text-gray-600">{item.content}</p>
                                                     <div className="flex items-center justify-between border-t pt-4 text-sm text-gray-500">
                                                         <div className="flex items-center gap-1">
                                                             <CalendarIcon className="h-4 w-4" />
@@ -707,7 +668,14 @@ export default function NewsPage() {
                                             animate={{ opacity: 1, scale: 1 }}
                                             transition={{ delay: 0.5, duration: 0.4 }}
                                         >
-                                            <img src={selectedNews.image} alt={selectedNews.title} className="h-auto w-full object-cover" />
+                                            <img 
+                                                src={selectedNews.image} 
+                                                alt={selectedNews.title} 
+                                                className="h-auto w-full object-cover" 
+                                                onError={(e) => {
+                                                    e.currentTarget.src = 'https://via.placeholder.com/800x400?text=BNPB';
+                                                }}
+                                            />
                                         </motion.div>
 
                                         <motion.div
@@ -716,12 +684,25 @@ export default function NewsPage() {
                                             animate={{ opacity: 1 }}
                                             transition={{ delay: 0.6 }}
                                         >
-                                            {selectedNews.content.split('\n\n').map((paragraph, idx) => (
+                                            {selectedNews.content.split('\n').map((paragraph, idx) => (
                                                 <p key={idx}>{paragraph}</p>
                                             ))}
                                         </motion.div>
 
-                                        <motion.div className="mt-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
+                                        {selectedNews.link && (
+                                            <motion.div className="mt-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
+                                                <a 
+                                                    href={selectedNews.link} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                                                >
+                                                    Baca artikel lengkap di situs BNPB
+                                                </a>
+                                            </motion.div>
+                                        )}
+
+                                        <motion.div className="mt-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}>
                                             <Button variant="outline" onClick={() => setIsModalOpen(false)} className="flex items-center gap-1">
                                                 <ChevronLeft className="h-4 w-4" />
                                                 Kembali ke daftar berita

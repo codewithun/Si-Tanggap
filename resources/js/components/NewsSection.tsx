@@ -3,6 +3,15 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
 
+// Interface for raw data from BNPB API
+interface BnpbNewsItem {
+    title: string;
+    description: string;
+    link: string;
+    image: string;
+}
+
+// Interface for transformed news items used in component
 interface NewsItem {
     id: number;
     title: string;
@@ -11,7 +20,19 @@ interface NewsItem {
     published_at: string;
     author: string;
     slug: string;
+    link: string;
 }
+
+// Helper function to generate a slug from a title
+const generateSlug = (title: string): string => {
+    return title
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .substring(0, 50);
+};
+
+// Helper function to determine category based on title keywords
 
 const NewsSection: React.FC = () => {
     const [news, setNews] = useState<NewsItem[]>([]);
@@ -22,13 +43,33 @@ const NewsSection: React.FC = () => {
         const fetchNews = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get('/api/news');
-                // Extract news data from response
-                setNews(response.data.data?.slice(0, 3) || []);
-                setError(null);
+                
+                // Use the BNPB news endpoint
+                const response = await axios.get('/berita-bnpb');
+                
+                if (response.data && response.data.berita && response.data.berita.length > 0) {
+                    // Transform BNPB news format to our NewsItem format
+                    const transformedNews = response.data.berita.slice(0, 3).map((item: BnpbNewsItem, index: number) => ({
+                        id: index + 1,
+                        title: item.title,
+                        excerpt: item.description.length > 140 ? 
+                            `${item.description.substring(0, 140)}...` : item.description,
+                        image_url: item.image || 'https://via.placeholder.com/300x200?text=BNPB',
+                        published_at: new Date().toISOString(), // Using current date since BNPB data doesn't have dates
+                        author: 'BNPB',
+                        slug: generateSlug(item.title),
+                        link: item.link
+                    }));
+                    
+                    setNews(transformedNews);
+                    setError(null);
+                } else {
+                    throw new Error('No news data available');
+                }
             } catch (err) {
                 console.error('Failed to fetch news:', err);
                 setError('Gagal memuat berita terbaru');
+                
                 // Fallback data for development/preview
                 setNews([
                     {
@@ -39,6 +80,7 @@ const NewsSection: React.FC = () => {
                         published_at: '2023-06-15T09:30:00Z',
                         author: 'Tim Redaksi',
                         slug: 'bmkg-peringatan-dini-banjir-jakarta',
+                        link: 'https://bnpb.go.id/berita/bmkg-peringatan-dini-banjir-jakarta'
                     },
                     {
                         id: 2,
@@ -48,6 +90,7 @@ const NewsSection: React.FC = () => {
                         published_at: '2023-06-12T14:45:00Z',
                         author: 'Ardiansyah',
                         slug: 'latihan-evakuasi-bencana-5-provinsi',
+                        link: 'https://bnpb.go.id/berita/latihan-evakuasi-bencana-5-provinsi'
                     },
                     {
                         id: 3,
@@ -57,6 +100,7 @@ const NewsSection: React.FC = () => {
                         published_at: '2023-06-10T08:15:00Z',
                         author: 'Bambang Suryo',
                         slug: 'pembaruan-sistem-peringatan-tsunami',
+                        link: 'https://bnpb.go.id/berita/pembaruan-sistem-peringatan-tsunami'
                     },
                 ]);
             } finally {
@@ -85,7 +129,7 @@ const NewsSection: React.FC = () => {
                     viewport={{ once: true }}
                     transition={{ duration: 0.5 }}
                 >
-                    <h2 className="text-4xl font-bold tracking-tight text-gray-900">Berita Terbaru</h2>
+                    <h2 className="text-4xl font-bold tracking-tight text-gray-900">Berita BNPB Terbaru</h2>
                     <motion.div
                         className="mx-auto mt-2 h-1 w-24 rounded-full bg-blue-600"
                         initial={{ width: 0 }}
@@ -93,6 +137,9 @@ const NewsSection: React.FC = () => {
                         viewport={{ once: true }}
                         transition={{ delay: 0.2, duration: 0.6 }}
                     ></motion.div>
+                    <p className="mt-4 text-lg text-gray-600">
+                        Informasi terkini dari Badan Nasional Penanggulangan Bencana
+                    </p>
                 </motion.div>
 
                 {loading && (
@@ -146,6 +193,10 @@ const NewsSection: React.FC = () => {
                                         className="h-full w-full object-cover"
                                         whileHover={{ scale: 1.05 }}
                                         transition={{ duration: 0.4 }}
+                                        onError={(e) => {
+                                            // Fallback image if load fails
+                                            e.currentTarget.src = 'https://via.placeholder.com/300x200?text=BNPB';
+                                        }}
                                     />
                                 </div>
                                 <div className="p-6">
@@ -183,8 +234,12 @@ const NewsSection: React.FC = () => {
                                         whileInView={{ opacity: 1, x: 0 }}
                                         viewport={{ once: true }}
                                         transition={{ delay: 0.5 + index * 0.1 }}
+                                        className="flex justify-between"
                                     >
-                                        <Link href={`/news/${item.slug}`} className="inline-flex items-center font-medium text-blue-600">
+                                        <Link 
+                                            href={`/news/${item.slug}`} 
+                                            className="inline-flex items-center font-medium text-blue-600"
+                                        >
                                             <motion.span whileHover={{ x: 2 }} transition={{ duration: 0.2 }}>
                                                 Baca selengkapnya
                                                 <motion.svg
@@ -203,6 +258,17 @@ const NewsSection: React.FC = () => {
                                                 </motion.svg>
                                             </motion.span>
                                         </Link>
+                                        
+                                        {item.link && (
+                                            <a
+                                                href={item.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm text-gray-500 hover:text-blue-600"
+                                            >
+                                                Sumber BNPB →
+                                            </a>
+                                        )}
                                     </motion.div>
                                 </div>
                             </motion.div>

@@ -1,16 +1,16 @@
 import { setAuthToken, setAuthUser } from '@/utils/api';
+import { useForm } from '@inertiajs/react';
 import axios from 'axios';
 import { ArrowLeft, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 
+import PageTitle from '@/components/PageTitle';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-// If you intend to use Inertia's useForm:
-import { useForm } from '@inertiajs/react';
 
 type LoginForm = {
     email: string;
@@ -72,6 +72,8 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
     return (
         <div className="flex min-h-screen w-full">
+            <PageTitle title="Login" />
+
             {/* Back button */}
             <div className="absolute top-4 left-4 z-10">
                 <Button
