@@ -60,11 +60,11 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated = false, userRole = nul
     const getDashboardLink = () => {
         switch (userRole) {
             case 'masyarakat':
-                return '/dashboard/masyarakat';
+                return '/masyarakat/dashboard';
             case 'relawan':
-                return '/dashboard/relawan';
+                return '/relawan/dashboard';
             case 'admin':
-                return '/dashboard/admin';
+                return '/admin/dashboard';
             default:
                 return '/dashboard';
         }
