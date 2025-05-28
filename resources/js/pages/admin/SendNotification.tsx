@@ -43,14 +43,14 @@ export default function SendNotification() {
         setLoading(true);
 
         try {
-            await axios.post('/api/notifikasi', {
+            await axios.post('/admin/notifikasi', {
                 judul: title,
                 isi: content,
             });
 
             toast({
                 title: 'Berhasil',
-                description: 'Notifikasi berhasil dikirim ke semua pengguna',
+                description: 'Notifikasi berhasil dikirim ke semua pengguna melalui email dan aplikasi',
             });
 
             // Reset form
@@ -74,12 +74,12 @@ export default function SendNotification() {
 
             <div className="p-6">
                 <h1 className="mb-4 text-2xl font-semibold text-gray-800">Kirim Notifikasi</h1>
-                <p className="mb-6 text-gray-600">Kirim notifikasi peringatan bencana ke semua pengguna aplikasi.</p>
+                <p className="mb-6 text-gray-600">Kirim notifikasi peringatan bencana ke semua pengguna aplikasi melalui email.</p>
 
                 <Card>
                     <CardHeader>
                         <CardTitle>Kirim Notifikasi Bencana</CardTitle>
-                        <CardDescription>Kirim notifikasi ke semua pengguna aplikasi</CardDescription>
+                        <CardDescription>Kirim notifikasi ke semua pengguna aplikasi via email</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit}>
@@ -110,7 +110,7 @@ export default function SendNotification() {
                         </form>
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                        <p className="text-sm text-gray-500">Notifikasi akan dikirim ke semua pengguna aplikasi</p>
+                        <p className="text-sm text-gray-500">Notifikasi akan dikirim ke semua pengguna aplikasi melalui email.</p>
                         <Button type="submit" onClick={handleSubmit} disabled={loading || !title.trim() || !content.trim()}>
                             <BellIcon className="mr-2 h-4 w-4" />
                             {loading ? 'Mengirim...' : 'Kirim Notifikasi'}

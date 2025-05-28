@@ -10,7 +10,9 @@ use App\Http\Controllers\{
     StatistikController,
     TitikBencanaController,
     NotifikasiController,
-    RegionController
+    RegionController,
+    TestEmailController,
+    EmailDebugController
 };
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Auth\{
@@ -23,6 +25,15 @@ use App\Http\Controllers\Auth\{
 // ------------------------
 Route::get('/', fn() => Inertia::render('LandingPage'))->name('home');
 Route::get('/map', fn() => Inertia::render('map/MapKeseluruhan'))->name('map');
+
+// Rute pengujian email
+Route::get('/test-email', [TestEmailController::class, 'sendTestEmail'])->name('test.email');
+Route::get('/send-test-email', [TestEmailController::class, 'sendToAddress'])->name('send.test.email');
+Route::get('/debug-email', [EmailDebugController::class, 'debug'])->name('debug.email');
+Route::get('/check-smtp', [EmailDebugController::class, 'checkSmtp'])->name('check.smtp');
+Route::get('/email-tester', function() {
+    return view('test-email');
+})->name('email.tester');
 
 Route::name('jalur-evakuasi.')->prefix('jalur-evakuasi')->group(function () {
     Route::get('/', [JalurEvakuasiController::class, 'index'])->name('index');
