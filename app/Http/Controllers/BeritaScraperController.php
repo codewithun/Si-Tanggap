@@ -13,30 +13,32 @@ class BeritaScraperController extends Controller
     public function index()
     {
         try {
-            // Clear the cache for testing (remove this in production)
-            // Cache::forget('berita_bnpb');
-
-            // Get pagination parameter (default to 3 pages)
-            $pagesToScrape = request()->get('pages', 5); 
+            // Get pagination parameter (default to 5 pages)
+            $pagesToScrape = request()->get('pages', 5);
             $pagesToScrape = min(max((int)$pagesToScrape, 1), 10); // Limit between 1 and 10 pages
-
-            // Caching selama 30 menit
-            $berita = Cache::remember('berita_bnpb', now()->addMinutes(30), function () use ($pagesToScrape) {
+            
+            // Caching selama 30 menit dengan key yang menyertakan jumlah halaman
+            $cacheKey = 'berita_bnpb_' . $pagesToScrape;
+            
+            // Uncomment for testing
+            // Cache::forget($cacheKey);
+            
+            $berita = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($pagesToScrape) {
                 // Log the scraping attempt
                 Log::info("Attempting to scrape BNPB news - {$pagesToScrape} pages");
-
+                
                 $allBerita = [];
-
+                
                 for ($page = 1; $page <= $pagesToScrape; $page++) {
                     $pageBerita = $this->scrapePage($page);
                     if (empty($pageBerita)) {
                         Log::info("No more news found on page {$page}, stopping pagination");
                         break;
                     }
-
+                    
                     $allBerita = array_merge($allBerita, $pageBerita);
                     Log::info("Scraped page {$page}, got " . count($pageBerita) . " items");
-
+                    
                     // Add small delay between pages
                     if ($page < $pagesToScrape) {
                         sleep(1);
@@ -48,7 +50,11 @@ class BeritaScraperController extends Controller
             });
 
             // Return JSON with proper content type and status
-            return response()->json(['berita' => $berita], 200, [
+            return response()->json([
+                'berita' => $berita,
+                'total' => count($berita),
+                'pages_scraped' => $pagesToScrape
+            ], 200, [
                 'Content-Type' => 'application/json',
                 'Cache-Control' => 'public, max-age=1800' // 30 minutes
             ]);
@@ -78,13 +84,13 @@ class BeritaScraperController extends Controller
             }
 
             $html = $response->body();
-            
+
             // Simpan HTML untuk debugging jika diperlukan
             if ($page == 1) {
                 // Uncomment untuk debugging
                 // Storage::disk('local')->put('bnpb_page_1.html', $html);
             }
-            
+
             $crawler = new Crawler($html);
             $beritaList = [];
 
@@ -96,22 +102,22 @@ class BeritaScraperController extends Controller
 
             // Coba semua selector yang mungkin dalam satu pendekatan
             Log::info("Scraping articles from page {$page} with all possible selectors");
-            
+
             // Selector 1: .berita-terkini .block
             $crawler->filter('.berita-terkini .block')->each(function ($node) use (&$beritaList) {
                 $this->extractArticle($node, $beritaList, 'primary selector');
             });
-            
+
             // Selector 2: Article items in grid layout
             $crawler->filter('.col-lg-4.col-md-4.col-12 .block, .col-lg-4.col-12 .block, .col-md-4.col-12 .block')->each(function ($node) use (&$beritaList) {
                 $this->extractArticle($node, $beritaList, 'grid selector');
             });
-            
+
             // Selector 3: Generic article blocks
             $crawler->filter('.data .block')->each(function ($node) use (&$beritaList) {
                 $this->extractArticle($node, $beritaList, 'data block selector');
             });
-            
+
             // Selector 4: Absolute last resort - any block with title and content
             $crawler->filter('.block')->each(function ($node) use (&$beritaList) {
                 // Skip if this node doesn't have a title element
@@ -219,22 +225,23 @@ class BeritaScraperController extends Controller
     }
 
     // Helper method to extract article data and avoid duplicate code
-    private function extractArticle($node, &$beritaList, $selectorType) {
+    private function extractArticle($node, &$beritaList, $selectorType)
+    {
         try {
             $title = $node->filter('.title a')->text('');
-            
+
             // Skip empty titles
             if (empty($title)) {
                 return;
             }
-            
+
             // Skip if this article is already in our list (avoid duplicates)
             foreach ($beritaList as $existingItem) {
                 if ($existingItem['title'] === trim($title)) {
                     return;
                 }
             }
-            
+
             // Extract image
             $image = null;
             try {
@@ -249,7 +256,7 @@ class BeritaScraperController extends Controller
                     // No image found
                 }
             }
-            
+
             // Extract date
             $dateText = '';
             try {
@@ -257,7 +264,7 @@ class BeritaScraperController extends Controller
             } catch (\Exception $e) {
                 // Date not found, will use current date
             }
-            
+
             // Extract link
             $link = $node->filter('.title a')->attr('href', '');
 

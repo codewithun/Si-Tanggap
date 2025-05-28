@@ -18,6 +18,7 @@ interface BnpbNews {
     description: string;
     link: string;
     image: string;
+    date?: string; // Add date as optional, since you fallback to new Date().toISOString()
 }
 
 interface NewsItem {
@@ -76,24 +77,41 @@ export default function NewsPage() {
         try {
             setLoading(true);
             
-            // Fetch news from the BNPB API endpoint
-            const response = await axios.get('/berita-bnpb');
+            // Fetch news from the BNPB API endpoint with pages parameter
+            const response = await axios.get('/berita-bnpb?pages=10');
             
-            // Transform the data to match our NewsItem format
-            const transformedNews = response.data.berita.map((item: BnpbNews, index: number) => ({
-                id: index + 1,
-                title: item.title,
-                content: item.description,
-                image: item.image || 'https://via.placeholder.com/800x400?text=No+Image',
-                category: determineCategory(item.title),
-                author: 'BNPB',
-                date: new Date().toISOString(),
-                slug: generateSlug(item.title),
-                link: item.link || '', // Make sure link is explicitly included
-            }));
+            // Check if we have berita data and it's an array
+            if (response.data.berita && Array.isArray(response.data.berita)) {
+                console.log(`Fetched ${response.data.berita.length} news items from API`);
+                
+                // Transform the data to match our NewsItem format
+                const transformedNews = response.data.berita.map((item: BnpbNews, index: number) => ({
+                    id: index + 1,
+                    title: item.title,
+                    content: item.description,
+                    image: item.image || 'https://via.placeholder.com/800x400?text=No+Image',
+                    category: determineCategory(item.title),
+                    author: 'BNPB',
+                    date: item.date || new Date().toISOString(),
+                    slug: generateSlug(item.title),
+                    link: item.link || '',
+                }));
 
-            setNews(transformedNews);
-            setFilteredNews(transformedNews);
+                setNews(transformedNews);
+                setFilteredNews(transformedNews);
+                
+                // Log the number of items loaded into state
+                console.log(`Successfully loaded ${transformedNews.length} news items into state`);
+            } else {
+                // Handle the case when no berita data or empty array
+                console.error('Invalid berita data format:', response.data);
+                toast({
+                    title: 'Error',
+                    description: 'Format data berita tidak valid.',
+                    variant: 'destructive',
+                });
+            }
+            
             setLoading(false);
         } catch (error) {
             console.error('Error fetching news:', error);
@@ -235,6 +253,18 @@ export default function NewsPage() {
             },
         },
     };
+
+    useEffect(() => {
+        // Debug untuk menampilkan jumlah artikel
+        console.log(`Filtered news length: ${filteredNews.length}`);
+        console.log(`Current page: ${currentPage}`);
+        console.log(`Items per page: ${itemsPerPage}`);
+        console.log(`Total pages: ${totalPages}`);
+        
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        console.log(`Current page items: ${startIndex}-${endIndex}`);
+    }, [filteredNews, currentPage, itemsPerPage, totalPages]);
 
     return (
         <>
@@ -406,7 +436,7 @@ export default function NewsPage() {
                             ) : filteredNews.length > 0 ? (
                                 <>
                                     <motion.div
-                                        className="mb-8 flex items-center justify-between"
+                                        className="mb-8 flex flex-wrap items-center justify-between gap-2"
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.5 }}
@@ -414,7 +444,15 @@ export default function NewsPage() {
                                         <h2 className="text-2xl font-bold text-gray-800">
                                             {category === 'all' ? 'Semua Berita BNPB' : `Berita - ${category}`}
                                         </h2>
-                                        <span className="text-sm text-gray-500">{filteredNews.length} artikel ditemukan</span>
+                                        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                                            <span className="rounded-full bg-blue-50 px-3 py-1">
+                                                {filteredNews.length} artikel ditemukan
+                                            </span>
+                                            <span>
+                                                Menampilkan {(currentPage - 1) * itemsPerPage + 1}-
+                                                {Math.min(currentPage * itemsPerPage, filteredNews.length)} dari {filteredNews.length}
+                                            </span>
+                                        </div>
                                     </motion.div>
 
                                     <motion.div
