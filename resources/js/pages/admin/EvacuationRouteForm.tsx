@@ -294,6 +294,33 @@ export default function EvacuationRouteForm() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // Add useEffect for map z-index styling
+    useEffect(() => {
+        // Add custom style for map z-index
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Control map z-index to prevent overlapping UI elements */
+            .leaflet-container {
+                z-index: 1 !important;
+            }
+            .leaflet-pane,
+            .leaflet-control,
+            .leaflet-top,
+            .leaflet-bottom {
+                z-index: 400 !important;
+            }
+            /* Higher z-index for dialog components */
+            .dialog-content {
+                z-index: 1000 !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Kelola Jalur Evakuasi" />
@@ -406,116 +433,127 @@ export default function EvacuationRouteForm() {
                             <CardDescription>Jalur evakuasi yang telah ditambahkan</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="rounded-md border">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-4 py-2 text-left font-medium">Nama</th>
-                                            <th className="px-4 py-2 text-left font-medium">Jenis Bencana</th>
-                                            <th className="px-4 py-2 text-left font-medium">Pembuat</th>
-                                            <th className="px-4 py-2 text-left font-medium">Titik</th>
-                                            <th className="px-4 py-2 text-left font-medium">Dibuat</th>
-                                            <th className="px-4 py-2 text-left font-medium">Diperbarui</th>
-                                            <th className="px-4 py-2 text-center font-medium">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {jalurList.length === 0 ? (
+                            <div className="overflow-auto">
+                                <div className="min-w-full rounded-md border">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50">
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
-                                                    Belum ada jalur evakuasi yang ditambahkan
-                                                </td>
+                                                <th className="px-4 py-2 text-left font-medium">Nama</th>
+                                                <th className="hidden px-4 py-2 text-left font-medium md:table-cell">Jenis Bencana</th>
+                                                <th className="hidden px-4 py-2 text-left font-medium lg:table-cell">Pembuat</th>
+                                                <th className="hidden px-4 py-2 text-left font-medium sm:table-cell">Titik</th>
+                                                <th className="hidden px-4 py-2 text-left font-medium lg:table-cell">Dibuat</th>
+                                                <th className="hidden px-4 py-2 text-left font-medium xl:table-cell">Diperbarui</th>
+                                                <th className="px-4 py-2 text-center font-medium">Aksi</th>
                                             </tr>
-                                        ) : (
-                                            jalurList.map((jalur) => (
-                                                <tr key={jalur.id}>
-                                                    <td className="px-4 py-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: jalur.warna }} />
-                                                            {jalur.nama}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-2">
-                                                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{jalur.jenis_bencana}</span>
-                                                    </td>
-                                                    <td className="px-4 py-2">{jalur.user?.name || 'Unknown'}</td>
-                                                    <td className="px-4 py-2">{jalur.koordinat.length} titik</td>
-                                                    <td className="px-4 py-2 text-gray-500">{new Date(jalur.created_at).toLocaleDateString()}</td>
-                                                    <td className="px-4 py-2 text-gray-500">{new Date(jalur.updated_at).toLocaleDateString()}</td>
-                                                    <td className="px-4 py-2 text-center">
-                                                        <div className="flex justify-center gap-2">
-                                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(jalur)}>
-                                                                <Edit2 className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(jalur.id)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {jalurList.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
+                                                        Belum ada jalur evakuasi yang ditambahkan
                                                     </td>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-
-                                {/* Pagination */}
-                                {paginationData && paginationData.last_page > 1 && (
-                                    <div className="flex items-center justify-between border-t px-4 py-3">
-                                        <div className="text-sm text-gray-500">
-                                            Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
-                                            {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of{' '}
-                                            {paginationData.total} entries
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                                                disabled={currentPage === 1}
-                                            >
-                                                Previous
-                                            </Button>
-                                            {[...Array(paginationData.last_page)].map((_, index) => {
-                                                const pageNumber = index + 1;
-                                                const showPage =
-                                                    pageNumber === 1 ||
-                                                    pageNumber === paginationData.last_page ||
-                                                    Math.abs(pageNumber - currentPage) <= 1;
-
-                                                if (!showPage) {
-                                                    if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
-                                                        return (
-                                                            <span key={`dot-${pageNumber}`} className="px-2 py-1">
-                                                                ...
+                                            ) : (
+                                                jalurList.map((jalur) => (
+                                                    <tr key={jalur.id}>
+                                                        <td className="px-4 py-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <div
+                                                                    className="h-3 w-3 shrink-0 rounded-full"
+                                                                    style={{ backgroundColor: jalur.warna }}
+                                                                />
+                                                                <span className="max-w-[120px] truncate sm:max-w-none">{jalur.nama}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="hidden px-4 py-2 md:table-cell">
+                                                            <span className="rounded-full bg-gray-100 px-2 py-1 text-xs whitespace-nowrap">
+                                                                {jalur.jenis_bencana}
                                                             </span>
-                                                        );
-                                                    }
-                                                    return null;
-                                                }
+                                                        </td>
+                                                        <td className="hidden px-4 py-2 lg:table-cell">{jalur.user?.name || 'Unknown'}</td>
+                                                        <td className="hidden px-4 py-2 sm:table-cell">{jalur.koordinat.length} titik</td>
+                                                        <td className="hidden px-4 py-2 text-gray-500 lg:table-cell">
+                                                            {new Date(jalur.created_at).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="hidden px-4 py-2 text-gray-500 xl:table-cell">
+                                                            {new Date(jalur.updated_at).toLocaleDateString()}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-center">
+                                                            <div className="flex justify-center gap-2">
+                                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(jalur)}>
+                                                                    <Edit2 className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(jalur.id)}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
 
-                                                return (
-                                                    <Button
-                                                        key={pageNumber}
-                                                        variant={currentPage === pageNumber ? 'default' : 'outline'}
-                                                        size="sm"
-                                                        onClick={() => setCurrentPage(pageNumber)}
-                                                        className="min-w-[32px]"
-                                                    >
-                                                        {pageNumber}
-                                                    </Button>
-                                                );
-                                            })}
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
-                                                disabled={currentPage === paginationData.last_page}
-                                            >
-                                                Next
-                                            </Button>
+                                    {/* Pagination */}
+                                    {paginationData && paginationData.last_page > 1 && (
+                                        <div className="flex flex-col items-start justify-between gap-3 border-t px-4 py-3 sm:flex-row sm:items-center">
+                                            <div className="text-sm text-gray-500">
+                                                Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
+                                                {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of{' '}
+                                                {paginationData.total} entries
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                                    disabled={currentPage === 1}
+                                                >
+                                                    Previous
+                                                </Button>
+                                                {[...Array(paginationData.last_page)].map((_, index) => {
+                                                    const pageNumber = index + 1;
+                                                    const showPage =
+                                                        pageNumber === 1 ||
+                                                        pageNumber === paginationData.last_page ||
+                                                        Math.abs(pageNumber - currentPage) <= 1;
+
+                                                    if (!showPage) {
+                                                        if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
+                                                            return (
+                                                                <span key={`dot-${pageNumber}`} className="px-2 py-1">
+                                                                    ...
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }
+
+                                                    return (
+                                                        <Button
+                                                            key={pageNumber}
+                                                            variant={currentPage === pageNumber ? 'default' : 'outline'}
+                                                            size="sm"
+                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                            className="min-w-[32px]"
+                                                        >
+                                                            {pageNumber}
+                                                        </Button>
+                                                    );
+                                                })}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
+                                                    disabled={currentPage === paginationData.last_page}
+                                                >
+                                                    Next
+                                                </Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -524,7 +562,7 @@ export default function EvacuationRouteForm() {
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <DialogContent>
+                <DialogContent className="dialog-content">
                     <DialogHeader>
                         <DialogTitle>Hapus Jalur Evakuasi</DialogTitle>
                         <DialogDescription>

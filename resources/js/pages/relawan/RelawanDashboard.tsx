@@ -161,42 +161,6 @@ export default function RelawanDashboard() {
                         )}
                     </CardContent>
                 </Card>
-
-                {/* Navigasi Cepat */}
-                <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <Link href="/relawan/bencana-map" className="flex items-center rounded-lg border p-4 transition hover:bg-blue-50">
-                        <div className="mr-4 rounded-full bg-blue-100 p-3">
-                            <AlertTriangle className="h-6 w-6 text-blue-700" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold">Peta Bencana</h3>
-                            <p className="text-sm text-gray-500">Lihat persebaran bencana</p>
-                        </div>
-                    </Link>
-
-                    <Link href="/relawan/evacuation-and-shelter-map" className="flex items-center rounded-lg border p-4 transition hover:bg-green-50">
-                        <div className="mr-4 rounded-full bg-green-100 p-3">
-                            <TentTree className="h-6 w-6 text-green-700" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold">Jalur & Posko</h3>
-                            <p className="text-sm text-gray-500">Lokasi jalur evakuasi dan posko</p>
-                        </div>
-                    </Link>
-
-                    <Link
-                        href="/relawan/disaster-report-verification"
-                        className="flex items-center rounded-lg border p-4 transition hover:bg-amber-50"
-                    >
-                        <div className="mr-4 rounded-full bg-amber-100 p-3">
-                            <ClipboardCheck className="h-6 w-6 text-amber-700" />
-                        </div>
-                        <div>
-                            <h3 className="font-semibold">Verifikasi Laporan</h3>
-                            <p className="text-sm text-gray-500">Periksa dan validasi laporan</p>
-                        </div>
-                    </Link>
-                </div>
             </div>
         </AppLayout>
     );

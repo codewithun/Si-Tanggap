@@ -85,6 +85,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/shelters', fn() => Inertia::render('admin/PoskoForm'))->name('shelters');
         Route::get('/reports', fn() => Inertia::render('admin/ReportManagement'))->name('reports');
         Route::get('/notifications', fn() => Inertia::render('admin/SendNotification'))->name('notifications');
+        Route::get('/map', fn() => Inertia::render('admin/AdminMap'))->name('map');
 
         // GET untuk halaman UserManagement & datatable user
         Route::get('/users', fn() => Inertia::render('admin/UserManagement'))->name('users.index');

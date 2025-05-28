@@ -395,7 +395,7 @@ export default function UserManagement() {
                                             <TableHead>Email</TableHead>
                                             <TableHead>Role</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Aksi</TableHead>
+                                            <TableHead className="text-center">Aksi</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -432,8 +432,8 @@ export default function UserManagement() {
                                                             {user.status ? 'Aktif' : 'Tidak Aktif'}
                                                         </span>
                                                     </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end space-x-2">
+                                                    <TableCell className="text-center">
+                                                        <div className="flex justify-center space-x-2">
                                                             <Button variant="outline" size="sm" onClick={() => prepareEditUser(user)}>
                                                                 <PencilIcon className="h-4 w-4" />
                                                                 <span className="sr-only">Edit</span>

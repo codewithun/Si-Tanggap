@@ -7,7 +7,6 @@ import axios from 'axios';
 import { ArcElement, BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, Title, Tooltip } from 'chart.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Bar, Pie } from 'react-chartjs-2';
-import AdminMap from './AdminMap';
 
 // Register all necessary chart components including ArcElement for Pie charts
 ChartJS.register(
@@ -389,12 +388,6 @@ export default function AdminDashboard() {
 
                 {/* Statistik */}
                 <div className="mt-8">{renderStatisticsContent()}</div>
-
-                {/* Peta */}
-                <div className="mt-8">
-                    <h2 className="mb-4 text-xl font-semibold text-gray-800">Peta Bencana</h2>
-                    <AdminMap />
-                </div>
             </div>
         </AppLayout>
     );

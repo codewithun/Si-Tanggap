@@ -69,11 +69,14 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ toast, dismiss }}>
       {children}
-      <div className="fixed top-0 right-0 z-50 flex flex-col gap-2 p-4 max-w-md w-full">
+      <div className="fixed top-4 right-4 z-[9999] flex flex-col items-end gap-2 max-w-md pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={cn(toastVariants({ variant: toast.variant }))}
+            className={cn(
+              toastVariants({ variant: toast.variant }),
+              "pointer-events-auto shadow-lg backdrop-blur-sm w-full max-w-sm"
+            )}
           >
             <div className="flex flex-col gap-1">
               {toast.title && <div className="font-semibold">{toast.title}</div>}
