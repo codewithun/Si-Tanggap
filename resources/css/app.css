@@ -157,3 +157,21 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Control map z-index to prevent overlapping UI elements */
+.leaflet-container {
+    z-index: 1 !important;
+}
+
+.leaflet-pane,
+.leaflet-control,
+.leaflet-top,
+.leaflet-bottom {
+    z-index: 400 !important;
+}
+
+/* Higher z-index for dialogs and overlays */
+.dialog-content,
+[data-radix-popper-content-wrapper] {
+    z-index: 1000 !important;
+}

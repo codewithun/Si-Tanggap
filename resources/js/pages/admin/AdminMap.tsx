@@ -1,10 +1,25 @@
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/useToast';
-import axios from 'axios';
+import AppLayout from '@/layouts/app-layout';
+import axios from '@/lib/axios';
+import { type BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
 import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useState } from 'react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
+
+// Define breadcrumbs for consistent navigation
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard Admin',
+        href: '/admin/dashboard',
+    },
+    {
+        title: 'Peta Jalur & Posko Evakuasi',
+        href: '/admin/map',
+    },
+];
 
 // --- Interfaces ---
 interface JalurEvakuasi {
@@ -28,27 +43,9 @@ interface Posko {
     longitude: number;
 }
 
-interface Bencana {
-    id: number;
-    judul: string;
-    jenis_bencana: string;
-    created_at: string;
-    latitude: number;
-    longitude: number;
-    lokasi: string;
-    status: 'menunggu' | 'diverifikasi' | 'ditolak';
-    deskripsi: string;
-}
-
 // --- Icons ---
 const shelterIcon = icon({
-    iconUrl: '/icons/shelter-marker.svg',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-});
-const disasterIcon = icon({
-    iconUrl: '/icons/disaster-marker.svg',
+    iconUrl: '/icons/posko.png',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
@@ -60,7 +57,6 @@ function CustomMap({
     className,
     poskos = [],
     jalurEvakuasi = [],
-    bencanaPoints = [],
     zoom = 13,
     center = [-7.797068, 110.370529],
 }: {
@@ -68,10 +64,31 @@ function CustomMap({
     className?: string;
     poskos?: Posko[];
     jalurEvakuasi?: JalurEvakuasi[];
-    bencanaPoints?: Bencana[];
     zoom?: number;
     center?: [number, number];
 }) {
+    useEffect(() => {
+        // Add custom style for map z-index
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Control map z-index */
+            .leaflet-container {
+                z-index: 1 !important;
+            }
+            .leaflet-pane,
+            .leaflet-control,
+            .leaflet-top,
+            .leaflet-bottom {
+                z-index: 400 !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
+
     return (
         <div style={{ height }} className={className}>
             <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
@@ -132,33 +149,6 @@ function CustomMap({
                             </Popup>
                         </Polyline>
                     ))}
-                {/* Titik Bencana Markers */}
-                {bencanaPoints.map((bencana) => (
-                    <Marker key={`bencana-${bencana.id}`} position={[bencana.latitude, bencana.longitude]} icon={disasterIcon}>
-                        <Popup>
-                            <div style={{ minWidth: 220, display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                                <div style={{ flex: 1 }}>
-                                    <div className="mb-1 text-base font-bold">{bencana.judul || bencana.jenis_bencana || '(Tanpa judul)'}</div>
-                                    <div className="mb-1 text-xs">{bencana.deskripsi}</div>
-                                    <div className="mt-2 text-xs">
-                                        <div>
-                                            <span className="font-semibold">Jenis:</span> {bencana.jenis_bencana || 'Tidak diketahui'}
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold">Tanggal:</span> {new Date(bencana.created_at).toLocaleDateString('id-ID')}
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold">Lokasi:</span> {bencana.lokasi || 'Tidak diketahui'}
-                                        </div>
-                                        <div>
-                                            <span className="font-semibold">Status:</span> {bencana.status || 'Belum diverifikasi'}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </Popup>
-                    </Marker>
-                ))}
             </MapContainer>
         </div>
     );
@@ -167,7 +157,6 @@ function CustomMap({
 export default function AdminMap() {
     const [jalurEvakuasi, setJalurEvakuasi] = useState<JalurEvakuasi[]>([]);
     const [posko, setPosko] = useState<Posko[]>([]);
-    const [bencanaPoints, setBencanaPoints] = useState<Bencana[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
@@ -208,77 +197,61 @@ export default function AdminMap() {
         }
     }, [toast]);
 
-    const fetchBencanaPoints = useCallback(async () => {
-        try {
-            const response = await axios.get('/laporans');
-            const data = response.data.data || response.data;
-            if (Array.isArray(data)) {
-                // Only use verified
-                const verifiedReports = data.filter((report) => report.status === 'diverifikasi');
-                setBencanaPoints(verifiedReports);
-                return verifiedReports;
-            } else {
-                setBencanaPoints([]);
-                return [];
-            }
-        } catch (error: unknown) {
-            console.error('Failed to fetch disaster points:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data titik bencana';
-            toast({
-                title: 'Error',
-                description: errorMessage,
-                variant: 'destructive',
-            });
-            setBencanaPoints([]);
-            return [];
-        }
-    }, [toast]);
-
     // --- Data Loader ---
     useEffect(() => {
-        Promise.all([fetchJalurEvakuasi(), fetchPosko(), fetchBencanaPoints()])
+        Promise.all([fetchJalurEvakuasi(), fetchPosko()])
             .then(() => setLoading(false))
             .catch(() => setLoading(false));
-    }, [fetchJalurEvakuasi, fetchPosko, fetchBencanaPoints]);
+    }, [fetchJalurEvakuasi, fetchPosko]);
 
     return (
-        <div className="space-y-2 sm:space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold sm:text-2xl">Peta Jalur Evakuasi, Posko & Titik Bencana</h2>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        setLoading(true);
-                        Promise.all([fetchJalurEvakuasi(), fetchPosko(), fetchBencanaPoints()])
-                            .then(() => setLoading(false))
-                            .catch(() => setLoading(false));
-                    }}
-                    disabled={loading}
-                >
-                    {loading ? 'Memuat...' : 'Refresh'}
-                </Button>
-            </div>
-            {loading ? (
-                <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200 sm:h-[600px]"></div>
-            ) : jalurEvakuasi.length === 0 && posko.length === 0 && bencanaPoints.length === 0 ? (
-                <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed sm:h-[600px]">
-                    <div className="text-center">
-                        <p className="text-lg font-medium text-gray-600">Belum ada data</p>
-                        <p className="text-sm text-gray-500">Belum ada jalur evakuasi, posko, atau titik bencana yang tersedia</p>
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Peta Jalur & Posko Evakuasi" />
+
+            <div className="p-6">
+                <h1 className="mb-4 text-2xl font-semibold text-gray-800">Peta Jalur & Posko Evakuasi</h1>
+                <p className="mb-6 text-gray-600">Visualisasi jalur evakuasi dan posko pengungsian dalam bentuk peta interaktif.</p>
+
+                <div className="space-y-2 sm:space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold sm:text-2xl">Peta Jalur Evakuasi & Posko</h2>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setLoading(true);
+                                Promise.all([fetchJalurEvakuasi(), fetchPosko()])
+                                    .then(() => setLoading(false))
+                                    .catch(() => setLoading(false));
+                            }}
+                            disabled={loading}
+                        >
+                            {loading ? 'Memuat...' : 'Refresh'}
+                        </Button>
                     </div>
+                    {loading ? (
+                        <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200 sm:h-[600px]"></div>
+                    ) : jalurEvakuasi.length === 0 && posko.length === 0 ? (
+                        <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed sm:h-[600px]">
+                            <div className="text-center">
+                                <p className="text-lg font-medium text-gray-600">Belum ada data</p>
+                                <p className="text-sm text-gray-500">Belum ada jalur evakuasi atau posko yang tersedia</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="h-[450px] w-full overflow-hidden rounded-lg sm:h-[600px]">
+                            <CustomMap
+                                height="100%"
+                                className="h-full w-full"
+                                poskos={posko}
+                                jalurEvakuasi={jalurEvakuasi}
+                                zoom={6}
+                                center={[-7.150975, 110.140259]}
+                            />
+                        </div>
+                    )}
                 </div>
-            ) : (
-                <CustomMap
-                    height="400px"
-                    className="sm:h-[600px]"
-                    poskos={posko}
-                    jalurEvakuasi={jalurEvakuasi}
-                    bencanaPoints={bencanaPoints}
-                    zoom={6}
-                    center={[-7.150975, 110.140259]}
-                />
-            )}
-        </div>
+            </div>
+        </AppLayout>
     );
 }

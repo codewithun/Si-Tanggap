@@ -1,11 +1,12 @@
-import MapComponent from '@/components/MapComponent';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/useToast';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
+import L from 'leaflet';
 import { useCallback, useEffect, useState } from 'react';
+import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -38,6 +39,13 @@ interface Posko {
     latitude: number;
     longitude: number;
 }
+
+const shelterIcon = L.icon({
+    iconUrl: '/icons/posko.png', // Make sure this icon exists or replace with appropriate icon
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+});
 
 export default function EvacuationAndShelterMap() {
     const [jalurEvakuasi, setJalurEvakuasi] = useState<JalurEvakuasi[]>([]);
@@ -89,26 +97,17 @@ export default function EvacuationAndShelterMap() {
             .catch(() => setLoading(false));
     }, [fetchJalurEvakuasi, fetchPosko]);
 
-    // Transform posko data to marker format
-    const markers = posko.map((p) => ({
-        id: p.id,
-        position: [p.latitude, p.longitude] as [number, number],
-        title: p.nama,
-        type: 'shelter',
-        description: `${p.deskripsi}
-                      Alamat: ${p.alamat || 'Tidak tersedia'}
-                      Kontak: ${p.kontak || 'Tidak tersedia'}
-                      Jenis: ${p.jenis_posko || 'Tidak tersedia'}
-                      Status: ${p.status || 'Aktif'}`,
-    })); // Transform jalur evakuasi to path format with validation
-    const paths = jalurEvakuasi
-        .filter((jalur) => jalur.koordinat && Array.isArray(jalur.koordinat) && jalur.koordinat.length > 0)
-        .map((jalur) => ({
-            id: jalur.id,
-            positions: jalur.koordinat.map((point) => [point.lat, point.lng] as [number, number]),
-            color: jalur.warna || '#3B82F6', // Use defined color or blue as default
-            name: jalur.nama,
-        }));
+    // We'll use the paths and markers logic but adapt it for direct use with Leaflet
+    const validPaths = jalurEvakuasi.filter((jalur) => {
+        // More thorough validation
+        return (
+            jalur.koordinat &&
+            Array.isArray(jalur.koordinat) &&
+            jalur.koordinat.length >= 2 && // Ensure at least 2 points for a line
+            jalur.koordinat.every((point) => point && typeof point.lat === 'number' && typeof point.lng === 'number')
+        );
+    });
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Jalur & Posko Evakuasi" />
@@ -129,22 +128,68 @@ export default function EvacuationAndShelterMap() {
                     </Button>
                 </div>
                 {loading ? (
-                    <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200 sm:h-[600px]"></div>
+                    <div className="h-[400px] w-full animate-pulse rounded-lg bg-gray-200 sm:h-[550px]"></div>
                 ) : jalurEvakuasi.length === 0 && posko.length === 0 ? (
-                    <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed sm:h-[600px]">
+                    <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed sm:h-[550px]">
                         <div className="text-center">
                             <p className="text-lg font-medium text-gray-600">Belum ada data</p>
                             <p className="text-sm text-gray-500">Belum ada jalur evakuasi atau posko yang tersedia</p>
                         </div>
                     </div>
                 ) : (
-                    <MapComponent
-                        height="400px"
-                        className="sm:h-[600px]"
-                        markers={markers || []}
-                        paths={Array.isArray(paths) && paths.length > 0 ? paths : []}
-                        zoom={6}
-                    />
+                    <div className="h-[300px] overflow-hidden rounded-lg sm:h-[550px]">
+                        <MapContainer center={[-7.150975, 110.140259]} zoom={6} style={{ height: '100%', width: '100%' }}>
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+
+                            {/* Render Posko markers */}
+                            {posko.map((p) => (
+                                <Marker key={`posko-${p.id}`} position={[p.latitude, p.longitude]} icon={shelterIcon}>
+                                    <Popup>
+                                        <div className="font-bold">{p.nama}</div>
+                                        <div className="text-xs">{p.deskripsi}</div>
+                                        <div className="mt-2 text-xs">
+                                            <div>
+                                                <span className="font-semibold">Alamat:</span> {p.alamat || 'Tidak tersedia'}
+                                            </div>
+                                            <div>
+                                                <span className="font-semibold">Kontak:</span> {p.kontak || 'Tidak tersedia'}
+                                            </div>
+                                            <div>
+                                                <span className="font-semibold">Jenis:</span> {p.jenis_posko || 'Tidak tersedia'}
+                                            </div>
+                                            <div>
+                                                <span className="font-semibold">Status:</span> {p.status || 'Aktif'}
+                                            </div>
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            ))}
+
+                            {/* Render Jalur Evakuasi polylines */}
+                            {validPaths.map((jalur) => (
+                                <Polyline
+                                    key={`jalur-${jalur.id}`}
+                                    positions={jalur.koordinat.map((point) => [point.lat, point.lng])}
+                                    pathOptions={{
+                                        color: jalur.warna || '#3B82F6',
+                                        weight: 4,
+                                        opacity: 0.7,
+                                    }}
+                                >
+                                    <Popup>
+                                        <div className="font-bold">{jalur.nama}</div>
+                                        <div className="text-xs">{jalur.deskripsi}</div>
+                                        <div className="mt-2 text-xs">
+                                            <span className="font-semibold">Jenis Bencana:</span> {jalur.jenis_bencana || 'Umum'}
+                                        </div>
+                                    </Popup>
+                                </Polyline>
+                            ))}
+                        </MapContainer>
+                    </div>
                 )}
             </div>
         </AppLayout>

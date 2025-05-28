@@ -1,12 +1,18 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
+import L from 'leaflet';
+import { CheckCircleIcon, MapPinIcon, XCircleIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -37,11 +43,28 @@ interface Laporan {
     };
 }
 
+// Function to get a specific disaster icon based on type
+const getDisasterMapIcon = (type: string) => {
+    return L.icon({
+        iconUrl: `/icons/${type}.svg`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32],
+    });
+};
+
 export default function DisasterReportVerification() {
     const [reports, setReports] = useState<Laporan[]>([]);
     const [loading, setLoading] = useState(true);
     const [processingIds, setProcessingIds] = useState<number[]>([]);
     const { toast } = useToast();
+
+    // Added state for verification dialog
+    const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<Laporan | null>(null);
+    const [verificationStatus, setVerificationStatus] = useState<'diverifikasi' | 'ditolak'>('diverifikasi');
+    const [adminNote, setAdminNote] = useState('');
+    const [showMapDialog, setShowMapDialog] = useState(false);
 
     const fetchReports = useCallback(async () => {
         try {
@@ -70,81 +93,86 @@ export default function DisasterReportVerification() {
         fetchReports();
     }, [fetchReports]);
 
-    const handleVerify = async (id: number) => {
-        setProcessingIds((prev) => [...prev, id]);
-        try {
-            await axios.put(`/laporans/${id}/verify`);
-            toast({
-                title: 'Sukses',
-                description: 'Laporan berhasil diverifikasi',
-            });
-            // Update local state
-            setReports((prevReports) => prevReports.filter((report) => report.id !== id));
-        } catch (error: unknown) {
-            console.error('Failed to verify report:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Gagal memverifikasi laporan';
-
-            toast({
-                title: 'Error',
-                description: errorMessage,
-                variant: 'destructive',
-            });
-        } finally {
-            setProcessingIds((prev) => prev.filter((reportId) => reportId !== id));
-        }
+    const openVerifyDialog = (report: Laporan) => {
+        setSelectedReport(report);
+        setVerificationStatus('diverifikasi');
+        setAdminNote('');
+        setIsVerifyDialogOpen(true);
     };
 
-    const handleReject = async (id: number) => {
-        setProcessingIds((prev) => [...prev, id]);
-        try {
-            await axios.put(`/laporans/${id}/reject`);
-            toast({
-                title: 'Sukses',
-                description: 'Laporan berhasil ditolak',
-            });
-            // Update local state
-            setReports((prevReports) => prevReports.filter((report) => report.id !== id));
-        } catch (error: unknown) {
-            console.error('Failed to reject report:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Gagal menolak laporan';
+    const handleVerification = async () => {
+        if (!selectedReport) return;
 
+        if (verificationStatus === 'ditolak' && !adminNote.trim()) {
+            toast({
+                title: 'Error',
+                description: 'Catatan admin wajib diisi untuk penolakan laporan',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setProcessingIds((prev) => [...prev, selectedReport.id]);
+
+        try {
+            const endpoint =
+                verificationStatus === 'diverifikasi' ? `/admin/laporans/${selectedReport.id}/verify` : `/admin/laporans/${selectedReport.id}/reject`;
+
+            await axios.put(endpoint, {
+                catatan_admin: adminNote.trim() || null,
+            });
+
+            toast({
+                title: 'Berhasil',
+                description: `Laporan berhasil ${verificationStatus === 'diverifikasi' ? 'diverifikasi' : 'ditolak'}`,
+            });
+
+            setIsVerifyDialogOpen(false);
+            // Update local state
+            setReports((prevReports) => prevReports.filter((report) => report.id !== selectedReport.id));
+        } catch (error: unknown) {
+            console.error('Error verifying report:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Gagal memproses verifikasi laporan';
             toast({
                 title: 'Error',
                 description: errorMessage,
                 variant: 'destructive',
             });
         } finally {
-            setProcessingIds((prev) => prev.filter((reportId) => reportId !== id));
+            setProcessingIds((prev) => prev.filter((reportId) => reportId !== selectedReport.id));
         }
     };
 
     if (loading) {
         return (
-            <div className="space-y-4">
-                <h2 className="text-2xl font-bold">Verifikasi Laporan Bencana</h2>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {[...Array(3)].map((_, i) => (
-                        <Card key={i} className="animate-pulse">
-                            <CardHeader className="pb-2">
-                                <div className="h-5 w-3/4 rounded bg-gray-200"></div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    <div className="h-3 w-full rounded bg-gray-200"></div>
-                                    <div className="h-3 w-full rounded bg-gray-200"></div>
-                                </div>
-                                <div className="mt-4 h-32 rounded bg-gray-200"></div>
-                            </CardContent>
-                            <CardFooter>
-                                <div className="flex w-full justify-end space-x-2">
-                                    <div className="h-9 w-20 rounded bg-gray-200"></div>
-                                    <div className="h-9 w-20 rounded bg-gray-200"></div>
-                                </div>
-                            </CardFooter>
-                        </Card>
-                    ))}
+            <AppLayout breadcrumbs={breadcrumbs}>
+                <Head title="Verifikasi Laporan" />
+                <div className="space-y-4 p-6">
+                    <h2 className="text-xl font-bold sm:text-2xl">Verifikasi Laporan Bencana</h2>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {[...Array(3)].map((_, i) => (
+                            <Card key={i} className="animate-pulse">
+                                <CardHeader className="pb-2">
+                                    <div className="h-5 w-3/4 rounded bg-gray-200"></div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        <div className="h-3 w-full rounded bg-gray-200"></div>
+                                        <div className="h-3 w-full rounded bg-gray-200"></div>
+                                    </div>
+                                    <div className="mt-4 h-32 rounded bg-gray-200"></div>
+                                </CardContent>
+                                <CardFooter>
+                                    <div className="flex w-full justify-end space-x-2">
+                                        <div className="h-9 w-20 rounded bg-gray-200"></div>
+                                        <div className="h-9 w-20 rounded bg-gray-200"></div>
+                                    </div>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            </AppLayout>
         );
     }
 
@@ -188,7 +216,21 @@ export default function DisasterReportVerification() {
                                 <CardContent className="space-y-2">
                                     <div>
                                         <p className="text-sm font-medium">Lokasi:</p>
-                                        <p className="text-sm">{report.lokasi}</p>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm">{report.lokasi}</p>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 w-8 p-0"
+                                                onClick={() => {
+                                                    setSelectedReport(report);
+                                                    setShowMapDialog(true);
+                                                }}
+                                            >
+                                                <MapPinIcon className="h-4 w-4" />
+                                                <span className="sr-only">Lihat di peta</span>
+                                            </Button>
+                                        </div>
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium">Deskripsi:</p>
@@ -205,13 +247,10 @@ export default function DisasterReportVerification() {
                                     <div className="flex w-full justify-end space-x-2">
                                         <Button
                                             variant="outline"
-                                            onClick={() => handleReject(report.id)}
+                                            onClick={() => openVerifyDialog(report)}
                                             disabled={processingIds.includes(report.id)}
                                         >
-                                            Tolak
-                                        </Button>
-                                        <Button onClick={() => handleVerify(report.id)} disabled={processingIds.includes(report.id)}>
-                                            Verifikasi
+                                            Verifikasi Laporan
                                         </Button>
                                     </div>
                                 </CardFooter>
@@ -219,6 +258,123 @@ export default function DisasterReportVerification() {
                         ))}
                     </div>
                 )}
+
+                {/* Map Dialog */}
+                <Dialog open={showMapDialog} onOpenChange={setShowMapDialog}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Lokasi Bencana</DialogTitle>
+                            <DialogDescription>{selectedReport?.lokasi || 'Tidak ada informasi lokasi'}</DialogDescription>
+                        </DialogHeader>
+                        <div className="h-[300px] w-full overflow-hidden rounded-md border">
+                            {selectedReport && (
+                                <MapContainer
+                                    center={[selectedReport.latitude, selectedReport.longitude]}
+                                    zoom={13}
+                                    style={{ height: '100%', width: '100%' }}
+                                >
+                                    <TileLayer
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                    />
+                                    <Marker
+                                        position={[selectedReport.latitude, selectedReport.longitude]}
+                                        icon={getDisasterMapIcon(selectedReport.jenis_bencana)}
+                                    >
+                                        <Popup>
+                                            <div className="font-semibold">{selectedReport.judul}</div>
+                                            <div>{selectedReport.lokasi}</div>
+                                        </Popup>
+                                    </Marker>
+                                </MapContainer>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setShowMapDialog(false)}>
+                                Tutup
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Verify Report Dialog */}
+                <Dialog open={isVerifyDialogOpen} onOpenChange={setIsVerifyDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Verifikasi Laporan Bencana</DialogTitle>
+                            <DialogDescription>Verifikasi laporan yang diajukan oleh masyarakat</DialogDescription>
+                        </DialogHeader>
+                        {selectedReport && (
+                            <div className="space-y-4 py-4">
+                                <h3 className="font-medium">{selectedReport.judul}</h3>
+                                <p className="text-sm text-gray-500">
+                                    {selectedReport.jenis_bencana} - {selectedReport.lokasi}
+                                </p>
+
+                                <div className="space-y-2">
+                                    <label htmlFor="verification-status" className="text-sm font-medium">
+                                        Status Verifikasi
+                                    </label>
+                                    <Select
+                                        value={verificationStatus}
+                                        onValueChange={(value: 'diverifikasi' | 'ditolak') => setVerificationStatus(value)}
+                                    >
+                                        <SelectTrigger id="verification-status">
+                                            <SelectValue placeholder="Pilih status verifikasi" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="diverifikasi">
+                                                <div className="flex items-center">
+                                                    <CheckCircleIcon className="mr-2 h-4 w-4 text-green-500" />
+                                                    <span>Verifikasi</span>
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="ditolak">
+                                                <div className="flex items-center">
+                                                    <XCircleIcon className="mr-2 h-4 w-4 text-red-500" />
+                                                    <span>Tolak</span>
+                                                </div>
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label htmlFor="admin-note" className="text-sm font-medium">
+                                        Catatan {verificationStatus === 'ditolak' && <span className="text-red-500">*</span>}
+                                    </label>
+                                    <Textarea
+                                        id="admin-note"
+                                        value={adminNote}
+                                        onChange={(e) => setAdminNote(e.target.value)}
+                                        placeholder={
+                                            verificationStatus === 'ditolak'
+                                                ? 'Berikan alasan penolakan (wajib diisi)'
+                                                : 'Masukkan catatan tambahan (opsional)'
+                                        }
+                                        rows={4}
+                                        required={verificationStatus === 'ditolak'}
+                                    />
+                                    {verificationStatus === 'ditolak' && !adminNote.trim() && (
+                                        <p className="text-xs text-red-500">Catatan admin wajib diisi untuk penolakan laporan</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsVerifyDialogOpen(false)}>
+                                Batal
+                            </Button>
+                            <Button
+                                variant={verificationStatus === 'diverifikasi' ? 'default' : 'destructive'}
+                                onClick={handleVerification}
+                                disabled={(verificationStatus === 'ditolak' && !adminNote.trim()) || processingIds.includes(selectedReport?.id || 0)}
+                            >
+                                {verificationStatus === 'diverifikasi' ? 'Verifikasi' : 'Tolak'} Laporan
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );

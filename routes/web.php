@@ -90,15 +90,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/shelters', fn() => Inertia::render('admin/PoskoForm'))->name('shelters');
         Route::get('/reports', fn() => Inertia::render('admin/ReportManagement'))->name('reports');
         Route::get('/notifications', fn() => Inertia::render('admin/SendNotification'))->name('notifications');
+        Route::get('/map', fn() => Inertia::render('admin/AdminMap'))->name('map');
 
-        // Modified users route to avoid conflict
+        // GET untuk halaman UserManagement & datatable user
         Route::get('/users', fn() => Inertia::render('admin/UserManagement'))->name('users.index');
+        Route::get('/users/data', [UserController::class, 'getUsers'])->name('users.data');
 
-        // Resource routes - keep them after the explicit routes to avoid conflicts
+        // Resource users tanpa index (agar tidak bentrok dengan GET /users di atas)
         Route::resource('users', UserController::class)->except(['index']);
+
+        // Laporans
         Route::put('laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
         Route::put('laporans/{laporan}/reject', [LaporanController::class, 'reject'])->name('laporans.reject');
         Route::delete('laporans/{laporan}', [LaporanController::class, 'destroy'])->name('laporans.destroy');
+
+        // Notifikasi
         Route::post('notifikasi', [NotifikasiController::class, 'send'])->name('notifikasi.send');
     });
 });
@@ -109,6 +115,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/laporan-saya', [LaporanController::class, 'getMyReports'])->name('api.laporan-saya');
     Route::put('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
+    Route::get('/users', [UserController::class, 'index'])->name('api.users.index');
+    
+    // Tambahkan endpoint baru untuk dashboard relawan
+    Route::get('/relawan/dashboard-stats', [StatistikController::class, 'relawanDashboardStats'])
+        ->name('api.relawan.dashboard-stats');
 });
 
 // ------------------------

@@ -84,8 +84,18 @@ export function AppSidebar() {
     } else if (user?.role === 'admin') {
         mainNavItems.push(
             {
+                title: 'Kelola Pengguna',
+                href: '/admin/users',
+                icon: Users,
+            },
+            {
                 title: 'Peta Bencana',
                 href: '/admin/disaster-map',
+                icon: Map,
+            },
+            {
+                title: 'Peta Jalur & Posko Evakuasi',
+                href: '/admin/map',
                 icon: Map,
             },
             {
@@ -102,11 +112,6 @@ export function AppSidebar() {
                 title: 'Laporan Bencana',
                 href: '/admin/reports',
                 icon: ShieldCheck,
-            },
-            {
-                title: 'Kelola Pengguna',
-                href: '/admin/users',
-                icon: Users,
             },
             {
                 title: 'Kirim Notifikasi',
