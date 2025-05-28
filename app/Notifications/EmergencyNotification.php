@@ -7,7 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class EmergencyNotification extends Notification implements ShouldQueue
+class EmergencyNotification extends Notification
 {
     use Queueable;
 
@@ -30,7 +30,7 @@ class EmergencyNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return ['mail'];
     }
 
     /**
@@ -38,11 +38,31 @@ class EmergencyNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject($this->title)
-            ->line('Notifikasi Darurat Bencana:')
-            ->line($this->content)
-            ->line('Harap tetap waspada dan ikuti arahan dari petugas terkait.');
+        $message = new MailMessage;
+        $message->from(config('mail.from.address'), config('mail.from.name'));
+        $message->replyTo('info@geosiaga.com', 'Info GeoSiaga');
+        $message->subject('PENTING: ' . $this->title);
+        $message->greeting('Halo ' . $notifiable->name . ',');
+        $message->line('**INFORMASI PENTING KEBENCANAAN:**');
+        $message->line($this->content);
+        $message->line('**Harap tetap waspada dan ikuti arahan dari petugas terkait.**');
+        $message->action('Lihat Detail di Aplikasi', url('/dashboard'));
+        $message->line('Pesan ini dikirim melalui sistem notifikasi GeoSiaga.');
+        $message->salutation('Salam,<br>Tim GeoSiaga');
+        $message->priority(1);
+        
+        // Setting header khusus untuk menghindari spam filter
+        $message->withSymfonyMessage(function ($message) {
+            $message->getHeaders()
+                ->addTextHeader('X-Priority', '1')
+                ->addTextHeader('X-MSMail-Priority', 'High')
+                ->addTextHeader('Importance', 'High')
+                ->addTextHeader('X-Auto-Response-Suppress', 'OOF, DR, RN, NRN, AutoReply')
+                ->addTextHeader('Precedence', 'urgent')
+                ->addTextHeader('X-Entity-Ref-ID', uniqid('geosiaga-', true));
+        });
+        
+        return $message;
     }
 
     /**
