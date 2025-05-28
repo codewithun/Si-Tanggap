@@ -53,8 +53,14 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        // Arahkan semua ke dashboard umum
-        return redirect()->intended(route('masyarakat.dashboard'));
+        if ($user->isAdmin()) {
+            return redirect()->intended(route('admin.dashboard'));
+        } elseif ($user->isRelawan()) {
+            return redirect()->intended(route('relawan.dashboard'));
+        } else {
+            // Default to masyarakat dashboard
+            return redirect()->intended(route('masyarakat.dashboard'));
+        }
     }
 
     /**
