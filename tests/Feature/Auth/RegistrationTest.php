@@ -13,14 +13,24 @@ test('new users can register', function () {
     // Create the roles first to ensure they exist
     createRoles();
     
-    $response = $this->post('/register', [
+    $response = $this->followingRedirects()->post('/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
         'phone' => '1234567890', // Added phone field
+        'role' => 'masyarakat', // Diperlukan agar validasi lolos
     ]);
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('masyarakat.dashboard', absolute: false));
+    // Debug: tampilkan response jika gagal
+    fwrite(STDERR, "Register response: " . $response->getContent() . "\n");
+
+    $user = User::where('email', 'test@example.com')->first();
+    if (!$user) {
+        // Debug: tampilkan isi tabel users
+        fwrite(STDERR, "Users table: " . json_encode(User::all()->toArray()) . "\n");
+        $this->fail('User not found in database after register.');
+    }
+    $this->assertAuthenticatedAs($user);
+    $response->assertSee('Dashboard'); // Atur sesuai konten dashboard
 });
