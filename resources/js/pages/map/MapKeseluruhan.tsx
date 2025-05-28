@@ -60,7 +60,7 @@ interface EarthquakeFeature {
     };
     geometry: {
         type: 'Point';
-        coordinates: [number, number];  // [longitude, latitude, depth]
+        coordinates: [number, number]; // [longitude, latitude, depth]
     };
 }
 
@@ -202,11 +202,11 @@ export default function MapKeseluruhan() {
     const fetchEarthquakeData = useCallback(async () => {
         try {
             const today = new Date();
-            const endtime = today.toISOString().split("T")[0];
+            const endtime = today.toISOString().split('T')[0];
 
             const pastDate = new Date();
             pastDate.setFullYear(today.getFullYear() - 5);
-            const starttime = pastDate.toISOString().split("T")[0];
+            const starttime = pastDate.toISOString().split('T')[0];
 
             const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${starttime}&endtime=${endtime}&minlatitude=-11&maxlatitude=6.1&minlongitude=94&maxlongitude=141&orderby=time&limit=100`;
 
@@ -214,7 +214,7 @@ export default function MapKeseluruhan() {
             const data = await response.json();
             setEarthquakes(data.features || []);
         } catch (error) {
-            console.error("Gagal ambil data gempa:", error);
+            console.error('Gagal ambil data gempa:', error);
             toast({
                 title: 'Error',
                 description: 'Gagal memuat data gempa USGS',
