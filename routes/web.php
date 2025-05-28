@@ -23,6 +23,7 @@ use App\Http\Controllers\Auth\{
 // ------------------------
 Route::get('/', fn() => Inertia::render('LandingPage'))->name('home');
 Route::get('/map', fn() => Inertia::render('map/MapKeseluruhan'))->name('map');
+Route::get('/peta-bencana', fn() => Inertia::render('masyarakat/BencanaMaps'))->name('bencana-maps');
 
 Route::name('jalur-evakuasi.')->prefix('jalur-evakuasi')->group(function () {
     Route::get('/', [JalurEvakuasiController::class, 'index'])->name('index');
@@ -57,11 +58,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/laporans', [LaporanController::class, 'store'])->name('laporans.store');
 
     // 👤 Masyarakat
-    Route::name('masyarakat.')->prefix('akun-saya')->group(function () {
+    Route::name('masyarakat.')->prefix('masyarakat')->group(function () {
         Route::get('/', fn() => Inertia::render('masyarakat/AkunSaya'))->name('index');
         Route::get('/dashboard', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('dashboard');
         Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('laporan');
         Route::get('/buat-laporan', fn() => Inertia::render('masyarakat/BuatLaporan'))->name('buat-laporan');
+        Route::get('/peta-bencana', fn() => Inertia::render('masyarakat/BencanaMaps'))->name('peta-bencana');
     });
 
     // 🦺 Relawan

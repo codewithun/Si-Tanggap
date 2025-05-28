@@ -224,7 +224,8 @@ class LaporanController extends Controller
      */
     public function getMyReports(Request $request)
     {
-        $query = Laporan::where('user_id', $request->user()->id)
+        $user = $request->user();
+        $query = Laporan::where('user_id', $user->id)
             ->orderBy('created_at', 'desc');
 
         // Filter berdasarkan status jika parameter ada
@@ -232,7 +233,25 @@ class LaporanController extends Controller
             $query->where('status', $request->status);
         }
 
-        $laporans = $query->paginate(10);
-        return response()->json($laporans);
+        $laporans = $query->get();
+
+        // Statistik
+        $all = Laporan::where('user_id', $user->id);
+        $statistics = [
+            'totalLaporan' => $all->count(),
+            'menunggu' => (clone $all)->where('status', 'menunggu')->count(),
+            'diverifikasi' => (clone $all)->where('status', 'diverifikasi')->count(),
+            'ditolak' => (clone $all)->where('status', 'ditolak')->count(),
+            'tingkatResiko' => [
+                'rendah' => (clone $all)->where('tingkat_bahaya', 'rendah')->count(),
+                'sedang' => (clone $all)->where('tingkat_bahaya', 'sedang')->count(),
+                'tinggi' => (clone $all)->where('tingkat_bahaya', 'tinggi')->count(),
+            ],
+        ];
+
+        return response()->json([
+            'data' => $laporans,
+            'statistics' => $statistics,
+        ]);
     }
 }
