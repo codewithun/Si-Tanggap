@@ -5,9 +5,9 @@ import React, { useEffect, useState } from 'react';
 interface Report {
     id: number;
     jenis_bencana: string;
-    tanggal: string;
+    created_at: string;
     lokasi: string;
-    status: 'terverifikasi' | 'belum_terverifikasi' | 'ditolak';
+    status: 'menunggu' | 'diverifikasi' | 'ditolak';
     kota_kabupaten: string;
 }
 
@@ -20,8 +20,9 @@ const RecentReports: React.FC = () => {
         const fetchReports = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get('/laporan-bencana');
-                setReports(response.data.slice(0, 5)); // Get only the 5 most recent reports
+                const response = await axios.get('/laporans');
+                // Extract the data array from the response and get the first 5 items
+                setReports(response.data.data?.slice(0, 5) || []);
                 setError(null);
             } catch (err) {
                 console.error('Failed to fetch reports:', err);
@@ -30,26 +31,26 @@ const RecentReports: React.FC = () => {
                 setReports([
                     {
                         id: 1,
-                        jenis_bencana: 'Banjir',
-                        tanggal: '2025-05-20',
+                        jenis_bencana: 'banjir',
+                        created_at: '2025-05-20',
                         lokasi: 'Jl. Kebon Jeruk No. 10',
-                        status: 'terverifikasi',
+                        status: 'diverifikasi',
                         kota_kabupaten: 'Jakarta Barat',
                     },
                     {
                         id: 2,
-                        jenis_bencana: 'Tanah Longsor',
-                        tanggal: '2025-05-19',
+                        jenis_bencana: 'longsor',
+                        created_at: '2025-05-19',
                         lokasi: 'Desa Sukamaju',
-                        status: 'terverifikasi',
+                        status: 'diverifikasi',
                         kota_kabupaten: 'Bogor',
                     },
                     {
                         id: 3,
-                        jenis_bencana: 'Kebakaran',
-                        tanggal: '2025-05-18',
+                        jenis_bencana: 'kebakaran',
+                        created_at: '2025-05-18',
                         lokasi: 'Kawasan Industri Pulogadung',
-                        status: 'belum_terverifikasi',
+                        status: 'menunggu',
                         kota_kabupaten: 'Jakarta Timur',
                     },
                 ]);
@@ -63,9 +64,9 @@ const RecentReports: React.FC = () => {
 
     const getStatusBadgeClass = (status: string) => {
         switch (status) {
-            case 'terverifikasi':
+            case 'diverifikasi':
                 return 'bg-green-100 text-green-800';
-            case 'belum_terverifikasi':
+            case 'menunggu':
                 return 'bg-yellow-100 text-yellow-800';
             case 'ditolak':
                 return 'bg-red-100 text-red-800';
@@ -76,9 +77,9 @@ const RecentReports: React.FC = () => {
 
     const getStatusLabel = (status: string) => {
         switch (status) {
-            case 'terverifikasi':
+            case 'diverifikasi':
                 return 'Terverifikasi';
-            case 'belum_terverifikasi':
+            case 'menunggu':
                 return 'Menunggu Verifikasi';
             case 'ditolak':
                 return 'Ditolak';
@@ -123,7 +124,7 @@ const RecentReports: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-500">
-                                                {new Date(report.tanggal).toLocaleDateString('id-ID', {
+                                                {new Date(report.created_at).toLocaleDateString('id-ID', {
                                                     day: 'numeric',
                                                     month: 'long',
                                                     year: 'numeric',
