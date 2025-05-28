@@ -10,7 +10,8 @@ use App\Http\Controllers\{
     StatistikController,
     TitikBencanaController,
     NotifikasiController,
-    RegionController
+    RegionController,
+    BeritaScraperController
 };
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Auth\{
@@ -46,6 +47,9 @@ Route::name('laporans.')->prefix('laporans')->group(function () {
 Route::get('/news', function () {
     return Inertia::render('NewsPage');
 })->name('news');
+
+// API endpoint for BNPB news data
+Route::get('/berita-bnpb', [BeritaScraperController::class, 'index'])->name('berita.bnpb');
 
 // ------------------------
 // 🔐 Protected Web Routes
