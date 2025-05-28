@@ -493,7 +493,13 @@ const AboutSection: React.FC = () => {
                     <div className="flex flex-wrap justify-between">
                         {/* Company info */}
                         <div className="mb-8 w-full md:mb-0 md:w-1/4">
-                            <h3 className="mb-4 text-lg font-bold text-gray-900">GeoSiaga</h3>
+                            <div className="flex items-center gap-2 mb-4">
+                                <img src="/img/logo.png" alt="GeoSiaga Logo" className="h-8 w-auto" />
+                                <h3 className="text-lg font-bold">
+                                    <span className="text-black">Geo</span>
+                                    <span className="text-blue-400">Siaga</span>
+                                </h3>
+                            </div>
                             <p className="text-gray-600">Platform digital untuk monitoring, pelaporan, dan koordinasi tanggap bencana.</p>
                         </div>
 

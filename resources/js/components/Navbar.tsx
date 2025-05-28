@@ -85,8 +85,12 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated = false, userRole = nul
                 <div className="flex h-16 items-center justify-between">
                     {/* Logo */}
                     <div className="flex-shrink-0">
-                        <Link href="/" className="flex items-center">
-                            <span className="text-xl font-bold text-blue-600">GeoSiaga</span>
+                        <Link href="/" className="flex items-center gap-2">
+                            <img src="/img/logo.png" alt="GeoSiaga Logo" className="h-8 w-auto" />
+                            <span className="text-xl font-bold">
+                                <span className="text-black">Geo</span>
+                                <span className="text-blue-400">Siaga</span>
+                            </span>
                         </Link>
                     </div>
 
