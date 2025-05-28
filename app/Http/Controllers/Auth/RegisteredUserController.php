@@ -35,17 +35,37 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
             'password' => ['required', 'confirmed', 'min:8'],
             'phone' => 'nullable|string|max:20',
+            'role' => 'required|string|in:masyarakat,relawan',
+            'id_card' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'organization' => 'nullable|string|max:255',
+            'experience' => 'nullable|string|max:255',
+            'motivation' => 'nullable|string|max:255',
         ]);
 
-        $user = User::create([
+        $isRelawan = $request->role === 'relawan';
+
+        $userData = [
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
-        ]);
+        ];
 
-        // Assign default role using Spatie's method
-        $user->assignRole('masyarakat');
+        if ($isRelawan) {
+            // Handle file upload jika ada
+            if ($request->hasFile('id_card')) {
+                $path = $request->file('id_card')->store('public/id-cards');
+                $userData['id_card_path'] = \Illuminate\Support\Facades\Storage::url($path);
+            }
+            $userData['organization'] = $request->organization;
+            $userData['experience'] = $request->experience;
+            $userData['motivation'] = $request->motivation;
+        }
+
+        $user = User::create($userData);
+
+        // Assign role sesuai request
+        $user->assignRole($request->role ?? 'masyarakat');
 
         event(new Registered($user));
 
