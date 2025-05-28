@@ -15,8 +15,8 @@ type TabType = 'semua' | StatusType;
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Dashboard Masyarakat',
-        href: '/dashboard-masyarakat',
+        title: 'Dashboard',
+        href: '/masyarakat/laporan-saya',
     },
 ];
 
@@ -180,7 +180,7 @@ export default function MasyarakatDashboard() {
             <div className="container mx-auto max-w-[95%] space-y-8 px-2 py-6 lg:max-w-none">
                 <Card className="w-full">
                     <CardHeader className="pb-4">
-                        <CardTitle className="text-2xl font-semibold">Dashboard Masyarakat</CardTitle>
+                        <CardTitle className="text-2xl font-semibold">Dashboard</CardTitle>
                         <CardDescription>
                             Selamat datang di Si-Tanggap. Di sini Anda dapat melihat dan mengelola laporan bencana yang pernah Anda kirimkan.
                         </CardDescription>

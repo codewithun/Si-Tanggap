@@ -62,6 +62,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', fn() => Inertia::render('masyarakat/AkunSaya'))->name('index');
         Route::get('/dashboard', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('dashboard');
         Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('laporan');
+        // Alias agar route('masyarakat.dashboard') mengarah ke /masyarakat/laporan-saya
+        Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('dashboard');
         Route::get('/buat-laporan', fn() => Inertia::render('masyarakat/BuatLaporan'))->name('buat-laporan');
         Route::get('/peta-bencana', fn() => Inertia::render('masyarakat/BencanaMaps'))->name('peta-bencana');
     });
