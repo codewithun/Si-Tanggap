@@ -433,8 +433,8 @@ export default function EvacuationRouteForm() {
                             <CardDescription>Jalur evakuasi yang telah ditambahkan</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="overflow-auto">
-                                <div className="min-w-full rounded-md border">
+                            <div className="rounded-md border">
+                                <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead className="bg-gray-50">
                                             <tr>

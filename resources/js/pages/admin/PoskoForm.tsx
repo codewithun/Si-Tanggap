@@ -58,7 +58,7 @@ interface PaginationData {
 }
 
 const shelterIcon = icon({
-    iconUrl: '/icons/shelter-marker.svg',
+    iconUrl: '/icons/posko.png',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
@@ -503,19 +503,19 @@ export default function PoskoForm() {
                         <CardContent>
                             <div className="overflow-auto">
                                 <div className="min-w-full rounded-md border">
-                                    <table className="w-full text-sm">
+                                    <table className="w-full table-fixed text-sm">
                                         <thead className="bg-gray-50">
                                             <tr>
-                                                <th className="px-4 py-2 text-left font-medium">Nama</th>
-                                                <th className="px-4 py-2 text-left font-medium">Jenis</th>
-                                                <th className="hidden px-4 py-2 text-left font-medium sm:table-cell">Status</th>
-                                                <th className="hidden px-4 py-2 text-left font-medium sm:table-cell">Kapasitas</th>
-                                                <th className="hidden px-4 py-2 text-left font-medium md:table-cell">Alamat</th>
-                                                <th className="hidden px-4 py-2 text-left font-medium lg:table-cell">Kontak</th>
-                                                <th className="hidden px-4 py-2 text-left font-medium lg:table-cell">Pembuat</th>
-                                                <th className="hidden px-4 py-2 text-left font-medium xl:table-cell">Dibuat</th>
-                                                <th className="hidden px-4 py-2 text-left font-medium xl:table-cell">Diperbarui</th>
-                                                <th className="px-4 py-2 text-center font-medium">Aksi</th>
+                                                <th className="w-[15%] px-4 py-2 text-left font-medium">Nama</th>
+                                                <th className="w-[10%] px-4 py-2 text-left font-medium">Jenis</th>
+                                                <th className="hidden w-[10%] px-4 py-2 text-left font-medium sm:table-cell">Status</th>
+                                                <th className="hidden w-[10%] px-4 py-2 text-left font-medium sm:table-cell">Kapasitas</th>
+                                                <th className="hidden w-[20%] px-4 py-2 text-left font-medium md:table-cell">Alamat</th>
+                                                <th className="hidden w-[10%] px-4 py-2 text-left font-medium lg:table-cell">Kontak</th>
+                                                <th className="hidden w-[10%] px-4 py-2 text-left font-medium lg:table-cell">Pembuat</th>
+                                                <th className="hidden w-[8%] px-4 py-2 text-left font-medium xl:table-cell">Dibuat</th>
+                                                <th className="hidden w-[8%] px-4 py-2 text-left font-medium xl:table-cell">Diperbarui</th>
+                                                <th className="w-[10%] px-4 py-2 text-center font-medium">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y">
@@ -539,16 +539,18 @@ export default function PoskoForm() {
                                                 poskoList.map((posko) => (
                                                     <tr key={posko.id}>
                                                         <td className="px-4 py-2">
-                                                            <span className="block max-w-[120px] truncate sm:max-w-none">{posko.nama}</span>
+                                                            <div className="max-w-full truncate" title={posko.nama}>
+                                                                {posko.nama}
+                                                            </div>
                                                         </td>
                                                         <td className="px-4 py-2">
-                                                            <span className="rounded-full bg-gray-100 px-2 py-1 text-xs whitespace-nowrap">
+                                                            <span className="inline-block max-w-full truncate rounded-full bg-gray-100 px-2 py-1 text-xs whitespace-nowrap">
                                                                 {posko.jenis_posko}
                                                             </span>
                                                         </td>
                                                         <td className="hidden px-4 py-2 sm:table-cell">
                                                             <span
-                                                                className={`rounded-full px-2 py-1 text-xs whitespace-nowrap ${
+                                                                className={`inline-block max-w-full truncate rounded-full px-2 py-1 text-xs whitespace-nowrap ${
                                                                     posko.status === 'aktif'
                                                                         ? 'bg-green-100 text-green-800'
                                                                         : 'bg-red-100 text-red-800'
@@ -557,19 +559,33 @@ export default function PoskoForm() {
                                                                 {posko.status}
                                                             </span>
                                                         </td>
-                                                        <td className="hidden px-4 py-2 sm:table-cell">{posko.kapasitas} orang</td>
+                                                        <td className="hidden px-4 py-2 sm:table-cell">
+                                                            <div className="max-w-full truncate">{posko.kapasitas} orang</div>
+                                                        </td>
                                                         <td className="hidden px-4 py-2 md:table-cell">
-                                                            <span className="block max-w-[150px] truncate" title={posko.alamat}>
+                                                            <div className="max-w-full truncate" title={posko.alamat}>
                                                                 {posko.alamat}
-                                                            </span>
+                                                            </div>
                                                         </td>
-                                                        <td className="hidden px-4 py-2 lg:table-cell">{posko.kontak || '-'}</td>
-                                                        <td className="hidden px-4 py-2 lg:table-cell">{posko.user?.name || 'Unknown'}</td>
-                                                        <td className="hidden px-4 py-2 text-gray-500 xl:table-cell">
-                                                            {new Date(posko.created_at).toLocaleDateString()}
+                                                        <td className="hidden px-4 py-2 lg:table-cell">
+                                                            <div className="max-w-full truncate" title={posko.kontak || '-'}>
+                                                                {posko.kontak || '-'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="hidden px-4 py-2 lg:table-cell">
+                                                            <div className="max-w-full truncate" title={posko.user?.name || 'Unknown'}>
+                                                                {posko.user?.name || 'Unknown'}
+                                                            </div>
                                                         </td>
                                                         <td className="hidden px-4 py-2 text-gray-500 xl:table-cell">
-                                                            {new Date(posko.updated_at).toLocaleDateString()}
+                                                            <div className="max-w-full truncate">
+                                                                {new Date(posko.created_at).toLocaleDateString()}
+                                                            </div>
+                                                        </td>
+                                                        <td className="hidden px-4 py-2 text-gray-500 xl:table-cell">
+                                                            <div className="max-w-full truncate">
+                                                                {new Date(posko.updated_at).toLocaleDateString()}
+                                                            </div>
                                                         </td>
                                                         <td className="px-4 py-2 text-center">
                                                             <div className="flex justify-center gap-2">
