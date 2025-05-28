@@ -42,6 +42,11 @@ Route::name('laporans.')->prefix('laporans')->group(function () {
     Route::get('/{laporan}', [LaporanController::class, 'show'])->name('show');
 });
 
+// Add this route to the public routes section
+Route::get('/news', function () {
+    return Inertia::render('NewsPage');
+})->name('news');
+
 // ------------------------
 // 🔐 Protected Web Routes
 // ------------------------

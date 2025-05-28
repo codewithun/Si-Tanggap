@@ -33,10 +33,7 @@ interface MapComponentProps {
 
 // Custom marker icons
 const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [25, 41], status?: 'diverifikasi' | 'menunggu' | 'ditolak') => {
-    const color = status === 'diverifikasi' ? '#22c55e' 
-                : status === 'menunggu' ? '#eab308'
-                : status === 'ditolak' ? '#ef4444'
-                : undefined;
+    const color = status === 'diverifikasi' ? '#22c55e' : status === 'menunggu' ? '#eab308' : status === 'ditolak' ? '#ef4444' : undefined;
 
     const html = `
         <div style="position: relative; filter: drop-shadow(0 0 4px ${color || 'transparent'})">
@@ -48,7 +45,7 @@ const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [25, 41]
         html,
         className: 'custom-marker-icon',
         iconSize,
-        iconAnchor: [iconSize[0]/2, iconSize[1]],
+        iconAnchor: [iconSize[0] / 2, iconSize[1]],
         popupAnchor: [0, -iconSize[1]],
     });
 };
