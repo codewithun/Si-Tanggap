@@ -207,4 +207,22 @@ class UserController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get users data for AJAX requests
+     */
+    public function getUsers()
+    {
+        $users = User::all()->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->getRoleNames()->first(),
+                'status' => true // Atau sesuaikan dengan field status jika ada
+            ];
+        });
+        
+        return response()->json(['data' => $users]);
+    }
 }

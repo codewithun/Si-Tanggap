@@ -8,8 +8,25 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import 'leaflet/dist/leaflet.css';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// Gunakan icon default Leaflet agar marker tidak error 404
+const customIcon = L.icon({
+    iconUrl: markerIcon,
+    iconRetinaUrl: markerIcon2x,
+    shadowUrl: markerShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -20,37 +37,34 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 type BencanaType = 'banjir' | 'longsor' | 'gempa' | 'tsunami' | 'kebakaran' | 'angin_topan' | 'kekeringan' | 'lainnya';
 
+const MapClickHandler = ({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) => {
+    useMapEvents({
+        click(e) {
+            onLocationSelect(e.latlng.lat, e.latlng.lng);
+        },
+    });
+    return null;
+};
+
 export default function BuatLaporan() {
     const { auth } = usePage<SharedData>().props;
     const mapRef = useRef<HTMLDivElement>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [selectedPosition, setSelectedPosition] = useState<[number, number] | null>(null);
 
     const [formData, setFormData] = useState({
         judul: '',
         jenis_bencana: '' as BencanaType,
         deskripsi: '',
         lokasi: '',
-        latitude: 0,
-        longitude: 0,
+        latitude: -6.200000, // Default to Jakarta's coordinates
+        longitude: 106.816666,
         foto: null as File | null,
     });
 
-    // Initialize map if needed
+    // Map initialization if needed in the future
     useEffect(() => {
-        // Here you would initialize your map if you have one
-        // For example using Leaflet or Google Maps
-        // This is a placeholder - you'll need to implement actual map functionality
-        const initMap = () => {
-            // Map initialization code would go here
-            console.log('Map would be initialized here');
-        };
-
-        initMap();
-
-        return () => {
-            // Cleanup map if needed
-        };
     }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -74,6 +88,15 @@ export default function BuatLaporan() {
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleLocationSelect = (lat: number, lng: number) => {
+        setSelectedPosition([lat, lng]);
+        setFormData((prev) => ({
+            ...prev,
+            latitude: lat,
+            longitude: lng,
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -213,13 +236,25 @@ export default function BuatLaporan() {
 
                             <div className="grid gap-2">
                                 <Label>Lokasi di Peta</Label>
-                                <div className="h-64 rounded-md border" ref={mapRef}>
-                                    {/* Map would be rendered here */}
-                                    <div className="flex h-full items-center justify-center bg-slate-100">
-                                        <p className="text-muted-foreground">Klik pada peta untuk menentukan lokasi</p>
-                                    </div>
+                                <div className="h-[400px] rounded-md border overflow-hidden" ref={mapRef}>
+                                    <MapContainer
+                                        center={[-6.200000, 106.816666]}
+                                        zoom={13}
+                                        scrollWheelZoom={false}
+                                        className="h-full w-full"
+                                        whenReady={() => {
+                                            console.log('Map is ready');
+                                        }}
+                                    >
+                                        <TileLayer
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        />
+                                        <MapClickHandler onLocationSelect={handleLocationSelect} />
+                                        {selectedPosition && <Marker position={selectedPosition} icon={customIcon} />}
+                                    </MapContainer>
                                 </div>
-
+                                <p className="text-sm text-gray-500">Klik pada peta untuk menentukan lokasi kejadian</p>
                                 <div className="mt-2 grid grid-cols-2 gap-4">
                                     <div>
                                         <Label htmlFor="latitude">Latitude</Label>
@@ -227,10 +262,10 @@ export default function BuatLaporan() {
                                             id="latitude"
                                             name="latitude"
                                             type="number"
-                                            value={formData.latitude || ''}
+                                            value={formData.latitude}
                                             onChange={handleInputChange}
-                                            step="any"
                                             required
+                                            step="any"
                                         />
                                     </div>
                                     <div>
@@ -239,10 +274,10 @@ export default function BuatLaporan() {
                                             id="longitude"
                                             name="longitude"
                                             type="number"
-                                            value={formData.longitude || ''}
+                                            value={formData.longitude}
                                             onChange={handleInputChange}
-                                            step="any"
                                             required
+                                            step="any"
                                         />
                                     </div>
                                 </div>

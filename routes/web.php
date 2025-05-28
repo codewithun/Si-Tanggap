@@ -24,6 +24,7 @@ use App\Http\Controllers\Auth\{
 // ------------------------
 Route::get('/', fn() => Inertia::render('LandingPage'))->name('home');
 Route::get('/map', fn() => Inertia::render('map/MapKeseluruhan'))->name('map');
+Route::get('/peta-bencana', fn() => Inertia::render('masyarakat/BencanaMaps'))->name('bencana-maps');
 
 Route::name('jalur-evakuasi.')->prefix('jalur-evakuasi')->group(function () {
     Route::get('/', [JalurEvakuasiController::class, 'index'])->name('index');
@@ -61,11 +62,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/laporans', [LaporanController::class, 'store'])->name('laporans.store');
 
     // 👤 Masyarakat
-    Route::name('masyarakat.')->prefix('akun-saya')->group(function () {
+    Route::name('masyarakat.')->prefix('masyarakat')->group(function () {
         Route::get('/', fn() => Inertia::render('masyarakat/AkunSaya'))->name('index');
         Route::get('/dashboard', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('dashboard');
         Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('laporan');
+        // Alias agar route('masyarakat.dashboard') mengarah ke /masyarakat/laporan-saya
+        Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('dashboard');
         Route::get('/buat-laporan', fn() => Inertia::render('masyarakat/BuatLaporan'))->name('buat-laporan');
+        Route::get('/peta-bencana', fn() => Inertia::render('masyarakat/BencanaMaps'))->name('peta-bencana');
     });
 
     // 🦺 Relawan
@@ -94,15 +98,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/shelters', fn() => Inertia::render('admin/PoskoForm'))->name('shelters');
         Route::get('/reports', fn() => Inertia::render('admin/ReportManagement'))->name('reports');
         Route::get('/notifications', fn() => Inertia::render('admin/SendNotification'))->name('notifications');
+        Route::get('/map', fn() => Inertia::render('admin/AdminMap'))->name('map');
 
-        // Modified users route to avoid conflict
+        // GET untuk halaman UserManagement & datatable user
         Route::get('/users', fn() => Inertia::render('admin/UserManagement'))->name('users.index');
+        Route::get('/users/data', [UserController::class, 'getUsers'])->name('users.data');
 
-        // Resource routes - keep them after the explicit routes to avoid conflicts
+        // Resource users tanpa index (agar tidak bentrok dengan GET /users di atas)
         Route::resource('users', UserController::class)->except(['index']);
+
+        // Laporans
         Route::put('laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
         Route::put('laporans/{laporan}/reject', [LaporanController::class, 'reject'])->name('laporans.reject');
         Route::delete('laporans/{laporan}', [LaporanController::class, 'destroy'])->name('laporans.destroy');
+
+        // Notifikasi
         Route::post('notifikasi', [NotifikasiController::class, 'send'])->name('notifikasi.send');
     });
 });
@@ -113,6 +123,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/laporan-saya', [LaporanController::class, 'getMyReports'])->name('api.laporan-saya');
     Route::put('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
+    Route::get('/users', [UserController::class, 'index'])->name('api.users.index');
+    
+    // Tambahkan endpoint baru untuk dashboard relawan
+    Route::get('/relawan/dashboard-stats', [StatistikController::class, 'relawanDashboardStats'])
+        ->name('api.relawan.dashboard-stats');
 });
 
 // ------------------------

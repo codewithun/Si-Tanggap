@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css';
 import React from 'react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMapEvents } from 'react-leaflet';
 import ErrorBoundary from './ErrorBoundary';
+import LegendControl from './LegendControl';
 
 interface MapComponentProps {
     height?: string;
@@ -144,6 +145,17 @@ const MapComponent: React.FC<MapComponentProps> = ({
         return <>{children}</>;
     };
 
+    const icons = [
+        { icon: 'banjir', label: 'Banjir' },
+        { icon: 'gempa', label: 'Gempa Bumi' },
+        { icon: 'tsunami', label: 'Tsunami' },
+        { icon: 'longsor', label: 'Tanah Longsor' },
+        { icon: 'kebakaran', label: 'Kebakaran' },
+        { icon: 'kekeringan', label: 'Kekeringan' },
+        { icon: 'angin-topan', label: 'Angin Topan' },
+        { icon: 'lainnya', label: 'Bencana Lainnya' },
+    ];
+
     return (
         <div style={{ height, width: '100%' }} className={`overflow-hidden rounded-lg shadow-lg ${className}`}>
             <ErrorBoundary
@@ -197,6 +209,9 @@ const MapComponent: React.FC<MapComponentProps> = ({
                                     </Popup>
                                 </Polyline>
                             ))}
+
+                        {/* Add Legend Control */}
+                        <LegendControl position="topleft" icons={icons} />
 
                         {editable && onClick && <MapClickHandler onClick={onClick} />}
                     </MapWithBoundaries>

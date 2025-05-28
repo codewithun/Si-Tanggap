@@ -1,27 +1,15 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
-import AppLayout from '@/layouts/app-layout';
 import axios from '@/lib/axios';
-import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
 import L from 'leaflet';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
-
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard Relawan',
-        href: '/relawan/dashboard',
-    },
-    {
-        title: 'Peta Bencana',
-        href: '/relawan/bencana-map',
-    },
-];
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMapEvents } from 'react-leaflet';
 
 // Define risk levels for filtering
 type RiskLevel = 'tinggi' | 'sedang' | 'rendah' | 'semua';
@@ -93,7 +81,7 @@ interface Posko {
 }
 
 const disasterIcon = L.icon({
-    iconUrl: '/icons/gempa.svg',
+    iconUrl: '/icons/gempa.svg', // Changed from '/icons/disaster-marker.svg' to match relawan version
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
@@ -120,13 +108,36 @@ function disasterToHazardLayer(jenisBencana: string): HazardLayerType {
     return mapping[jenisBencana] || 'multi_bahaya';
 }
 
+function MarkerCreator({
+    position,
+    setPosition,
+}: {
+    position: [number, number] | null;
+    setPosition: React.Dispatch<React.SetStateAction<[number, number] | null>>;
+}) {
+    useMapEvents({
+        click: (e) => {
+            setPosition([e.latlng.lat, e.latlng.lng]);
+        },
+    });
+    return position ? <Marker position={position} icon={disasterIcon} /> : null;
+}
+
 export default function BencanaMap() {
     const [bencanaPoints, setBencanaPoints] = useState<Bencana[]>([]);
     const [earthquakes, setEarthquakes] = useState<EarthquakeFeature[]>([]);
     const [jalurEvakuasi, setJalurEvakuasi] = useState<JalurEvakuasi[]>([]);
     const [posko, setPosko] = useState<Posko[]>([]);
     const [loading, setLoading] = useState(true);
-    const { toast } = useToast();
+    const [refreshCount, setRefreshCount] = useState(0);
+
+    // Form state
+    const [judul, setJudul] = useState('');
+    const [jenisBencana, setJenisBencana] = useState('');
+    const [deskripsi, setDeskripsi] = useState('');
+    const [lokasi, setLokasi] = useState('');
+    const [position, setPosition] = useState<[number, number] | null>(null);
+    const [saving, setSaving] = useState(false);
 
     // Map controls from MapKeseluruhan
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
@@ -140,6 +151,8 @@ export default function BencanaMap() {
 
     // Add filter for shelter types
     const [shelterTypeFilter, setShelterTypeFilter] = useState<string | 'all'>('all');
+
+    const { toast } = useToast();
 
     // Get risk level based on description or other factors
     const getRiskLevel = (disaster: Bencana): RiskLevel => {
@@ -185,7 +198,6 @@ export default function BencanaMap() {
                 setBencanaPoints([]);
             }
         } catch (error: unknown) {
-            console.error('Failed to fetch disaster points:', error);
             const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data titik bencana';
 
             toast({
@@ -268,7 +280,7 @@ export default function BencanaMap() {
             .finally(() => {
                 setLoading(false);
             });
-    }, [fetchBencanaPoints, fetchEarthquakeData, fetchJalurEvakuasi, fetchPosko]);
+    }, [fetchBencanaPoints, fetchEarthquakeData, fetchJalurEvakuasi, fetchPosko, refreshCount]);
 
     // Transform posko markers with better formatting
     const shelterMarkers = useMemo(() => {
@@ -292,7 +304,6 @@ export default function BencanaMap() {
             }));
     }, [posko, showShelters, shelterTypeFilter]);
 
-    // Combine with other markers
     // Define marker interface to include optional jenis_posko
     interface MapMarker {
         id: string;
@@ -303,7 +314,13 @@ export default function BencanaMap() {
         type: string;
         description: string;
         jenis_posko?: string;
+        originalData?: Bencana; // Changed from any to Bencana
     }
+
+    const [editMode, setEditMode] = useState(false);
+    const [selectedDisaster, setSelectedDisaster] = useState<Bencana | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
 
     const allMarkers = useMemo(
         () =>
@@ -317,6 +334,7 @@ export default function BencanaMap() {
                               jenis_bencana: disaster.jenis_bencana,
                               status: disaster.status as 'diverifikasi' | 'menunggu' | 'ditolak',
                               type: 'disaster',
+                              originalData: disaster, // Store the original data for edit/delete operations
                               description: `
                         Jenis: ${disaster.jenis_bencana || 'Tidak diketahui'}
                         Tanggal: ${new Date(disaster.created_at).toLocaleDateString('id-ID')}
@@ -399,7 +417,7 @@ export default function BencanaMap() {
     // Update markers when filters change
     useEffect(() => {
         filterMarkers();
-    }, [filterMarkers, selectedHazardLayers, showShelters, showDisasters]); // Added showShelters and showDisasters dependencies
+    }, [filterMarkers, selectedHazardLayers, showShelters, showDisasters]);
 
     // Get tile layer URL based on map type
     const getTileLayerUrl = () => {
@@ -433,49 +451,191 @@ export default function BencanaMap() {
         return disasterIcon;
     };
 
+    // Function to handle editing a disaster
+    const handleEditDisaster = (disaster: Bencana) => {
+        setSelectedDisaster(disaster);
+        setJudul(disaster.judul);
+        setJenisBencana(disaster.jenis_bencana);
+        setDeskripsi(disaster.deskripsi);
+        setLokasi(disaster.lokasi);
+        setPosition([disaster.latitude, disaster.longitude]);
+        setEditMode(true);
+
+        // Scroll to form
+        setTimeout(() => {
+            const formElement = document.getElementById('disaster-form');
+            if (formElement) {
+                formElement.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, 100);
+    };
+
+    // Function to handle deleting a disaster
+    const handleDeleteDisaster = async (id: number) => {
+        try {
+            setSaving(true);
+            await axios.delete(`/laporans/${id}`);
+            toast({ title: 'Berhasil', description: 'Bencana berhasil dihapus.' });
+            setRefreshCount((c) => c + 1);
+            setShowDeleteConfirm(false);
+            setDeletingId(null);
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            toast({
+                title: 'Error',
+                description: axiosError.response?.data?.message || 'Gagal menghapus bencana',
+                variant: 'destructive',
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!judul || !jenisBencana || !deskripsi || !lokasi || !position) {
+            toast({
+                title: 'Peringatan',
+                description: 'Lengkapi semua data bencana dan tentukan lokasi di peta!',
+                variant: 'destructive',
+            });
+            return;
+        }
+        setSaving(true);
+        try {
+            const disasterData = {
+                judul,
+                jenis_bencana: jenisBencana,
+                deskripsi,
+                lokasi,
+                latitude: position[0],
+                longitude: position[1],
+            };
+
+            if (editMode && selectedDisaster) {
+                // Update existing disaster
+                await axios.put(`/laporans/${selectedDisaster.id}`, disasterData);
+                toast({ title: 'Berhasil', description: 'Bencana berhasil diperbarui.' });
+            } else {
+                // Create new disaster
+                await axios.post('/laporans', disasterData);
+                toast({ title: 'Berhasil', description: 'Bencana berhasil ditambahkan & menunggu verifikasi.' });
+            }
+
+            // Reset form
+            resetForm();
+            setRefreshCount((c) => c + 1);
+        } catch (error: unknown) {
+            const axiosError = error as { response?: { data?: { message?: string } } };
+            toast({
+                title: 'Error',
+                description: axiosError.response?.data?.message || 'Gagal menyimpan bencana',
+                variant: 'destructive',
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Function to reset the form
+    const resetForm = () => {
+        setJudul('');
+        setJenisBencana('');
+        setDeskripsi('');
+        setLokasi('');
+        setPosition(null);
+        setEditMode(false);
+        setSelectedDisaster(null);
+    };
+
+    // Add custom CSS for wider popups when component mounts
+    useEffect(() => {
+        // Add custom style for wider popups
+        const style = document.createElement('style');
+        style.textContent = `
+            .leaflet-popup-content {
+                min-width: 260px !important;
+                max-width: 300px;
+            }
+            .disaster-popup-content {
+                white-space: pre-line;
+                line-height: 1.5;
+            }
+            .disaster-popup-content div {
+                margin-bottom: 2px;
+            }
+            /* Control map z-index to prevent overlapping UI elements */
+            .leaflet-container {
+                z-index: 1 !important;
+            }
+            .leaflet-pane,
+            .leaflet-control,
+            .leaflet-top,
+            .leaflet-bottom {
+                z-index: 400 !important;
+            }
+            /* Higher z-index for form dialogs and overlays */
+            .dialog-overlay,
+            .form-overlay {
+                z-index: 500 !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
+
+    // Format description for better readability
+    const formatDescription = (description: string) => {
+        const lines = description
+            .trim()
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+
+        return (
+            <div className="disaster-popup-content">
+                {lines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                ))}
+            </div>
+        );
+    };
+
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Peta Bencana & Evakuasi" />
-            <div className="space-y-4 p-6">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold sm:text-2xl">Peta Bencana & Evakuasi</h2>
-                    <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => setSidebarOpen((v) => !v)}>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="mr-2"
-                            >
-                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                <path d="M9 3v18M3 9h18" />
-                            </svg>
-                            Layer
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                Promise.all([fetchBencanaPoints(), fetchEarthquakeData(), fetchJalurEvakuasi(), fetchPosko()])
-                                    .catch(() => {
-                                        // Error handling is done in the individual functions
-                                    })
-                                    .finally(() => {
-                                        setLoading(false);
-                                    });
-                            }}
-                            disabled={loading}
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold sm:text-2xl">Peta Titik Bencana</h2>
+                <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => setSidebarOpen((v) => !v)}>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="mr-2"
                         >
-                            {loading ? 'Memuat...' : 'Refresh'}
-                        </Button>
-                    </div>
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <path d="M9 3v18M3 9h18" />
+                        </svg>
+                        Layer
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setRefreshCount((c) => c + 1)} disabled={loading}>
+                        {loading ? 'Memuat...' : 'Refresh'}
+                    </Button>
                 </div>
+            </div>
+
+            {/* Peta Titik Bencana */}
+            <div className="space-y-2 sm:space-y-4">
+                <h3 className="text-lg font-semibold">Peta Titik Bencana Terverifikasi</h3>
 
                 <div className="relative overflow-hidden">
                     {/* Main Map Area with dynamic padding */}
@@ -486,6 +646,13 @@ export default function BencanaMap() {
                     >
                         {loading ? (
                             <div className="h-full w-full animate-pulse rounded-lg bg-gray-200"></div>
+                        ) : bencanaPoints.length === 0 && earthquakes.length === 0 && posko.length === 0 && validPaths.length === 0 ? (
+                            <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed">
+                                <div className="text-center">
+                                    <p className="text-lg font-medium text-gray-600">Tidak ada data tersedia</p>
+                                    <p className="text-sm text-gray-500">Belum ada titik bencana, posko, atau jalur evakuasi</p>
+                                </div>
+                            </div>
                         ) : (
                             <div className="h-full w-full">
                                 <MapContainer center={[-2.5489, 118.0149]} zoom={5} style={{ height: '100%', width: '100%' }}>
@@ -494,12 +661,12 @@ export default function BencanaMap() {
                                     {/* Render all markers */}
                                     {filteredMarkers.map((marker) => (
                                         <Marker key={marker.id} position={marker.position} icon={getMarkerIcon(marker.type)}>
-                                            <Popup>
+                                            <Popup className="wider-popup">
                                                 <div className="font-bold">{marker.title}</div>
                                                 {marker.type === 'shelter' && (
                                                     <>
                                                         <div className="mt-2 text-xs">{marker.description}</div>
-                                                        <div className="mt-2 text-xs">
+                                                        <div className="disaster-popup-content mt-2 text-xs">
                                                             <div>
                                                                 <span className="font-semibold">Alamat:</span>{' '}
                                                                 {(marker as unknown as { alamat: string }).alamat}
@@ -519,8 +686,40 @@ export default function BencanaMap() {
                                                         </div>
                                                     </>
                                                 )}
-                                                {marker.type !== 'shelter' && (
-                                                    <div className="mt-2 text-xs whitespace-pre-line">{marker.description}</div>
+                                                {marker.type === 'disaster' && (
+                                                    <>
+                                                        <div className="mt-2 text-xs">{formatDescription(marker.description)}</div>
+                                                        <div className="mt-3 flex justify-end space-x-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 text-xs"
+                                                                onClick={() => {
+                                                                    if (marker.originalData) {
+                                                                        handleEditDisaster(marker.originalData);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Edit
+                                                            </Button>
+                                                            <Button
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                className="h-7 text-xs"
+                                                                onClick={() => {
+                                                                    if (marker.originalData) {
+                                                                        setDeletingId(marker.originalData.id);
+                                                                        setShowDeleteConfirm(true);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Hapus
+                                                            </Button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                                {marker.type === 'earthquake' && (
+                                                    <div className="mt-2 text-xs">{formatDescription(marker.description)}</div>
                                                 )}
                                             </Popup>
                                         </Marker>
@@ -551,10 +750,10 @@ export default function BencanaMap() {
                         )}
                     </div>
 
-                    {/* Floating Layer Panel - Modified with overflow hidden */}
+                    {/* Floating Layer Panel */}
                     <div
                         id="layer-drawer"
-                        className={`absolute top-0 right-0 z-30 h-[300px] w-[300px] overflow-hidden border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 sm:h-[500px] ${
+                        className={`absolute top-0 right-0 z-30 h-[300px] w-[300px] overflow-hidden border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 sm:h-[600px] ${
                             sidebarOpen ? 'translate-x-0' : 'translate-x-full'
                         }`}
                     >
@@ -809,6 +1008,97 @@ export default function BencanaMap() {
                     </div>
                 </div>
             </div>
-        </AppLayout>
+
+            {/* Confirmation Dialog for Delete */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6">
+                        <h3 className="text-lg font-bold">Konfirmasi Hapus</h3>
+                        <p className="my-4">Anda yakin ingin menghapus data bencana ini? Tindakan ini tidak dapat dibatalkan.</p>
+                        <div className="flex justify-end space-x-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowDeleteConfirm(false);
+                                    setDeletingId(null);
+                                }}
+                            >
+                                Batal
+                            </Button>
+                            <Button variant="destructive" onClick={() => deletingId && handleDeleteDisaster(deletingId)} disabled={saving}>
+                                {saving ? 'Menghapus...' : 'Hapus'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Form Tambah/Edit Bencana */}
+            <div id="disaster-form" className="mt-6 rounded-lg bg-white p-4 shadow">
+                <h3 className="mb-4 text-lg font-semibold">{editMode ? 'Edit Titik Bencana' : 'Kelola Titik Bencana'}</h3>
+                <form onSubmit={handleSubmit}>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="judul">Judul</Label>
+                            <Input id="judul" value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul bencana" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="jenisBencana">Jenis Bencana</Label>
+                            <Select value={jenisBencana} onValueChange={setJenisBencana}>
+                                <SelectTrigger id="jenisBencana">
+                                    <SelectValue placeholder="Pilih jenis bencana" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="banjir">Banjir</SelectItem>
+                                    <SelectItem value="gempa">Gempa Bumi</SelectItem>
+                                    <SelectItem value="longsor">Tanah Longsor</SelectItem>
+                                    <SelectItem value="tsunami">Tsunami</SelectItem>
+                                    <SelectItem value="angin-topan">Angin Topan</SelectItem>
+                                    <SelectItem value="kebakaran">Kebakaran</SelectItem>
+                                    <SelectItem value="gunung-meletus">Gunung Meletus</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="deskripsi">Deskripsi</Label>
+                            <Textarea
+                                id="deskripsi"
+                                value={deskripsi}
+                                onChange={(e) => setDeskripsi(e.target.value)}
+                                placeholder="Deskripsi bencana"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="lokasi">Lokasi</Label>
+                            <Input id="lokasi" value={lokasi} onChange={(e) => setLokasi(e.target.value)} placeholder="Nama lokasi / alamat" />
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <Label>Pilih Titik pada Peta</Label>
+                        <div className="mt-2 h-[300px] w-full overflow-hidden rounded-md">
+                            <div className="h-full w-full">
+                                <MapContainer center={[-2.5489, 118.0149]} zoom={5} style={{ height: '100%', width: '100%' }}>
+                                    <TileLayer attribution={getTileLayerAttribution()} url={getTileLayerUrl()} />
+                                    <MarkerCreator position={position} setPosition={setPosition} />
+                                </MapContainer>
+                            </div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-600">
+                            {position ? `Lokasi: ${position[0]}, ${position[1]}` : 'Klik pada peta untuk menentukan lokasi.'}
+                        </div>
+                    </div>
+                    <div className="mt-4 flex justify-end space-x-2">
+                        {editMode && (
+                            <Button type="button" variant="outline" onClick={resetForm}>
+                                Batal
+                            </Button>
+                        )}
+                        <Button type="submit" disabled={saving || !judul || !jenisBencana || !deskripsi || !lokasi || !position}>
+                            {saving ? 'Menyimpan...' : editMode ? 'Simpan Perubahan' : 'Tambah Bencana'}
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 }

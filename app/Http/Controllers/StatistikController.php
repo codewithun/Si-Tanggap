@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Laporan;
 use App\Models\Posko;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class StatistikController extends Controller
@@ -21,10 +21,12 @@ class StatistikController extends Controller
             // Count verified reports
             $totalLaporanVerified = Laporan::where('status', 'diverifikasi')->count();
 
-            // Count distinct disaster locations (considering verified reports as disasters)
-            $totalBencana = Laporan::where('status', 'diverifikasi')
-                ->distinct('latitude', 'longitude')
-                ->count();
+            // Count distinct disaster locations (verified reports as disasters) - compatible with SQLite
+            $locations = Laporan::where('status', 'diverifikasi')
+                ->get(['latitude', 'longitude']);
+            $totalBencana = $locations->unique(function ($item) {
+                return $item['latitude'] . ',' . $item['longitude'];
+            })->count();
 
             // Count total shelters
             $totalPosko = Posko::count();
@@ -36,9 +38,9 @@ class StatistikController extends Controller
                 ->pluck('total', 'jenis_bencana')
                 ->toArray();
 
-            // Get monthly report counts for the current year
+            // Get monthly report counts for the current year (SQLite compatible)
             $laporanBulanan = Laporan::select(
-                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+                DB::raw("strftime('%Y-%m', created_at) as month"),
                 DB::raw('count(*) as total')
             )
                 ->whereYear('created_at', date('Y'))
@@ -67,5 +69,34 @@ class StatistikController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Mendapatkan data statistik untuk dashboard relawan
+     */
+    public function relawanDashboardStats()
+    {
+        // Hitung total laporan dari tabel laporans
+        $totalLaporan = Laporan::count();
+
+        // Hitung laporan dengan status "diverifikasi"
+        $laporanDiverifikasi = Laporan::where('status', 'diverifikasi')->count();
+
+        // Hitung posko aktif dari tabel poskos
+        $poskoAktif = Posko::where('status', 'aktif')->count();
+
+        // Ambil 5 laporan terbaru yang masih berstatus menunggu
+        $laporanTerbaru = Laporan::where('status', 'menunggu')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get(['id', 'judul', 'jenis_bencana', 'lokasi', 'created_at']);
+
+        // Kembalikan data dalam format JSON
+        return response()->json([
+            'totalLaporan' => $totalLaporan,
+            'laporanDiverifikasi' => $laporanDiverifikasi,
+            'poskoAktif' => $poskoAktif,
+            'laporanTerbaru' => $laporanTerbaru
+        ]);
     }
 }

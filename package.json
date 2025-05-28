@@ -25,6 +25,7 @@
         "typescript-eslint": "^8.23.0"
     },
     "dependencies": {
+        "@changey/react-leaflet-markercluster": "^4.0.0-rc1",
         "@headlessui/react": "^2.2.0",
         "@hookform/resolvers": "^5.0.1",
         "@inertiajs/react": "^2.0.0",
@@ -59,6 +60,7 @@
         "globe.gl": "^2.41.6",
         "laravel-vite-plugin": "^1.0",
         "leaflet": "^1.9.4",
+        "leaflet-routing-machine": "^3.2.12",
         "lucide-react": "^0.475.0",
         "react": "^19.0.0",
         "react-chartjs-2": "^5.3.0",
@@ -66,6 +68,7 @@
         "react-hook-form": "^7.56.4",
         "react-hot-toast": "^2.5.2",
         "react-leaflet": "^5.0.0",
+        "run": "^1.5.0",
         "tailwind-merge": "^3.0.1",
         "tailwindcss": "^4.0.0",
         "tailwindcss-animate": "^1.0.7",

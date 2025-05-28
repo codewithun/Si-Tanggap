@@ -8,8 +8,10 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios, { AxiosError } from 'axios';
+import L from 'leaflet';
 import { CheckCircleIcon, ExternalLinkIcon, XCircleIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { useToast } from '../../hooks/useToast';
 
 // Define the breadcrumbs for the page
@@ -42,6 +44,28 @@ interface Laporan {
     };
 }
 
+const addMapZIndexFix = () => {
+    const style = document.createElement('style');
+    style.textContent = `
+        /* Control map z-index */
+        .leaflet-container {
+            z-index: 1 !important;
+        }
+        .leaflet-pane,
+        .leaflet-control,
+        .leaflet-top,
+        .leaflet-bottom {
+            z-index: 400 !important;
+        }
+        /* Ensure dialogs appear above maps */
+        .dialog-content {
+            z-index: 1000 !important;
+        }
+    `;
+    document.head.appendChild(style);
+    return style;
+};
+
 export default function ReportManagement() {
     const [reports, setReports] = useState<Laporan[]>([]);
     const [loading, setLoading] = useState(true);
@@ -55,7 +79,7 @@ export default function ReportManagement() {
 
     const fetchReports = useCallback(async () => {
         try {
-            const response = await axios.get('/laporan-bencana');
+            const response = await axios.get('/laporans');
             if (response.data && response.data.data) {
                 setReports(response.data.data);
             }
@@ -74,6 +98,15 @@ export default function ReportManagement() {
     useEffect(() => {
         fetchReports();
     }, [fetchReports]);
+
+    useEffect(() => {
+        // Add z-index fix for maps
+        const styleElement = addMapZIndexFix();
+
+        return () => {
+            document.head.removeChild(styleElement);
+        };
+    }, []);
 
     const openViewDialog = (report: Laporan) => {
         setSelectedReport(report);
@@ -101,7 +134,7 @@ export default function ReportManagement() {
 
         try {
             const endpoint =
-                verificationStatus === 'diverifikasi' ? `/laporans/${selectedReport.id}/verify` : `/laporans/${selectedReport.id}/reject`;
+                verificationStatus === 'diverifikasi' ? `/admin/laporans/${selectedReport.id}/verify` : `/admin/laporans/${selectedReport.id}/reject`;
 
             await axios.put(endpoint, {
                 catatan_admin: adminNote.trim() || null,
@@ -149,6 +182,16 @@ export default function ReportManagement() {
 
     const getDisasterIconPath = (type: string) => {
         return `/icons/${type}.svg`;
+    };
+
+    // Function to get a specific disaster icon based on type
+    const getDisasterMapIcon = (type: string) => {
+        return L.icon({
+            iconUrl: `/icons/${type}.svg`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32],
+        });
     };
 
     return (
@@ -245,7 +288,7 @@ export default function ReportManagement() {
 
                     {/* View Report Dialog */}
                     <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                        <DialogContent className="max-w-3xl">
+                        <DialogContent className="dialog-content max-w-3xl">
                             <DialogHeader>
                                 <DialogTitle>Detail Laporan Bencana</DialogTitle>
                             </DialogHeader>
@@ -310,17 +353,25 @@ export default function ReportManagement() {
                                             <div className="mt-4">
                                                 <h4 className="text-sm font-medium text-gray-500">Lokasi di Peta</h4>
                                                 <div className="mt-2 h-[250px] w-full overflow-hidden rounded-md border">
-                                                    <iframe
-                                                        width="100%"
-                                                        height="100%"
-                                                        style={{ border: 0 }}
-                                                        loading="lazy"
-                                                        allowFullScreen
-                                                        src={`https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY&q=${selectedReport.latitude},${selectedReport.longitude}`}
-                                                    ></iframe>
-                                                </div>
-                                                <div className="mt-2 text-xs text-gray-400">
-                                                    Catatan: Perlu menambahkan API key Google Maps untuk menampilkan peta
+                                                    <MapContainer
+                                                        center={[selectedReport.latitude, selectedReport.longitude]}
+                                                        zoom={13}
+                                                        style={{ height: '100%', width: '100%' }}
+                                                    >
+                                                        <TileLayer
+                                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                        />
+                                                        <Marker
+                                                            position={[selectedReport.latitude, selectedReport.longitude]}
+                                                            icon={getDisasterMapIcon(selectedReport.jenis_bencana)}
+                                                        >
+                                                            <Popup>
+                                                                <div className="font-semibold">{selectedReport.judul}</div>
+                                                                <div>{selectedReport.lokasi}</div>
+                                                            </Popup>
+                                                        </Marker>
+                                                    </MapContainer>
                                                 </div>
                                             </div>
                                         </div>
@@ -348,7 +399,7 @@ export default function ReportManagement() {
 
                     {/* Verify Report Dialog */}
                     <Dialog open={isVerifyDialogOpen} onOpenChange={setIsVerifyDialogOpen}>
-                        <DialogContent>
+                        <DialogContent className="dialog-content">
                             <DialogHeader>
                                 <DialogTitle>Verifikasi Laporan Bencana</DialogTitle>
                                 <DialogDescription>Verifikasi laporan yang diajukan oleh masyarakat</DialogDescription>

@@ -10,7 +10,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import { PencilIcon, Trash2Icon, UserPlusIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '../../hooks/useToast';
 
 interface User {
@@ -40,23 +40,34 @@ export default function UserManagement() {
     const [formData, setFormData] = useState<{
         name: string;
         email: string;
-        password?: string;
+        password: string;
+        password_confirmation: string;
         role: string;
         status: boolean;
     }>({
         name: '',
         email: '',
         password: '',
+        password_confirmation: '',
         role: 'masyarakat',
         status: true,
     });
 
     const { toast } = useToast();
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
-            const response = await axios.get('/api/users');
-            setUsers(response.data.data);
+            // Menggunakan endpoint yang sudah terdaftar di web.php
+            const response = await axios.get('/admin/users/data');
+
+            // Pastikan kita mendapatkan array dari response
+            if (response.data && response.data.data) {
+                setUsers(response.data.data);
+            } else {
+                // Jika format tidak sesuai, set array kosong
+                setUsers([]);
+                console.error('Format response tidak sesuai:', response.data);
+            }
         } catch (error) {
             console.error('Failed to fetch users:', error);
             toast({
@@ -64,10 +75,12 @@ export default function UserManagement() {
                 description: 'Gagal memuat data pengguna',
                 variant: 'destructive',
             });
+            // Set array kosong jika terjadi error
+            setUsers([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [toast]); // Add toast as a dependency
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -75,7 +88,11 @@ export default function UserManagement() {
     };
 
     const handleSelectChange = (name: string, value: string) => {
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        if (name === 'status') {
+            setFormData((prev) => ({ ...prev, [name]: value === 'active' }));
+        } else {
+            setFormData((prev) => ({ ...prev, [name]: value }));
+        }
     };
 
     const resetForm = () => {
@@ -83,6 +100,7 @@ export default function UserManagement() {
             name: '',
             email: '',
             password: '',
+            password_confirmation: '',
             role: 'masyarakat',
             status: true,
         });
@@ -93,7 +111,7 @@ export default function UserManagement() {
         e.preventDefault();
 
         try {
-            await axios.post('/api/users', formData);
+            await axios.post('/admin/users', formData);
             toast({
                 title: 'Berhasil',
                 description: 'Pengguna berhasil ditambahkan',
@@ -101,13 +119,24 @@ export default function UserManagement() {
             setIsAddDialogOpen(false);
             resetForm();
             fetchUsers();
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Failed to add user:', error);
-            toast({
-                title: 'Error',
-                description: 'Gagal menambahkan pengguna',
-                variant: 'destructive',
-            });
+
+            // Show validation errors if available
+            if (axios.isAxiosError(error) && error.response?.data?.errors) {
+                const validationErrors = Object.values(error.response.data.errors as Record<string, string[]>).flat();
+                toast({
+                    title: 'Error Validasi',
+                    description: validationErrors.join(', '),
+                    variant: 'destructive',
+                });
+            } else {
+                toast({
+                    title: 'Error',
+                    description: 'Gagal menambahkan pengguna',
+                    variant: 'destructive',
+                });
+            }
         }
     };
 
@@ -117,6 +146,7 @@ export default function UserManagement() {
             name: user.name,
             email: user.email,
             password: '', // Don't fill password for edit
+            password_confirmation: '', // Also set empty password confirmation
             role: user.role,
             status: user.status,
         });
@@ -126,15 +156,43 @@ export default function UserManagement() {
     const handleEditUser = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!selectedUser) return;
+        if (!selectedUser || !selectedUser.id) {
+            toast({
+                title: 'Error',
+                description: 'User ID tidak ditemukan',
+                variant: 'destructive',
+            });
+            return;
+        }
 
-        const updateData = { ...formData };
+        const updateData = { ...formData } as Partial<typeof formData>;
+
+        // Don't send empty password
         if (!updateData.password) {
-            delete updateData.password; // Don't send empty password
+            delete updateData.password;
+            delete updateData.password_confirmation;
+        } else {
+            // If password is provided, we need password_confirmation as well
+            updateData.password_confirmation = formData.password_confirmation;
         }
 
         try {
-            await axios.put(`/api/users/${selectedUser.id}`, updateData);
+            // Using the correct Laravel resource route format with ID
+            console.log('Selected User Object:', selectedUser);
+            const userId = selectedUser.id;
+
+            // Create the URL explicitly to avoid any issues
+            const updateUrl = `/admin/users/${userId}`;
+            console.log('Updating user with ID:', userId, 'URL:', updateUrl);
+
+            // Use PATCH method which is also supported by Laravel resource controller
+            // Add the _method parameter to ensure Laravel understands this is an update
+            const requestData = {
+                ...updateData,
+                _method: 'PATCH', // Laravel form method spoofing
+            };
+
+            await axios.post(updateUrl, requestData);
             toast({
                 title: 'Berhasil',
                 description: 'Pengguna berhasil diperbarui',
@@ -142,13 +200,24 @@ export default function UserManagement() {
             setIsEditDialogOpen(false);
             resetForm();
             fetchUsers();
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Failed to update user:', error);
-            toast({
-                title: 'Error',
-                description: 'Gagal memperbarui pengguna',
-                variant: 'destructive',
-            });
+
+            // Show validation errors if available
+            if (axios.isAxiosError(error) && error.response?.data?.errors) {
+                const validationErrors = Object.values(error.response.data.errors as Record<string, string[]>).flat();
+                toast({
+                    title: 'Error Validasi',
+                    description: validationErrors.join(', '),
+                    variant: 'destructive',
+                });
+            } else {
+                toast({
+                    title: 'Error',
+                    description: 'Gagal memperbarui pengguna',
+                    variant: 'destructive',
+                });
+            }
         }
     };
 
@@ -161,7 +230,15 @@ export default function UserManagement() {
         if (!selectedUser) return;
 
         try {
-            await axios.delete(`/api/users/${selectedUser.id}`);
+            // Log the user being deleted
+            console.log('Deleting user with ID:', selectedUser.id);
+
+            // Use method spoofing for DELETE, similar to how we fixed the update
+            const deleteUrl = `/admin/users/${selectedUser.id}`;
+            await axios.post(deleteUrl, {
+                _method: 'DELETE', // Laravel form method spoofing
+            });
+
             toast({
                 title: 'Berhasil',
                 description: 'Pengguna berhasil dihapus',
@@ -178,6 +255,10 @@ export default function UserManagement() {
             });
         }
     };
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -243,6 +324,19 @@ export default function UserManagement() {
                                         </div>
 
                                         <div className="space-y-2">
+                                            <Label htmlFor="password_confirmation">Konfirmasi Password</Label>
+                                            <Input
+                                                id="password_confirmation"
+                                                name="password_confirmation"
+                                                type="password"
+                                                value={formData.password_confirmation}
+                                                onChange={handleInputChange}
+                                                placeholder="Masukkan konfirmasi password"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
                                             <Label htmlFor="role">Role</Label>
                                             <Select value={formData.role} onValueChange={(value) => handleSelectChange('role', value)}>
                                                 <SelectTrigger id="role">
@@ -260,7 +354,7 @@ export default function UserManagement() {
                                             <Label htmlFor="status">Status</Label>
                                             <Select
                                                 value={formData.status ? 'active' : 'inactive'}
-                                                onValueChange={(value) => handleSelectChange('status', value === 'active' ? 'true' : 'false')}
+                                                onValueChange={(value) => handleSelectChange('status', value)}
                                             >
                                                 <SelectTrigger id="status">
                                                     <SelectValue placeholder="Pilih status pengguna" />
@@ -301,7 +395,7 @@ export default function UserManagement() {
                                             <TableHead>Email</TableHead>
                                             <TableHead>Role</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Aksi</TableHead>
+                                            <TableHead className="text-center">Aksi</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -338,8 +432,8 @@ export default function UserManagement() {
                                                             {user.status ? 'Aktif' : 'Tidak Aktif'}
                                                         </span>
                                                     </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end space-x-2">
+                                                    <TableCell className="text-center">
+                                                        <div className="flex justify-center space-x-2">
                                                             <Button variant="outline" size="sm" onClick={() => prepareEditUser(user)}>
                                                                 <PencilIcon className="h-4 w-4" />
                                                                 <span className="sr-only">Edit</span>
@@ -407,6 +501,18 @@ export default function UserManagement() {
                                 </div>
 
                                 <div className="space-y-2">
+                                    <Label htmlFor="edit-password-confirmation">Konfirmasi Password</Label>
+                                    <Input
+                                        id="edit-password-confirmation"
+                                        name="password_confirmation"
+                                        type="password"
+                                        value={formData.password_confirmation}
+                                        onChange={handleInputChange}
+                                        placeholder="Konfirmasi password baru"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
                                     <Label htmlFor="edit-role">Role</Label>
                                     <Select value={formData.role} onValueChange={(value) => handleSelectChange('role', value)}>
                                         <SelectTrigger id="edit-role">
@@ -424,7 +530,7 @@ export default function UserManagement() {
                                     <Label htmlFor="edit-status">Status</Label>
                                     <Select
                                         value={formData.status ? 'active' : 'inactive'}
-                                        onValueChange={(value) => handleSelectChange('status', value === 'active' ? 'true' : 'false')}
+                                        onValueChange={(value) => handleSelectChange('status', value)}
                                     >
                                         <SelectTrigger id="edit-status">
                                             <SelectValue placeholder="Pilih status pengguna" />

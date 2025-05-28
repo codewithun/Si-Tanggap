@@ -13,10 +13,6 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 // Define breadcrumbs for the page
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Dashboard Admin',
-        href: '/admin/dashboard',
-    },
-    {
         title: 'Statistik Bencana',
         href: '/admin/statistics',
     },

@@ -41,8 +41,25 @@ export default function Register() {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('register'), {
+        // Filter data sesuai role
+        const payload: Partial<RegisterForm> = {
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            password: data.password,
+            password_confirmation: data.password_confirmation,
+        };
+        if (data.role === 'relawan') {
+            payload.role = data.role;
+            payload.id_card = data.id_card;
+            payload.organization = data.organization;
+            payload.experience = data.experience;
+            payload.motivation = data.motivation;
+        }
+        // @ts-expect-error: Inertia Form post expects data as first argument
+        post(route('register'), payload, {
             onFinish: () => reset('password', 'password_confirmation'),
+            forceFormData: data.role === 'relawan',
         });
     };
 

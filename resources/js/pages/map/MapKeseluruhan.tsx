@@ -6,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/useToast';
 import axios from '@/lib/axios';
 import { Head, Link } from '@inertiajs/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 // Define disaster icon types for type safety
 type DisasterType = 'banjir' | 'longsor' | 'gempa' | 'tsunami' | 'kebakaran' | 'angin_topan' | 'kekeringan' | 'lainnya';
@@ -32,25 +32,6 @@ type HazardLayerType =
     | 'tsunami'
     | 'covid19';
 
-// Define infrastructure layer types
-type InfraLayerType =
-    | 'topografi'
-    | 'fault'
-    | 'jalur_rel'
-    | 'jalan'
-    | 'pasar'
-    | 'masjid'
-    | 'kelenteng'
-    | 'pura'
-    | 'station'
-    | 'terminal'
-    | 'sungai'
-    | 'batas_das'
-    | 'batas_admin';
-
-// Define display type options
-type DisplayType = 'bahaya' | 'kerentanan' | 'kapasitas' | 'risiko';
-
 // Interface for disaster data from API
 interface Bencana {
     id: number;
@@ -65,23 +46,7 @@ interface Bencana {
     tingkat_bahaya?: RiskLevel;
 }
 
-// Interface for statistics data
-interface StatisticsData {
-    jumlah_kecamatan: number;
-    luas_bahaya: number;
-    data_sekolah: {
-        sedang: number;
-        tinggi: number;
-    };
-    data_rumah_sakit: {
-        sedang: number;
-        tinggi: number;
-    };
-    data_puskesmas: {
-        sedang: number;
-        tinggi: number;
-    };
-}
+// No longer needed
 
 // Interface for USGS earthquake data
 interface EarthquakeFeature {
@@ -99,38 +64,87 @@ interface EarthquakeFeature {
     };
 }
 
+// Helper function to convert disaster type to hazard layer type
+function disasterToHazardLayer(jenisBencana: DisasterType): HazardLayerType {
+    const mapping: Record<DisasterType, HazardLayerType> = {
+        banjir: 'banjir',
+        longsor: 'tanah_longsor',
+        gempa: 'gempabumi',
+        tsunami: 'tsunami',
+        kebakaran: 'kebakaran_hutan',
+        angin_topan: 'cuaca_ekstrim',
+        kekeringan: 'kekeringan',
+        lainnya: 'multi_bahaya',
+    };
+    return mapping[jenisBencana];
+}
+
 export default function MapKeseluruhan() {
     const [disasters, setDisasters] = useState<Bencana[]>([]);
     const [earthquakes, setEarthquakes] = useState<EarthquakeFeature[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
 
-    // Update the naming to match Google Maps conventions
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
     const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>(['gempabumi']);
-    const [selectedInfraLayers, setSelectedInfraLayers] = useState<InfraLayerType[]>([]);
-    const [displayType, setDisplayType] = useState<DisplayType>('bahaya');
-
-    // Mock statistics data similar to what's shown in the image
-    const [statistics] = useState<StatisticsData>({
-        jumlah_kecamatan: 17,
-        luas_bahaya: 50246,
-        data_sekolah: {
-            sedang: 848,
-            tinggi: 1097,
-        },
-        data_rumah_sakit: {
-            sedang: 7,
-            tinggi: 20,
-        },
-        data_puskesmas: {
-            sedang: 13,
-            tinggi: 13,
-        },
-    });
-
-    // Sidebar open state for layer control drawer
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Transform disaster and earthquake data to marker format for MapComponent
+    const markers = useMemo(
+        () => [
+            ...disasters.map((disaster) => ({
+                id: `disaster-${disaster.id}`,
+                position: [disaster.latitude, disaster.longitude] as [number, number],
+                title: disaster.judul || disaster.jenis_bencana,
+                iconUrl: `/icons/${disaster.jenis_bencana || 'lainnya'}.svg`,
+                status: disaster.status as 'diverifikasi' | 'menunggu' | 'ditolak',
+                description: `
+                Jenis: ${disaster.jenis_bencana || 'Tidak diketahui'}
+                Tanggal: ${new Date(disaster.created_at).toLocaleDateString('id-ID')}
+                Lokasi: ${disaster.lokasi || 'Tidak diketahui'}
+                Status: ${disaster.status || 'Tidak diketahui'}
+                Tingkat Bahaya: ${disaster.tingkat_bahaya || 'Tidak diketahui'}
+                Deskripsi: ${disaster.deskripsi || 'Tidak ada deskripsi'}
+            `,
+            })),
+            ...earthquakes.map((quake) => ({
+                id: `earthquake-${quake.properties.time}`,
+                position: [quake.geometry.coordinates[1], quake.geometry.coordinates[0]] as [number, number],
+                title: 'Gempa Bumi USGS',
+                iconUrl: '/icons/gempa.svg',
+                status: 'diverifikasi' as 'diverifikasi' | 'menunggu' | 'ditolak',
+                description: `
+                Magnitude: ${quake.properties.mag}
+                Lokasi: ${quake.properties.place}
+                Waktu: ${new Date(quake.properties.time).toLocaleString('id-ID')}
+                Info lebih lanjut: ${quake.properties.url}
+            `,
+            })),
+        ],
+        [disasters, earthquakes],
+    );
+
+    const [filteredMarkers, setFilteredMarkers] = useState(markers);
+
+    // Filter markers based on selected layers
+    const filterMarkers = useCallback(() => {
+        // Only proceed if we have markers to filter
+        if (!markers.length) return;
+
+        const filtered = markers.filter((marker) => {
+            if (marker.id.startsWith('earthquake-')) {
+                return selectedHazardLayers.includes('gempabumi');
+            }
+            const disasterId = marker.id.split('-')[1];
+            const disaster = disasters.find((d) => d.id.toString() === disasterId);
+            if (!disaster) return false;
+
+            const hazardLayer = disasterToHazardLayer(disaster.jenis_bencana);
+            return selectedHazardLayers.includes(hazardLayer);
+        });
+
+        setFilteredMarkers(filtered);
+    }, [markers, selectedHazardLayers, disasters]);
 
     // Get risk level based on description or other factors
     const getRiskLevel = (disaster: Bencana): RiskLevel => {
@@ -224,60 +238,30 @@ export default function MapKeseluruhan() {
         } else {
             setSelectedHazardLayers((prev) => prev.filter((t) => t !== type));
         }
+
+        // Filter markers when layer selection changes
+        filterMarkers();
     };
 
-    // Handle infrastructure layer selection
-    const handleInfraLayerChange = (type: InfraLayerType, checked: boolean) => {
-        if (checked) {
-            setSelectedInfraLayers((prev) => [...prev, type]);
-        } else {
-            setSelectedInfraLayers((prev) => prev.filter((t) => t !== type));
-        }
-    };
-
-    // Transform disaster and earthquake data to marker format for MapComponent
-    const markers = [
-        ...disasters.map((disaster) => ({
-            id: `disaster-${disaster.id}`,
-            position: [disaster.latitude, disaster.longitude] as [number, number],
-            title: disaster.judul || disaster.jenis_bencana,
-            iconUrl: `/icons/${disaster.jenis_bencana || 'lainnya'}.svg`, // Use direct icon path
-            status: disaster.status as 'diverifikasi' | 'menunggu' | 'ditolak', // Narrow the type
-            description: `
-                Jenis: ${disaster.jenis_bencana || 'Tidak diketahui'}
-                Tanggal: ${new Date(disaster.created_at).toLocaleDateString('id-ID')}
-                Lokasi: ${disaster.lokasi || 'Tidak diketahui'}
-                Status: ${disaster.status || 'Tidak diketahui'}
-                Tingkat Bahaya: ${disaster.tingkat_bahaya || 'Tidak diketahui'}
-                Deskripsi: ${disaster.deskripsi || 'Tidak ada deskripsi'}
-            `,
-        })),
-        ...earthquakes.map((quake) => ({
-            id: `earthquake-${quake.properties.time}`,
-            position: [quake.geometry.coordinates[1], quake.geometry.coordinates[0]] as [number, number],
-            title: 'Gempa Bumi USGS',
-            iconUrl: '/icons/gempa.svg',
-            status: 'diverifikasi' as 'diverifikasi' | 'menunggu' | 'ditolak', // USGS data is always considered verified
-            description: `
-                Magnitude: ${quake.properties.mag}
-                Lokasi: ${quake.properties.place}
-                Waktu: ${new Date(quake.properties.time).toLocaleString('id-ID')}
-                Info lebih lanjut: ${quake.properties.url}
-            `,
-        })),
-    ];
+    // Update markers when filters change
+    useEffect(() => {
+        filterMarkers();
+    }, [filterMarkers, selectedHazardLayers]);
 
     return (
         <div className="flex min-h-screen flex-col bg-slate-50">
-            <Head title="Peta Bencana Indonesia" />
+            <Head title="GeoSiaga" />
 
-            {/* Modern Header with gradient */}
-            <header className="bg-gradient-to-r from-blue-800 to-blue-600 shadow-lg">
+            {/* Simple modern header with subtle effects */}
+            <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
                 <div className="container mx-auto flex items-center justify-between px-6 py-4">
                     <div className="flex items-center space-x-4">
-                        <Link href="/" className="group flex items-center space-x-2 text-white transition-colors hover:text-blue-100">
+                        <Link
+                            href="/"
+                            className="group flex items-center space-x-2 rounded-lg px-3 py-2 text-gray-600 transition-all hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm active:bg-blue-100"
+                        >
                             <svg
-                                className="h-5 w-5 transition-transform group-hover:-translate-x-1"
+                                className="h-5 w-5 transition-transform duration-200 ease-out group-hover:-translate-x-1"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -287,55 +271,43 @@ export default function MapKeseluruhan() {
                             <span className="font-medium">Kembali ke Beranda</span>
                         </Link>
                     </div>
-                    <h1 className="text-xl font-bold text-white">Peta Risiko Bencana Indonesia</h1>
-                    <div className="w-32"></div>
+
+                    <div className="flex items-center space-x-4">
+                        <h1 className="text-2xl font-bold">
+                            <span className="text-gray-800">Geo</span>
+                            <span className="bg-gradient-to-r from-emerald-500 to-blue-500 bg-clip-text text-transparent">Siaga</span>
+                        </h1>
+
+                        <div className="h-6 w-px bg-slate-200"></div>
+
+                        <Button
+                            variant="outline"
+                            className="group flex items-center space-x-2 rounded-lg border border-slate-200 bg-white/90 px-4 py-2 text-gray-700 transition-all duration-200 ease-out hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm active:bg-blue-100"
+                            onClick={() => setSidebarOpen((v) => !v)}
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <path d="M9 3v18M3 9h18" />
+                            </svg>
+                            <span>Layer Control</span>
+                        </Button>
+                    </div>
                 </div>
             </header>
 
-            {/* Top Controls Panel */}
-            <div className="sticky top-0 z-20 bg-white p-4 shadow-md">
-                <div className="container mx-auto flex items-center justify-between">
-                    <div className="flex items-center space-x-6">
-                        <h3 className="font-medium text-blue-700">Tipe Peta:</h3>
-                        <RadioGroup
-                            value={mapType}
-                            onValueChange={(value: string) => setMapType(value as 'standard' | 'satellite' | 'terrain')}
-                            className="flex space-x-4"
-                        >
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="standard" id="standard" className="text-blue-600" />
-                                <Label htmlFor="standard">Standar</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="satellite" id="satellite" className="text-blue-600" />
-                                <Label htmlFor="satellite">Satelit</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="terrain" id="terrain" className="text-blue-600" />
-                                <Label htmlFor="terrain">Terrain</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
-
-                    <div className="flex items-center space-x-4">
-                        <Button
-                            variant="outline"
-                            className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                            onClick={() => setSidebarOpen((v) => !v)}
-                        >
-                            {/* ...icon... */}
-                            Layer Control
-                        </Button>
-                        <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => console.log('Apply filters')}>
-                            Terapkan Filter
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
             <div className="relative flex-grow">
-                {/* Main Map Area - Full width and height */}
-                <div className={`h-[calc(100vh-13rem)] transition-all duration-300 ${sidebarOpen ? 'pr-[330px]' : ''}`}>
+                {/* Main Map Area */}
+                <div className={`h-[calc(100vh-5rem)] transition-all duration-300 ${sidebarOpen ? 'pr-[330px]' : ''}`}>
                     {loading ? (
                         <div className="flex h-full w-full items-center justify-center bg-slate-100">
                             <div className="text-center">
@@ -346,13 +318,13 @@ export default function MapKeseluruhan() {
                     ) : (
                         <MapComponent
                             height="100%"
-                            markers={markers}
+                            markers={filteredMarkers}
                             zoom={5}
                             minZoom={2.5}
                             initialView={[-2.5489, 118.0149]}
                             maxBounds={undefined}
                             className="h-full w-full"
-                            mapType={mapType} // Pass the mapType prop
+                            mapType={mapType}
                         />
                     )}
                 </div>
@@ -360,235 +332,188 @@ export default function MapKeseluruhan() {
                 {/* Floating Layer Panel */}
                 <div
                     id="layer-drawer"
-                    className={`fixed top-[8.5rem] right-0 z-30 h-[calc(100vh-13rem)] w-[330px] border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 ${
+                    className={`fixed top-0 right-0 z-30 h-screen w-[330px] border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 ${
                         sidebarOpen ? 'translate-x-0' : 'translate-x-full'
                     }`}
                 >
                     <div className="h-full overflow-y-auto">
-                        {/* Statistics Panel */}
-                        <div className="border-b border-slate-200 p-4">
-                            <h3 className="mb-3 text-lg font-medium">Statistik Area</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="rounded-lg bg-blue-50 p-3">
-                                    <div className="text-xs text-slate-500">Jumlah Kecamatan</div>
-                                    <div className="text-xl font-semibold text-blue-700">{statistics.jumlah_kecamatan}</div>
-                                </div>
-                                <div className="rounded-lg bg-blue-50 p-3">
-                                    <div className="text-xs text-slate-500">Luas Area Bahaya</div>
-                                    <div className="text-xl font-semibold text-blue-700">{statistics.luas_bahaya} km²</div>
-                                </div>
-                                <div className="rounded-lg bg-orange-50 p-3">
-                                    <div className="text-xs text-slate-500">Sekolah Zona Tinggi</div>
-                                    <div className="text-xl font-semibold text-orange-700">{statistics.data_sekolah.tinggi}</div>
-                                </div>
-                                <div className="rounded-lg bg-yellow-50 p-3">
-                                    <div className="text-xs text-slate-500">Sekolah Zona Sedang</div>
-                                    <div className="text-xl font-semibold text-yellow-700">{statistics.data_sekolah.sedang}</div>
-                                </div>
-                            </div>
-                        </div>
-
                         <div className="flex items-center justify-between border-b border-slate-200 p-4">
                             <h3 className="text-lg font-medium">Layer Control</h3>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full p-0" onClick={() => setSidebarOpen(false)}>
-                                {/* ...icon... */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 rounded-full p-0 hover:bg-gray-100"
+                                onClick={() => setSidebarOpen(false)}
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
                             </Button>
                         </div>
 
-                        <div className="p-4">
-                            {/* Jenis Tampilan Section */}
-                            <div className="mb-6">
-                                <h4 className="mb-3 text-base font-medium text-slate-700">Jenis Tampilan</h4>
-                                <RadioGroup value={displayType} onValueChange={(value: string) => setDisplayType(value as DisplayType)}>
-                                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-6 p-4">
+                            {/* Map Type Section */}
+                            <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+                                <div className="border-b border-slate-200 p-4">
+                                    <h4 className="font-medium text-slate-800">Tipe Peta</h4>
+                                </div>
+                                <div className="p-4">
+                                    <RadioGroup value={mapType} onValueChange={(value: 'standard' | 'satellite' | 'terrain') => setMapType(value)}>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <RadioGroupItem value="standard" id="standard" className="peer sr-only" />
+                                                <Label
+                                                    htmlFor="standard"
+                                                    className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-transparent p-4 transition-all peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 hover:border-slate-300 hover:bg-slate-50"
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        width="24"
+                                                        height="24"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        className="text-slate-600 peer-data-[state=checked]:text-blue-600"
+                                                    >
+                                                        <rect width="18" height="18" x="3" y="3" rx="2" />
+                                                        <path d="M3 9h18" />
+                                                        <path d="M9 3v18" />
+                                                        <path d="M15 3v18" />
+                                                        <path d="M3 15h18" />
+                                                    </svg>
+                                                    <span className="text-sm font-medium">Standar</span>
+                                                </Label>
+                                            </div>
+                                            <div>
+                                                <RadioGroupItem value="satellite" id="satellite" className="peer sr-only" />
+                                                <Label
+                                                    htmlFor="satellite"
+                                                    className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-transparent p-4 transition-all peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 hover:border-slate-300 hover:bg-slate-50"
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        width="24"
+                                                        height="24"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        className="text-slate-600 peer-data-[state=checked]:text-blue-600"
+                                                    >
+                                                        <path d="M12 12a4 4 0 0 0-4-4 4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4Z" />
+                                                        <path d="m12 12 3 3" />
+                                                        <path d="m15 15 2-2" />
+                                                        <path d="M12 20v-8" />
+                                                        <path d="M12 12h8" />
+                                                        <path d="M17 12a5 5 0 0 0-5-5" />
+                                                    </svg>
+                                                    <span className="text-sm font-medium">Satelit</span>
+                                                </Label>
+                                            </div>
+                                            <div>
+                                                <RadioGroupItem value="terrain" id="terrain" className="peer sr-only" />
+                                                <Label
+                                                    htmlFor="terrain"
+                                                    className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-transparent p-4 transition-all peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 hover:border-slate-300 hover:bg-slate-50"
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        width="24"
+                                                        height="24"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        className="text-slate-600 peer-data-[state=checked]:text-blue-600"
+                                                    >
+                                                        <path d="M22 19h-6l-4-4-4 4H2" />
+                                                        <path d="M2 19 12 5l10 14" />
+                                                        <path d="M19 12 12 5l-7 7" />
+                                                    </svg>
+                                                    <span className="text-sm font-medium">Terrain</span>
+                                                </Label>
+                                            </div>
+                                        </div>
+                                    </RadioGroup>
+                                </div>
+                            </div>
+
+                            {/* Hazard Layers Section */}
+                            <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+                                <div className="flex items-center justify-between border-b border-slate-200 p-4">
+                                    <h4 className="font-medium text-slate-800">Jenis Bahaya</h4>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                        onClick={() => {
+                                            setSelectedHazardLayers([]);
+                                            setFilteredMarkers(markers);
+                                        }}
+                                    >
+                                        Reset Filter
+                                    </Button>
+                                </div>
+                                <div className="p-4">
+                                    <div className="space-y-2.5">
                                         {(
                                             [
-                                                { value: 'bahaya', label: 'Bahaya' },
-                                                { value: 'kerentanan', label: 'Kerentanan' },
-                                                { value: 'kapasitas', label: 'Kapasitas' },
-                                                { value: 'risiko', label: 'Risiko' },
+                                                { id: 'banjir', label: 'Banjir' },
+                                                { id: 'banjir_bandang', label: 'Banjir Bandang' },
+                                                { id: 'cuaca_ekstrim', label: 'Cuaca Ekstrim' },
+                                                { id: 'gelombang_ekstrim', label: 'Gelombang Ekstrim dan Abrasi' },
+                                                { id: 'gempabumi', label: 'Gempabumi' },
+                                                { id: 'kebakaran_hutan', label: 'Kebakaran Hutan dan Lahan' },
+                                                { id: 'kekeringan', label: 'Kekeringan' },
+                                                { id: 'letusan_gunung_api', label: 'Letusan Gunung Api' },
+                                                { id: 'likuefaksi', label: 'Likuefaksi' },
+                                                { id: 'multi_bahaya', label: 'Multi Bahaya' },
+                                                { id: 'tanah_longsor', label: 'Tanah Longsor' },
+                                                { id: 'tsunami', label: 'Tsunami' },
+                                                { id: 'covid19', label: 'COVID-19' },
                                             ] as const
-                                        ).map((option) => (
-                                            <div
-                                                key={option.value}
-                                                className={`flex cursor-pointer items-center space-x-2 rounded-md border p-2 transition-all ${
-                                                    displayType === option.value
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
-                                                }`}
-                                                onClick={() => setDisplayType(option.value)}
-                                            >
-                                                <RadioGroupItem value={option.value} id={`display-${option.value}`} className="text-blue-600" />
-                                                <Label htmlFor={`display-${option.value}`} className="cursor-pointer text-sm">
-                                                    {option.label}
+                                        ).map((item) => (
+                                            <div key={item.id} className="flex items-center space-x-3 rounded px-2 py-1 hover:bg-slate-50">
+                                                <Checkbox
+                                                    id={item.id}
+                                                    checked={selectedHazardLayers.includes(item.id as HazardLayerType)}
+                                                    onCheckedChange={(checked) =>
+                                                        handleHazardLayerChange(item.id as HazardLayerType, checked as boolean)
+                                                    }
+                                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600"
+                                                />
+                                                <Label htmlFor={item.id} className="flex-1 cursor-pointer text-sm font-medium text-slate-700">
+                                                    {item.label}
                                                 </Label>
                                             </div>
                                         ))}
                                     </div>
-                                </RadioGroup>
-                            </div>
-
-                            {/* Hazard Layers Section - Simplified */}
-                            <div className="mb-6">
-                                <h4 className="mb-3 text-base font-medium text-slate-700">Lapisan Bahaya</h4>
-                                <div className="space-y-1 rounded-md border border-slate-200 p-3">
-                                    {(
-                                        [
-                                            { id: 'banjir', label: 'Banjir' },
-                                            { id: 'banjir_bandang', label: 'Banjir Bandang' },
-                                            { id: 'cuaca_ekstrim', label: 'Cuaca Ekstrim' },
-                                            { id: 'gelombang_ekstrim', label: 'Gelombang Ekstrim dan Abrasi' },
-                                            { id: 'gempabumi', label: 'Gempabumi' },
-                                            { id: 'kebakaran_hutan', label: 'Kebakaran Hutan dan Lahan' },
-                                            { id: 'kekeringan', label: 'Kekeringan' },
-                                            { id: 'letusan_gunung_api', label: 'Letusan Gunung Api' },
-                                            { id: 'likuefaksi', label: 'Likuefaksi' },
-                                            { id: 'multi_bahaya', label: 'Multi Bahaya' },
-                                            { id: 'tanah_longsor', label: 'Tanah Longsor' },
-                                            { id: 'tsunami', label: 'Tsunami' },
-                                            { id: 'covid19', label: 'COVID-19' },
-                                        ] as const
-                                    ).map((item) => (
-                                        <div key={item.id} className="flex items-center space-x-2 py-1">
-                                            <Checkbox
-                                                id={item.id}
-                                                checked={selectedHazardLayers.includes(item.id as HazardLayerType)}
-                                                onCheckedChange={(checked) => handleHazardLayerChange(item.id as HazardLayerType, checked as boolean)}
-                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600"
-                                            />
-                                            <Label htmlFor={item.id} className="cursor-pointer text-sm">
-                                                {item.label}
-                                            </Label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Infrastructure Section - Simplified */}
-                            <div>
-                                <h4 className="mb-3 text-base font-medium text-slate-700">Infrastruktur</h4>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-md border border-slate-200 p-3">
-                                    {(
-                                        [
-                                            { id: 'topografi', label: 'Topografi' },
-                                            { id: 'fault', label: 'Fault' },
-                                            { id: 'jalur_rel', label: 'Jalur Rel' },
-                                            { id: 'jalan', label: 'Jalan' },
-                                            { id: 'pasar', label: 'Pasar' },
-                                            { id: 'masjid', label: 'Masjid' },
-                                            { id: 'kelenteng', label: 'Kelenteng' },
-                                            { id: 'pura', label: 'Pura' },
-                                            { id: 'station', label: 'Station' },
-                                            { id: 'terminal', label: 'Terminal' },
-                                            { id: 'sungai', label: 'Sungai' },
-                                            { id: 'batas_das', label: 'Batas DAS' },
-                                            { id: 'batas_admin', label: 'Batas Admin' },
-                                        ] as const
-                                    ).map((item) => (
-                                        <div key={item.id} className="flex items-center space-x-2 py-1">
-                                            <Checkbox
-                                                id={item.id}
-                                                checked={selectedInfraLayers.includes(item.id as InfraLayerType)}
-                                                onCheckedChange={(checked) => handleInfraLayerChange(item.id as InfraLayerType, checked as boolean)}
-                                                className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                                            />
-                                            <Label htmlFor={item.id} className="cursor-pointer text-sm">
-                                                {item.label}
-                                            </Label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Map Legend */}
-            <div className="border-t border-slate-200 bg-white shadow-md">
-                <div className="container mx-auto py-4">
-                    <div className="grid grid-cols-4 gap-4 px-4">
-                        {/* Primary Disaster Icons */}
-                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Icon Bencana</div>
-                            <div className="flex flex-col space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/banjir.svg" alt="Banjir" className="h-6 w-6" />
-                                    <span className="text-sm">= Banjir</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/gempa.svg" alt="Gempa" className="h-6 w-6" />
-                                    <span className="text-sm">= Gempa</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/tsunami.svg" alt="Tsunami" className="h-6 w-6" />
-                                    <span className="text-sm">= Tsunami</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/longsor.svg" alt="Longsor" className="h-6 w-6" />
-                                    <span className="text-sm">= Longsor</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Secondary Disaster Icons */}
-                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Icon Bencana Lainnya</div>
-                            <div className="flex flex-col space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/kebakaran.svg" alt="Kebakaran" className="h-6 w-6" />
-                                    <span className="text-sm">= Kebakaran</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/kekeringan.svg" alt="Kekeringan" className="h-6 w-6" />
-                                    <span className="text-sm">= Kekeringan</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/angin-topan.svg" alt="Angin Topan" className="h-6 w-6" />
-                                    <span className="text-sm">= Angin Topan</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/lainnya.svg" alt="Lainnya" className="h-6 w-6" />
-                                    <span className="text-sm">= Lainnya</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Marker Types */}
-                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Tipe Marker</div>
-                            <div className="flex flex-col space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/disaster-marker.svg" alt="Lokasi Bencana" className="h-6 w-6" />
-                                    <span className="text-sm">= Lokasi Bencana</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/shelter-marker.svg" alt="Shelter" className="h-6 w-6" />
-                                    <span className="text-sm">= Shelter/Posko</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <img src="/icons/default-marker.svg" alt="Default" className="h-6 w-6" />
-                                    <span className="text-sm">= Lokasi Umum</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Status Indicators */}
-                        <div className="rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 p-3">
-                            <div className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Status Laporan</div>
-                            <div className="flex flex-col space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <span className="inline-block h-3 w-3 rounded-full bg-green-500"></span>
-                                    <span className="text-sm">= Terverifikasi</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <span className="inline-block h-3 w-3 rounded-full bg-yellow-500"></span>
-                                    <span className="text-sm">= Menunggu</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <span className="inline-block h-3 w-3 rounded-full bg-red-500"></span>
-                                    <span className="text-sm">= Ditolak</span>
-                                </div>
+                        {/* Layer Count */}
+                        <div className="sticky bottom-0 border-t border-slate-200 bg-white p-4">
+                            <div className="flex justify-between text-sm text-slate-600">
+                                <span>Layer Terpilih:</span>
+                                <span>{selectedHazardLayers.length} layer</span>
                             </div>
                         </div>
                     </div>
