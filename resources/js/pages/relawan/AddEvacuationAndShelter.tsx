@@ -7,11 +7,17 @@ import AppLayout from '@/layouts/app-layout';
 import axios from '@/lib/axios';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
-import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
+import { useEffect, useRef, useState } from 'react';
+import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 // Import Leaflet icon
 import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Flag, MapPin, RotateCw } from 'lucide-react';
+// Add imports for routing functionality
+import L from 'leaflet';
+import 'leaflet-routing-machine';
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
+import { renderToString } from 'react-dom/server';
 
 // Add shelter icon definition just like in PoskoForm
 const shelterIcon = icon({
@@ -40,20 +46,96 @@ interface FormPosko {
     longitude: number;
 }
 
+// Add routing control component similar to EvacuationRouteForm
+const RoutingMachine = ({
+    startPoint,
+    endPoint,
+    onRouteFound,
+}: {
+    startPoint: [number, number] | null;
+    endPoint: [number, number] | null;
+    onRouteFound?: (coordinates: [number, number][]) => void;
+}) => {
+    const map = useMap();
+    const routingControlRef = useRef<L.Routing.Control | null>(null);
+    const routeNotifiedRef = useRef(false);
+
+    useEffect(() => {
+        if (!startPoint || !endPoint) {
+            // Clean up previous routing if any
+            if (routingControlRef.current) {
+                routingControlRef.current.remove();
+                routingControlRef.current = null;
+            }
+            routeNotifiedRef.current = false;
+            return;
+        }
+
+        // Create routing control
+        const routingControl = L.Routing.control({
+            waypoints: [L.latLng(startPoint[0], startPoint[1]), L.latLng(endPoint[0], endPoint[1])],
+            routeWhileDragging: true,
+            lineOptions: {
+                styles: [{ color: '#3B82F6', opacity: 0.7, weight: 5 }],
+                extendToWaypoints: true,
+                missingRouteTolerance: 0,
+            },
+            show: false, // Don't show turn-by-turn instructions
+            addWaypoints: false, // Disable adding waypoints by clicking on route
+        }).addTo(map);
+
+        // Capture the route points when a route is calculated
+        routingControl.on('routesfound', function (e) {
+            const routes = e.routes;
+            if (routes && routes.length > 0) {
+                const coordinates: [number, number][] = routes[0].coordinates.map(
+                    (coord: { lat: number; lng: number }) => [coord.lat, coord.lng] as [number, number],
+                );
+
+                if (onRouteFound && !routeNotifiedRef.current) {
+                    onRouteFound(coordinates);
+                    routeNotifiedRef.current = true;
+                }
+            }
+        });
+
+        routingControlRef.current = routingControl;
+
+        // Clean up on unmount
+        return () => {
+            if (routingControlRef.current) {
+                routingControlRef.current.remove();
+            }
+        };
+    }, [map, startPoint, endPoint, onRouteFound]);
+
+    return null;
+};
+
 // Create a PolylineCreator component similar to EvacuationRouteForm
 const PolylineCreator = ({
     points,
     setPoints,
     color = '#3B82F6',
+    isRoutingMode = false,
+    onPointClick,
 }: {
     points: [number, number][];
     setPoints: React.Dispatch<React.SetStateAction<[number, number][]>>;
     color: string;
+    isRoutingMode?: boolean;
+    onPointClick?: (position: [number, number]) => void;
 }) => {
     useMapEvents({
         click: (e) => {
             const { lat, lng } = e.latlng;
-            setPoints((current) => [...current, [lat, lng]]);
+            const newPoint: [number, number] = [lat, lng];
+
+            if (isRoutingMode && onPointClick) {
+                onPointClick(newPoint);
+            } else if (!isRoutingMode) {
+                setPoints((current) => [...current, newPoint]);
+            }
         },
     });
 
@@ -91,6 +173,13 @@ export default function AddEvacuationAndShelter() {
     const [jalurPoints, setJalurPoints] = useState<Array<[number, number]>>([]);
     const [jalurNama, setJalurNama] = useState('');
 
+    // Add routing mode state
+    const [startPoint, setStartPoint] = useState<[number, number] | null>(null);
+    const [endPoint, setEndPoint] = useState<[number, number] | null>(null);
+    const [routePoints, setRoutePoints] = useState<[number, number][]>([]);
+    const [isRouteFound, setIsRouteFound] = useState(false);
+    const routeNotificationShownRef = useRef(false);
+
     // Get CSRF cookie when component mounts
     useEffect(() => {
         const getCsrfToken = async () => {
@@ -125,6 +214,72 @@ export default function AddEvacuationAndShelter() {
             ...formPosko,
             [name]: name === 'kapasitas' ? parseInt(value) || 0 : value,
         });
+    };
+
+    // Handle routing point selection
+    const handleRoutingPointClick = (position: [number, number]) => {
+        if (!startPoint) {
+            setStartPoint(position);
+            toast({
+                title: 'Titik Awal',
+                description: 'Titik awal rute ditentukan. Silahkan tentukan titik tujuan.',
+            });
+        } else if (!endPoint) {
+            setEndPoint(position);
+            toast({
+                title: 'Titik Tujuan',
+                description: 'Titik tujuan ditentukan. Mencari rute terbaik...',
+            });
+        } else {
+            // Reset and start new route
+            setStartPoint(position);
+            setEndPoint(null);
+            setRoutePoints([]);
+            setIsRouteFound(false);
+            toast({
+                title: 'Titik Awal Baru',
+                description: 'Titik awal baru ditentukan. Silahkan tentukan titik tujuan.',
+            });
+        }
+    };
+
+    // Handle when a route is found
+    const handleRouteFound = (coordinates: [number, number][]) => {
+        if (!routeNotificationShownRef.current) {
+            setRoutePoints(coordinates);
+            setIsRouteFound(true);
+            toast({
+                title: 'Rute Ditemukan',
+                description: `Rute terbaik dengan ${coordinates.length} titik telah ditemukan.`,
+            });
+            routeNotificationShownRef.current = true;
+        } else {
+            // Just update the coordinates without showing notification again
+            setRoutePoints(coordinates);
+            setIsRouteFound(true);
+        }
+    };
+
+    // Add route points to evacuation path
+    const addRouteToEvacuationPath = () => {
+        if (routePoints.length > 0) {
+            setJalurPoints([...routePoints]);
+            toast({
+                title: 'Rute Ditambahkan',
+                description: `${routePoints.length} titik rute ditambahkan ke jalur evakuasi.`,
+            });
+            // Reset routing
+            resetRouting();
+        }
+    };
+
+    // Reset routing
+    const resetRouting = () => {
+        setStartPoint(null);
+        setEndPoint(null);
+        setRoutePoints([]);
+        setIsRouteFound(false);
+        routeNotificationShownRef.current = false;
     };
 
     const handleSubmitJalur = async (e: React.FormEvent) => {
@@ -168,6 +323,7 @@ export default function AddEvacuationAndShelter() {
             // Reset form
             setJalurPoints([]);
             setJalurNama('');
+            resetRouting();
         } catch (error: unknown) {
             console.error('Failed to submit evacuation route:', error);
             const errorMessage = error instanceof Error ? error.message : 'Gagal menambahkan jalur evakuasi';
@@ -271,6 +427,7 @@ export default function AddEvacuationAndShelter() {
     const resetJalur = () => {
         setJalurPoints([]);
         setJalurNama('');
+        resetRouting();
     };
 
     return (
@@ -334,7 +491,7 @@ export default function AddEvacuationAndShelter() {
                                 <CardContent>
                                     <div className="mb-2 text-xs text-gray-500 sm:text-sm">
                                         {activeTab === 'jalur'
-                                            ? 'Klik pada peta untuk menambahkan titik jalur evakuasi'
+                                            ? 'Klik pada peta untuk menentukan titik awal dan tujuan rute'
                                             : 'Klik pada peta untuk menentukan lokasi posko evakuasi'}
                                     </div>
 
@@ -347,19 +504,90 @@ export default function AddEvacuationAndShelter() {
                                             />
 
                                             {activeTab === 'jalur' ? (
-                                                <PolylineCreator points={jalurPoints} setPoints={setJalurPoints} color="#3B82F6" />
+                                                <>
+                                                    <PolylineCreator
+                                                        points={jalurPoints}
+                                                        setPoints={setJalurPoints}
+                                                        color="#3B82F6"
+                                                        isRoutingMode={true}
+                                                        onPointClick={handleRoutingPointClick}
+                                                    />
+
+                                                    {/* Routing Machine */}
+                                                    <RoutingMachine startPoint={startPoint} endPoint={endPoint} onRouteFound={handleRouteFound} />
+
+                                                    {/* Route start and end markers */}
+                                                    {startPoint && (
+                                                        <Marker
+                                                            position={startPoint}
+                                                            icon={L.divIcon({
+                                                                html: renderToString(<Flag className="h-6 w-6 text-green-600" />),
+                                                                className: 'custom-div-icon',
+                                                                iconSize: [24, 24],
+                                                                iconAnchor: [12, 24],
+                                                            })}
+                                                        />
+                                                    )}
+                                                    {endPoint && (
+                                                        <Marker
+                                                            position={endPoint}
+                                                            icon={L.divIcon({
+                                                                html: renderToString(<MapPin className="h-6 w-6 text-red-600" />),
+                                                                className: 'custom-div-icon',
+                                                                iconSize: [24, 24],
+                                                                iconAnchor: [12, 24],
+                                                            })}
+                                                        />
+                                                    )}
+
+                                                    {/* Display route points as polyline */}
+                                                    {routePoints.length > 0 && (
+                                                        <Polyline
+                                                            positions={routePoints}
+                                                            pathOptions={{
+                                                                color: '#4f46e5',
+                                                                weight: 5,
+                                                                dashArray: '10, 5',
+                                                                opacity: 0.7,
+                                                            }}
+                                                        />
+                                                    )}
+                                                </>
                                             ) : (
                                                 <MarkerCreator selectedPoint={selectedPoint} setSelectedPoint={setSelectedPoint} />
                                             )}
                                         </MapContainer>
                                     </div>
 
-                                    {activeTab === 'jalur' && jalurPoints.length > 0 && (
+                                    {activeTab === 'jalur' && (
                                         <div className="mt-4">
-                                            <p className="mb-2 text-xs sm:text-sm">Titik yang dipilih: {jalurPoints.length}</p>
-                                            <Button variant="outline" size="sm" onClick={resetJalur}>
-                                                Reset Jalur
-                                            </Button>
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <Button type="button" variant="outline" onClick={resetRouting} size="sm">
+                                                    <RotateCw className="mr-1 h-4 w-4" /> Reset Rute
+                                                </Button>
+
+                                                {isRouteFound && (
+                                                    <Button type="button" onClick={addRouteToEvacuationPath} size="sm">
+                                                        Tambahkan Rute ke Jalur
+                                                    </Button>
+                                                )}
+
+                                                <div className="text-sm text-gray-500">
+                                                    {!startPoint && 'Klik untuk menentukan titik awal'}
+                                                    {startPoint && !endPoint && 'Klik untuk menentukan titik tujuan'}
+                                                    {startPoint && endPoint && !isRouteFound && 'Mencari rute terbaik...'}
+                                                    {isRouteFound && `${routePoints.length} titik rute ditemukan`}
+                                                </div>
+                                            </div>
+
+                                            {jalurPoints.length > 0 && (
+                                                <div className="mt-2">
+                                                    <p className="mb-2 text-xs sm:text-sm">Titik yang dipilih: {jalurPoints.length}</p>
+                                                    <Button variant="outline" size="sm" onClick={resetJalur}>
+                                                        Reset Jalur
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </CardContent>
