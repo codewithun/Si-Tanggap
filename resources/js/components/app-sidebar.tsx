@@ -3,7 +3,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { AlertTriangle, Bell, FileText, LayoutGrid, Map, MapPinned, ShieldCheck, TentTree, User, Users } from 'lucide-react';
+import {  Bell, LayoutGrid, Map, MapPinned, ShieldCheck, TentTree, User, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 
 interface User {
@@ -36,26 +36,17 @@ export function AppSidebar() {
 
     // Tambahkan menu berdasarkan role
     if (user?.role === 'masyarakat') {
+        mainNavItems.length = 0; // Hapus dashboard default
         mainNavItems.push(
             {
-                title: 'Peta Bencana',
-                href: '/map',
+                title: 'Dashboard',
+                href: '/masyarakat/laporan-saya',
+                icon: LayoutGrid,
+            },
+            {
+                title: 'Peta Bencana & Evakuasi',
+                href: '/masyarakat/peta-bencana',
                 icon: Map,
-            },
-            {
-                title: 'Laporan Bencana',
-                href: '/akun-saya/laporan-saya',
-                icon: FileText,
-            },
-            {
-                title: 'Buat Laporan',
-                href: '/akun-saya/buat-laporan',
-                icon: AlertTriangle,
-            },
-            {
-                title: 'Profil Saya',
-                href: '/settings/profile',
-                icon: User,
             },
         );
     } else if (user?.role === 'relawan') {

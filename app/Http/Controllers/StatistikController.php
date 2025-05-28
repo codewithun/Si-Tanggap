@@ -21,10 +21,12 @@ class StatistikController extends Controller
             // Count verified reports
             $totalLaporanVerified = Laporan::where('status', 'diverifikasi')->count();
 
-            // Count distinct disaster locations (considering verified reports as disasters)
-            $totalBencana = Laporan::where('status', 'diverifikasi')
-                ->distinct('latitude', 'longitude')
-                ->count();
+            // Count distinct disaster locations (verified reports as disasters) - compatible with SQLite
+            $locations = Laporan::where('status', 'diverifikasi')
+                ->get(['latitude', 'longitude']);
+            $totalBencana = $locations->unique(function ($item) {
+                return $item['latitude'] . ',' . $item['longitude'];
+            })->count();
 
             // Count total shelters
             $totalPosko = Posko::count();
@@ -36,9 +38,9 @@ class StatistikController extends Controller
                 ->pluck('total', 'jenis_bencana')
                 ->toArray();
 
-            // Get monthly report counts for the current year
+            // Get monthly report counts for the current year (SQLite compatible)
             $laporanBulanan = Laporan::select(
-                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+                DB::raw("strftime('%Y-%m', created_at) as month"),
                 DB::raw('count(*) as total')
             )
                 ->whereYear('created_at', date('Y'))
