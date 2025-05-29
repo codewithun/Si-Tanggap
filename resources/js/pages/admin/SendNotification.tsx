@@ -48,34 +48,6 @@ export default function SendNotification() {
         setLoading(true);
 
         try {
-            // Try multiple possible endpoints to find the one that works
-            const endpoints = [
-                '/admin/notifikasi', // As per routes
-                '/api/notifikasi', // Also try API endpoint as fallback
-            ];
-
-            let success = false;
-            let error = null;
-
-            // Try each endpoint until one works
-            for (const endpoint of endpoints) {
-                try {
-                    await axios.post(endpoint, {
-                        judul: title,
-                        isi: content,
-                        type,
-                        useEmail,
-                        target,
-                    });
-
-                    success = true;
-                    break; // Exit loop if successful
-                } catch (err) {
-                    error = err;
-                    console.error(`Error with endpoint ${endpoint}:`, err);
-                    // Continue to next endpoint
-                }
-            }
 
             if (success) {
                 toast({
@@ -118,12 +90,11 @@ export default function SendNotification() {
 
             <div className="p-6">
                 <h1 className="mb-4 text-2xl font-semibold text-gray-800">Kirim Notifikasi</h1>
-                <p className="mb-6 text-gray-600">Kirim notifikasi peringatan bencana ke pengguna aplikasi.</p>
 
                 <Card>
                     <CardHeader>
                         <CardTitle>Kirim Notifikasi Bencana</CardTitle>
-                        <CardDescription>Kirim notifikasi ke pengguna aplikasi</CardDescription>
+
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
@@ -191,14 +162,6 @@ export default function SendNotification() {
                             </div>
                         </form>
                     </CardContent>
-                    <CardFooter className="flex flex-col justify-between gap-4 sm:flex-row">
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                            {getNotificationTypeIcon()}
-                            <p>
-                                Notifikasi akan dikirim ke {target === 'all' ? 'semua pengguna' : `pengguna role ${target}`}
-                                {useEmail ? ' via aplikasi dan email' : ' via aplikasi'}
-                            </p>
-                        </div>
                         <Button type="submit" onClick={handleSubmit} disabled={loading || !title.trim() || !content.trim()}>
                             <BellIcon className="mr-2 h-4 w-4" />
                             {loading ? 'Mengirim...' : 'Kirim Notifikasi'}
