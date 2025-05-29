@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +10,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { AlertTriangle, BellIcon, InfoIcon, MailIcon } from 'lucide-react';
+import { BellIcon, MailIcon } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -48,8 +48,15 @@ export default function SendNotification() {
         setLoading(true);
 
         try {
-
-            if (success) {
+            const response = await axios.post('/api/notifications/send', {
+                title,
+                content,
+                type,
+                target,
+                useEmail,
+            });
+            
+            if (response.data.success) {
                 toast({
                     title: 'Berhasil',
                     description: `Notifikasi berhasil dikirim${useEmail ? ' (email & in-app)' : ''}`,
@@ -59,7 +66,7 @@ export default function SendNotification() {
                 setTitle('');
                 setContent('');
             } else {
-                throw error; // Rethrow the last error
+                throw new Error(response.data.message || 'Failed to send notification');
             }
         } catch (error) {
             console.error(error);
@@ -73,16 +80,6 @@ export default function SendNotification() {
         }
     };
 
-    const getNotificationTypeIcon = () => {
-        switch (type) {
-            case 'warning':
-                return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-            case 'emergency':
-                return <AlertTriangle className="h-4 w-4 text-red-600" />;
-            default:
-                return <InfoIcon className="h-4 w-4 text-blue-500" />;
-        }
-    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -162,6 +159,7 @@ export default function SendNotification() {
                             </div>
                         </form>
                     </CardContent>
+                    <CardFooter>
                         <Button type="submit" onClick={handleSubmit} disabled={loading || !title.trim() || !content.trim()}>
                             <BellIcon className="mr-2 h-4 w-4" />
                             {loading ? 'Mengirim...' : 'Kirim Notifikasi'}
