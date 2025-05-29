@@ -32,8 +32,15 @@ class JalurEvakuasiController extends Controller
             $perPage = $request->input('per_page', 10);
             $jalurEvakuasis = $query->paginate($perPage);
 
+            // Set no-cache headers untuk mencegah caching response
+            $headers = [
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ];
+
             // Return basic data if there's an issue with transformation
-            return response()->json($jalurEvakuasis);
+            return response()->json($jalurEvakuasis, 200, $headers);
         } catch (\Exception $e) {
             Log::error('JalurEvakuasi index error: ' . $e->getMessage());
             Log::error('Error trace: ' . $e->getTraceAsString());
@@ -60,25 +67,46 @@ class JalurEvakuasiController extends Controller
             'jenis_bencana' => 'required|string|max:255',
             'warna' => 'nullable|string|max:255',
         ]);
-
-        // Format coordinates for storage
-        $coordinates = collect($validated['koordinat'])->map(function ($coord) {
-            return [$coord['lat'], $coord['lng']];
-        })->toArray();
-
+        
+        // Debug log koordinat format
+        Log::info('Received koordinat format:', [
+            'type' => gettype($validated['koordinat']),
+            'sample' => isset($validated['koordinat'][0]) ? $validated['koordinat'][0] : null
+        ]);
+        
+        // Ensure coordinates are in object format with lat/lng properties
+        $normalizedKoordinat = [];
+        foreach ($validated['koordinat'] as $point) {
+            if (isset($point['lat']) && isset($point['lng'])) {
+                $normalizedKoordinat[] = [
+                    'lat' => (float) $point['lat'],
+                    'lng' => (float) $point['lng']
+                ];
+            }
+        }
+        
+        // Store coordinates directly as array of objects to maintain consistent format
+        // Using this format directly which is what the AdminMap component expects
         $jalurEvakuasi = JalurEvakuasi::create([
             'user_id' => $request->user()->id,
             'nama' => $validated['nama'],
             'deskripsi' => $validated['deskripsi'],
-            'koordinat' => json_encode($coordinates),
+            'koordinat' => $normalizedKoordinat, // Use normalized coordinates
             'jenis_bencana' => $validated['jenis_bencana'],
             'warna' => $validated['warna'] ?? '#FF0000',
         ]);
 
+        // Invalidasi cache dengan headers
+        $headers = [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
+            'Pragma' => 'no-cache',
+            'Expires' => '0'
+        ];
+
         return response()->json([
             'message' => 'Jalur evakuasi berhasil dibuat',
             'data' => $jalurEvakuasi
-        ], 201);
+        ], 201, $headers);
     }
 
     /**
@@ -87,7 +115,15 @@ class JalurEvakuasiController extends Controller
     public function show(JalurEvakuasi $jalurEvakuasi)
     {
         $jalurEvakuasi->load('user:id,name,email');
-        return response()->json($jalurEvakuasi);
+        
+        // Set no-cache headers untuk mencegah caching response
+        $headers = [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
+            'Pragma' => 'no-cache',
+            'Expires' => '0'
+        ];
+        
+        return response()->json($jalurEvakuasi, 200, $headers);
     }
 
     /**
@@ -113,12 +149,47 @@ class JalurEvakuasiController extends Controller
             'warna' => 'nullable|string|max:255',
         ]);
 
+        // Log incoming koordinat format for debugging
+        if (isset($validated['koordinat'])) {
+            Log::info('Update - Received koordinat format:', [
+                'type' => gettype($validated['koordinat']),
+                'sample' => isset($validated['koordinat'][0]) ? $validated['koordinat'][0] : null
+            ]);
+
+            // Ensure coordinates are consistently formatted as objects with lat/lng properties
+            $normalizedKoordinat = [];
+            foreach ($validated['koordinat'] as $point) {
+                if (isset($point['lat']) && isset($point['lng'])) {
+                    $normalizedKoordinat[] = [
+                        'lat' => (float) $point['lat'],
+                        'lng' => (float) $point['lng']
+                    ];
+                }
+            }
+            
+            // Replace with normalized version
+            $validated['koordinat'] = $normalizedKoordinat;
+            
+            // Debug log koordinat after normalization
+            Log::info('Update - Normalized koordinat:', [
+                'count' => count($normalizedKoordinat), 
+                'sample' => $normalizedKoordinat[0] ?? null
+            ]);
+        }
+
         $jalurEvakuasi->update($validated);
+
+        // Set no-cache headers untuk mencegah caching response
+        $headers = [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
+            'Pragma' => 'no-cache',
+            'Expires' => '0'
+        ];
 
         return response()->json([
             'message' => 'Jalur evakuasi berhasil diperbarui',
             'data' => $jalurEvakuasi
-        ]);
+        ], 200, $headers);
     }
 
     /**
@@ -135,8 +206,15 @@ class JalurEvakuasiController extends Controller
 
         $jalurEvakuasi->delete();
 
+        // Set no-cache headers untuk mencegah caching response
+        $headers = [
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 
+            'Pragma' => 'no-cache',
+            'Expires' => '0'
+        ];
+
         return response()->json([
             'message' => 'Jalur evakuasi berhasil dihapus'
-        ]);
+        ], 200, $headers);
     }
 }

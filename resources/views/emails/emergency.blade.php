@@ -55,16 +55,12 @@
         }
     </style>
 </head>
-<body>    <div class="container">
+<body>
+    <div class="container">
         <div class="header">
             INFORMASI PENTING BENCANA
         </div>
         <div class="content">
-            <div class="logo">
-                <!-- Gunakan URL absolut untuk gambar public -->
-                <img src="{{ url('icons/posko.png') }}" alt="Logo GeoSiaga" width="150">
-            </div>
-            
             <!-- Tambah text pra-header untuk meningkatkan deliverability -->
             <div style="display: none; max-height: 0px; overflow: hidden;">
                 Informasi penting terkait kebencanaan di wilayah Anda. Harap dibaca segera.

@@ -92,32 +92,69 @@ interface Posko {
     longitude: number;
 }
 
-const disasterIcon = L.icon({
-    iconUrl: '/icons/gempa.svg',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-});
+// Replace the single disasterIcon with a function to get appropriate icon by type
+const getDisasterIcon = (type: string) => {
+    const cacheBuster = `?v=${new Date().getTime()}`;
 
-const shelterIcon = L.icon({
-    iconUrl: '/icons/posko.png',
-    iconSize: [38, 38], // Make slightly larger than disaster icons
-    iconAnchor: [19, 38],
-    popupAnchor: [0, -38],
-});
-
-// Helper function to convert disaster type to hazard layer type
-function disasterToHazardLayer(jenisBencana: string): HazardLayerType {
-    const mapping: Record<string, HazardLayerType> = {
-        banjir: 'banjir',
-        longsor: 'tanah_longsor',
-        gempa: 'gempabumi',
-        tsunami: 'tsunami',
-        kebakaran: 'kebakaran_hutan',
-        angin_topan: 'cuaca_ekstrim',
-        kekeringan: 'kekeringan',
-    };
-    return mapping[jenisBencana] || 'multi_bahaya';
+    switch (type.toLowerCase()) {
+        case 'banjir':
+            return L.icon({
+                iconUrl: `/icons/icon-banjir.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'kebakaran':
+            return L.icon({
+                iconUrl: `/icons/icon-kebakaran.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'gempa':
+            return L.icon({
+                iconUrl: `/icons/gempa.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'longsor':
+            return L.icon({
+                iconUrl: `/icons/icon-tanahlongsor.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'angin-topan':
+        case 'angin_topan':
+            return L.icon({
+                iconUrl: `/icons/default-marker.svg${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'tsunami':
+            return L.icon({
+                iconUrl: `/icons/icon-tsunami.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'kekeringan':
+            return L.icon({
+                iconUrl: `/icons/icon-kekeringan.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        default:
+            return L.icon({
+                iconUrl: `/icons/disaster.svg${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+    }
 }
 
 export default function BencanaMap() {
@@ -130,7 +167,21 @@ export default function BencanaMap() {
 
     // Map controls from MapKeseluruhan
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
-    const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>(['gempabumi']);
+    const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>([
+        'banjir', 
+        'banjir_bandang', 
+        'cuaca_ekstrim', 
+        'gelombang_ekstrim', 
+        'gempabumi', 
+        'kebakaran_hutan', 
+        'kekeringan', 
+        'letusan_gunung_api', 
+        'tanah_longsor', 
+        'tsunami', 
+        'multi_bahaya',
+        'likuefaksi',
+        'covid19'
+    ]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Layer visibility toggles - set shelters to true by default
@@ -364,6 +415,21 @@ export default function BencanaMap() {
     // State to store filtered markers
     const [filteredMarkers, setFilteredMarkers] = useState<typeof allMarkers>([]);
 
+    // Helper function to convert disaster type to hazard layer type
+    function disasterToHazardLayer(jenisBencana: string): HazardLayerType {
+        const mapping: Record<string, HazardLayerType> = {
+            banjir: 'banjir',
+            longsor: 'tanah_longsor',
+            gempa: 'gempabumi',
+            tsunami: 'tsunami',
+            kebakaran: 'kebakaran_hutan',
+            angin_topan: 'cuaca_ekstrim',
+            'angin-topan': 'cuaca_ekstrim',
+            kekeringan: 'kekeringan',
+        };
+        return mapping[jenisBencana] || 'multi_bahaya';
+    }
+
     // Filter markers based on selected layers
     const filterMarkers = useCallback(() => {
         if (!allMarkers.length) return;
@@ -425,13 +491,78 @@ export default function BencanaMap() {
         }
     };
 
-    // Enhanced marker icon selector with different appearances for shelters by type
-    const getMarkerIcon = (type: string) => {
-        if (type === 'shelter') {
-            return shelterIcon;
+    // Define shelter icon
+        const shelterIcon = L.icon({
+            iconUrl: `/icons/posko.png?v=${new Date().getTime()}`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32],
+        });
+    
+        // Enhanced marker icon selector with different appearances for shelters by type
+        const getMarkerIcon = (type: string, jenis_bencana?: string) => {
+            if (type === 'shelter') {
+                return shelterIcon;
+            }
+        if (type === 'earthquake') {
+            return getDisasterIcon('gempa');
         }
-        return disasterIcon;
+        if (type === 'disaster' && jenis_bencana) {
+            return getDisasterIcon(jenis_bencana);
+        }
+        return getDisasterIcon('default');
     };
+
+    // Format description for better readability
+    const formatDescription = (description: string) => {
+        const lines = description
+            .trim()
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+
+        return (
+            <div className="disaster-popup-content">
+                {lines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                ))}
+            </div>
+        );
+    };
+
+    // Add custom CSS for wider popups when component mounts
+    useEffect(() => {
+        // Add custom style for wider popups
+        const style = document.createElement('style');
+        style.textContent = `
+            .leaflet-popup-content {
+                min-width: 260px !important;
+                max-width: 300px;
+            }
+            .disaster-popup-content {
+                white-space: pre-line;
+                line-height: 1.5;
+            }
+            .disaster-popup-content div {
+                margin-bottom: 2px;
+            }
+            /* Control map z-index to prevent overlapping UI elements */
+            .leaflet-container {
+                z-index: 1 !important;
+            }
+            .leaflet-pane,
+            .leaflet-control,
+            .leaflet-top,
+            .leaflet-bottom {
+                z-index: 400 !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -493,13 +624,13 @@ export default function BencanaMap() {
 
                                     {/* Render all markers */}
                                     {filteredMarkers.map((marker) => (
-                                        <Marker key={marker.id} position={marker.position} icon={getMarkerIcon(marker.type)}>
+                                        <Marker key={marker.id} position={marker.position} icon={getMarkerIcon(marker.type, marker.jenis_bencana)}>
                                             <Popup>
                                                 <div className="font-bold">{marker.title}</div>
                                                 {marker.type === 'shelter' && (
                                                     <>
                                                         <div className="mt-2 text-xs">{marker.description}</div>
-                                                        <div className="mt-2 text-xs">
+                                                        <div className="disaster-popup-content mt-2 text-xs">
                                                             <div>
                                                                 <span className="font-semibold">Alamat:</span>{' '}
                                                                 {(marker as unknown as { alamat: string }).alamat}
@@ -520,7 +651,7 @@ export default function BencanaMap() {
                                                     </>
                                                 )}
                                                 {marker.type !== 'shelter' && (
-                                                    <div className="mt-2 text-xs whitespace-pre-line">{marker.description}</div>
+                                                    <div className="mt-2 text-xs">{formatDescription(marker.description)}</div>
                                                 )}
                                             </Popup>
                                         </Marker>
@@ -551,10 +682,10 @@ export default function BencanaMap() {
                         )}
                     </div>
 
-                    {/* Floating Layer Panel - Modified with overflow hidden */}
+                    {/* Floating Layer Panel - Modified with full height */}
                     <div
                         id="layer-drawer"
-                        className={`absolute top-0 right-0 z-30 h-[300px] w-[300px] overflow-hidden border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 sm:h-[500px] ${
+                        className={`absolute top-0 right-0 z-30 h-full w-[300px] overflow-hidden border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 ${
                             sidebarOpen ? 'translate-x-0' : 'translate-x-full'
                         }`}
                     >

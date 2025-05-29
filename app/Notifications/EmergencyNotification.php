@@ -30,7 +30,21 @@ class EmergencyNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-
+        return ['mail', 'database'];
+    }
+    
+    /**
+     * Get the mail representation of the notification.
+     */
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject('PENTING: ' . $this->title)
+            ->greeting('Halo ' . $notifiable->name)
+            ->line($this->message)
+            ->line('Notifikasi darurat ini dikirim dari aplikasi GeoSiaga.')
+            ->action('Buka Aplikasi GeoSiaga', url('/'))
+            ->error();
     }
 
     /**

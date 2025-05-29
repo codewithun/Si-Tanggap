@@ -79,4 +79,20 @@ class EmergencyMail extends Mailable
             ],
         );
     }
+    
+    /**
+     * Build the message.
+     *
+     * @return $this
+     */
+    public function build()
+    {
+        return $this->subject('PENTING: ' . $this->title)
+                   ->view('emails.emergency')
+                   ->with([
+                       'title' => $this->title,
+                       'content' => $this->content,
+                       'name' => $this->recipientName
+                   ]);
+    }
 }

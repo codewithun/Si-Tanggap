@@ -177,7 +177,7 @@ export default function MasyarakatDashboard() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard Masyarakat" />
-            <div className="container mx-auto max-w-[95%] space-y-8 px-2 py-6 lg:max-w-none">
+            <div className="container mx-auto px-3 py-6 lg:px-4">
                 <Card className="w-full">
                     <CardHeader className="pb-4">
                         <CardTitle className="text-2xl font-semibold">Dashboard</CardTitle>
@@ -185,7 +185,7 @@ export default function MasyarakatDashboard() {
                             Selamat datang di GeoSiaga. Di sini Anda dapat melihat dan mengelola laporan bencana yang pernah Anda kirimkan.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-8">
+                    <CardContent className="space-y-6">
                         {/* Action Button */}
                         <div className="flex items-center justify-between">
                             <Button onClick={handleCreateReport} size="lg" className="font-medium">
@@ -194,7 +194,7 @@ export default function MasyarakatDashboard() {
                         </div>
 
                         {/* Statistics Cards */}
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <Card>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm font-medium">Total Laporan</CardTitle>
@@ -237,7 +237,7 @@ export default function MasyarakatDashboard() {
                         </div>
 
                         {/* Risk Level Distribution */}
-                        <div className="grid gap-6 lg:grid-cols-2">
+                        <div className="grid gap-4 md:grid-cols-2">
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Keterangan Status</CardTitle>
@@ -267,14 +267,14 @@ export default function MasyarakatDashboard() {
                         </div>
 
                         {/* Tabs for filtering */}
-                        <Card className="border-2">
+                        <Card className="border">
                             <CardHeader className="pb-0">
                                 <CardTitle>Riwayat Laporan</CardTitle>
                                 <CardDescription>Daftar laporan bencana yang telah Anda kirimkan</CardDescription>
                             </CardHeader>
                             <CardContent className="pt-6">
                                 <Tabs value={activeTab} onValueChange={handleTabChange}>
-                                    <TabsList className="grid w-full grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-4">
+                                    <TabsList className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
                                         {(['semua', 'menunggu', 'diverifikasi', 'ditolak'] as TabType[]).map((tab) => (
                                             <TabsTrigger key={tab} value={tab} className="font-medium">
                                                 {getTabLabel(tab)}
@@ -282,47 +282,47 @@ export default function MasyarakatDashboard() {
                                         ))}
                                     </TabsList>
 
-                                    <TabsContent value={activeTab} className="mt-15 min-h-[300px]">
+                                    <TabsContent value={activeTab} className="mt-4 min-h-[300px]">
                                         {loading ? (
                                             <div className="flex flex-col items-center justify-center py-12">
                                                 <div className="border-primary h-8 w-8 animate-spin rounded-full border-b-2"></div>
                                                 <p className="text-muted-foreground mt-2 text-sm">Memuat data laporan...</p>
                                             </div>
                                         ) : laporans.length > 0 ? (
-                                            <div className="rounded-md border">
+                                            <div className="overflow-auto rounded-md border">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
-                                                            <TableHead className="font-semibold">Judul</TableHead>
-                                                            <TableHead className="font-semibold">Jenis Bencana</TableHead>
-                                                            <TableHead className="font-semibold">Lokasi</TableHead>
-                                                            <TableHead className="font-semibold">Status</TableHead>
-                                                            <TableHead className="font-semibold">Tanggal & Detail</TableHead>
-                                                            <TableHead className="text-center font-semibold">Aksi</TableHead>
+                                                            <TableHead className="whitespace-nowrap font-semibold">Judul</TableHead>
+                                                            <TableHead className="whitespace-nowrap font-semibold">Jenis Bencana</TableHead>
+                                                            <TableHead className="whitespace-nowrap font-semibold">Lokasi</TableHead>
+                                                            <TableHead className="whitespace-nowrap font-semibold">Status</TableHead>
+                                                            <TableHead className="whitespace-nowrap font-semibold">Tanggal & Detail</TableHead>
+                                                            <TableHead className="whitespace-nowrap text-center font-semibold">Aksi</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
                                                         {laporans.map((laporan) => (
                                                             <TableRow key={laporan.id} className="hover:bg-muted/50">
-                                                                <TableCell className="font-medium">{laporan.judul}</TableCell>
-                                                                <TableCell>
+                                                                <TableCell className="max-w-[150px] truncate font-medium">{laporan.judul}</TableCell>
+                                                                <TableCell className="whitespace-nowrap">
                                                                     <span className="capitalize">{laporan.jenis_bencana}</span>
                                                                 </TableCell>
-                                                                <TableCell>{laporan.lokasi}</TableCell>
+                                                                <TableCell className="max-w-[150px] truncate">{laporan.lokasi}</TableCell>
                                                                 <TableCell>
                                                                     <div className="flex items-center space-x-2">
                                                                         {getStatusBadge(laporan.status)}
                                                                     </div>
                                                                 </TableCell>
-                                                                <TableCell className="text-sm">
+                                                                <TableCell className="whitespace-nowrap text-sm">
                                                                     <div>{formatDate(laporan.created_at)}</div>
                                                                     {laporan.deskripsi && (
-                                                                        <div className="mt-1 max-w-xs truncate text-xs text-gray-500">
+                                                                        <div className="mt-1 max-w-[150px] truncate text-xs text-gray-500">
                                                                             {laporan.deskripsi}
                                                                         </div>
                                                                     )}
                                                                 </TableCell>
-                                                                <TableCell className="text-center">
+                                                                <TableCell className="whitespace-nowrap text-center">
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
@@ -407,7 +407,7 @@ export default function MasyarakatDashboard() {
                                     <div className="grid grid-cols-2 gap-5">
                                         <div className="space-y-1.5">
                                             <p className="text-xs font-medium tracking-wider text-gray-500 uppercase">Jenis Bencana</p>
-                                            <p className="font-medium capitalize">{selectedLaporan.jenis_bencana}</p>
+                                            <p className="font-medium capitalize">{selectedLaporan.judul}</p>
                                         </div>
                                         <div className="space-y-1.5">
                                             <p className="text-xs font-medium tracking-wider text-gray-500 uppercase">Status</p>

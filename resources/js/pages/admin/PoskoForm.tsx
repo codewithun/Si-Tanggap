@@ -14,7 +14,7 @@ import { icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from 'react-leaflet';
 
 // Define the breadcrumbs for the page
 const breadcrumbs: BreadcrumbItem[] = [
@@ -64,12 +64,29 @@ const shelterIcon = icon({
     popupAnchor: [0, -32],
 });
 
+// Add highlighted icon for editing
+const highlightedShelterIcon = icon({
+    iconUrl: '/icons/posko.png',
+    iconSize: [42, 42], // Slightly larger
+    iconAnchor: [21, 42],
+    popupAnchor: [0, -42],
+    className: 'highlighted-marker', // Add a special class for styling
+});
+
 const MarkerCreator = ({
     position,
     setPosition,
+    isEditing,
+    allPoskos,
+    handleEdit,
+    handleDeleteClick,
 }: {
     position: [number, number] | null;
     setPosition: React.Dispatch<React.SetStateAction<[number, number] | null>>;
+    isEditing: boolean;
+    allPoskos: Posko[];
+    handleEdit: (posko: Posko) => void;
+    handleDeleteClick: (id: number) => void;
 }) => {
     useMapEvents({
         click: (e) => {
@@ -77,7 +94,56 @@ const MarkerCreator = ({
         },
     });
 
-    return position ? <Marker position={position} icon={shelterIcon} /> : null;
+    // Format posko description for better readability in popup
+    const formatPoskoDescription = (posko: Posko) => (
+        <div className="posko-popup-content">
+            <div><span className="font-semibold">Jenis:</span> {posko.jenis_posko}</div>
+            <div><span className="font-semibold">Status:</span> {posko.status}</div>
+            <div><span className="font-semibold">Kapasitas:</span> {posko.kapasitas} orang</div>
+            <div><span className="font-semibold">Alamat:</span> {posko.alamat}</div>
+            <div><span className="font-semibold">Kontak:</span> {posko.kontak || '-'}</div>
+            <div><span className="font-semibold">Deskripsi:</span> {posko.deskripsi}</div>
+        </div>
+    );
+
+    return (
+        <>
+            {position && <Marker position={position} icon={isEditing ? highlightedShelterIcon : shelterIcon} />}
+            
+            {allPoskos.map((posko) => (
+                <Marker 
+                    key={posko.id} 
+                    position={[posko.latitude, posko.longitude]} 
+                    icon={shelterIcon}
+                >
+                    <Popup className="wider-popup">
+                        <div className="font-bold">{posko.nama}</div>
+                        <div className="mt-2 text-xs">
+                            {formatPoskoDescription(posko)}
+                        </div>
+                        <div className="mt-3 flex justify-end space-x-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => handleEdit(posko)}
+                            >
+                                Edit
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => handleDeleteClick(posko.id)}
+                            >
+                                Hapus
+                            </Button>
+                        </div>
+                    </Popup>
+                </Marker>
+            ))}
+        </>
+    );
 };
 
 export default function PoskoForm() {
@@ -323,9 +389,9 @@ export default function PoskoForm() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Add useEffect for map z-index styling
+    // Add useEffect for map z-index styling and marker highlighting
     useEffect(() => {
-        // Add custom style for map z-index
+        // Add custom style for map z-index and highlighted marker
         const style = document.createElement('style');
         style.textContent = `
             /* Control map z-index to prevent overlapping UI elements */
@@ -342,6 +408,33 @@ export default function PoskoForm() {
             .dialog-content {
                 z-index: 1000 !important;
             }
+            /* Style for highlighted marker when editing */
+            .highlighted-marker {
+                filter: drop-shadow(0 0 6px #ffa500) brightness(1.2);
+                animation: pulse 1.5s infinite;
+                z-index: 1000 !important;
+            }
+            
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.6; }
+                100% { opacity: 1; }
+            }
+            
+            /* Style for posko popup content */
+            .posko-popup-content {
+                white-space: pre-line;
+                line-height: 1.5;
+            }
+            
+            .posko-popup-content div {
+                margin-bottom: 2px;
+            }
+            
+            .leaflet-popup-content {
+                min-width: 240px !important;
+                max-width: 300px;
+            }
         `;
         document.head.appendChild(style);
 
@@ -349,6 +442,15 @@ export default function PoskoForm() {
             document.head.removeChild(style);
         };
     }, []);
+
+    // Add a function to handle contact input to ensure it only contains numbers
+    const handleContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        // Only allow numeric values
+        if (value === '' || /^[0-9]+$/.test(value)) {
+            setPoskoContact(value);
+        }
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -372,11 +474,14 @@ export default function PoskoForm() {
                                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                         />
-                                        <MarkerCreator position={position} setPosition={setPosition} />
-                                        {/* Display all poskos, not just current page */}
-                                        {allPoskos.map((posko) => (
-                                            <Marker key={posko.id} position={[posko.latitude, posko.longitude]} icon={shelterIcon} />
-                                        ))}
+                                        <MarkerCreator 
+                                            position={position} 
+                                            setPosition={setPosition} 
+                                            isEditing={editId !== null}
+                                            allPoskos={allPoskos}
+                                            handleEdit={handleEdit}
+                                            handleDeleteClick={handleDeleteClick}
+                                        />
                                     </MapContainer>
                                 </div>
 
@@ -432,9 +537,13 @@ export default function PoskoForm() {
                                             <Input
                                                 id="poskoContact"
                                                 value={poskoContact}
-                                                onChange={(e) => setPoskoContact(e.target.value)}
+                                                onChange={handleContactChange}
                                                 placeholder="Masukkan nomor kontak"
+                                                type="tel"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
                                             />
+                                            <p className="text-xs text-gray-500">Format: Angka saja (contoh: 081234567890)</p>
                                         </div>
 
                                         <div className="space-y-2">
@@ -669,7 +778,7 @@ export default function PoskoForm() {
                 </div>
             </div>
 
-            {/* Add the delete confirmation dialog at the end of your component, right before closing the AppLayout tag */}
+            {/* Add the delete confirmation dialog at the end of your component */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent className="dialog-content">
                     <DialogHeader>

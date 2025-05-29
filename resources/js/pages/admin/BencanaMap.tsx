@@ -80,13 +80,6 @@ interface Posko {
     longitude: number;
 }
 
-const disasterIcon = L.icon({
-    iconUrl: '/icons/gempa.svg', // Changed from '/icons/disaster-marker.svg' to match relawan version
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-});
-
 const shelterIcon = L.icon({
     iconUrl: '/icons/posko.png',
     iconSize: [38, 38], // Make slightly larger than disaster icons
@@ -103,6 +96,7 @@ function disasterToHazardLayer(jenisBencana: string): HazardLayerType {
         tsunami: 'tsunami',
         kebakaran: 'kebakaran_hutan',
         angin_topan: 'cuaca_ekstrim',
+        'angin-topan': 'cuaca_ekstrim', // Add hyphenated version
         kekeringan: 'kekeringan',
     };
     return mapping[jenisBencana] || 'multi_bahaya';
@@ -111,16 +105,87 @@ function disasterToHazardLayer(jenisBencana: string): HazardLayerType {
 function MarkerCreator({
     position,
     setPosition,
+    jenisBencana,
 }: {
     position: [number, number] | null;
     setPosition: React.Dispatch<React.SetStateAction<[number, number] | null>>;
+    jenisBencana: string;
 }) {
-    useMapEvents({
+    const mapEvents = useMapEvents({
         click: (e) => {
-            setPosition([e.latlng.lat, e.latlng.lng]);
+            // Only allow setting position if a disaster type is selected
+            if (jenisBencana) {
+                setPosition([e.latlng.lat, e.latlng.lng]);
+            }
         },
     });
-    return position ? <Marker position={position} icon={disasterIcon} /> : null;
+    
+    return position && jenisBencana ? <Marker position={position} icon={getDisasterIcon(jenisBencana)} /> : null;
+}
+
+// Instead of a single disaster icon, we'll create a function to get the appropriate icon
+const getDisasterIcon = (type: string) => {
+    const cacheBuster = `?v=${new Date().getTime()}`;
+
+    switch (type.toLowerCase()) {
+        case 'banjir':
+            return L.icon({
+                iconUrl: `/icons/icon-banjir.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'kebakaran':
+            return L.icon({
+                iconUrl: `/icons/icon-kebakaran.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'gempa':
+            return L.icon({
+                iconUrl: `/icons/gempa.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'longsor':
+            return L.icon({
+                iconUrl: `/icons/icon-tanahlongsor.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'angin-topan':
+        case 'angin_topan':
+            return L.icon({
+                iconUrl: `/icons/default-marker.svg${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'tsunami':
+            return L.icon({
+                iconUrl: `/icons/icon-tsunami.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'kekeringan':
+            return L.icon({
+                iconUrl: `/icons/icon-kekeringan.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        default:
+            return L.icon({
+                iconUrl: `/icons/disaster.svg${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+    }
 }
 
 export default function BencanaMap() {
@@ -141,7 +206,22 @@ export default function BencanaMap() {
 
     // Map controls from MapKeseluruhan
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
-    const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>(['gempabumi']);
+    // Initialize with all hazard layers checked
+    const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>([
+        'banjir',
+        'banjir_bandang',
+        'cuaca_ekstrim',
+        'gelombang_ekstrim',
+        'gempabumi',
+        'kebakaran_hutan',
+        'kekeringan',
+        'letusan_gunung_api',
+        'likuefaksi',
+        'multi_bahaya',
+        'tanah_longsor',
+        'tsunami',
+        'covid19'
+    ]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Layer visibility toggles - set shelters to true by default
@@ -169,7 +249,14 @@ export default function BencanaMap() {
             disaster.jenis_bencana === 'tsunami'
         ) {
             return 'tinggi';
-        } else if (desc.includes('sedang') || disaster.jenis_bencana === 'banjir' || disaster.jenis_bencana === 'kebakaran') {
+        } else if (
+            desc.includes('sedang') || 
+            disaster.jenis_bencana === 'banjir' || 
+            disaster.jenis_bencana === 'kebakaran'
+        ) {
+            return 'sedang';
+        } else if (disaster.jenis_bencana === 'kekeringan') {
+            // Explicitly assign kekeringan a risk level (assuming medium risk)
             return 'sedang';
         }
         return 'rendah';
@@ -386,6 +473,10 @@ export default function BencanaMap() {
     const filterMarkers = useCallback(() => {
         if (!allMarkers.length) return;
 
+        // Debug kekeringan filtering
+        console.log('Filtering markers. Is kekeringan layer selected?', 
+            selectedHazardLayers.includes('kekeringan'));
+
         const filtered = allMarkers.filter((marker) => {
             // Always include shelter markers when shelters are visible
             if (marker.type === 'shelter') {
@@ -395,6 +486,13 @@ export default function BencanaMap() {
             // Filter earthquake markers
             if (marker.id.startsWith('earthquake-')) {
                 return selectedHazardLayers.includes('gempabumi');
+            }
+
+            // Special debug for kekeringan markers
+            if (marker.jenis_bencana === 'kekeringan') {
+                const shouldShow = selectedHazardLayers.includes('kekeringan');
+                console.log('Found kekeringan marker, should show?', shouldShow);
+                return shouldShow;
             }
 
             // Filter other disaster markers
@@ -444,11 +542,17 @@ export default function BencanaMap() {
     };
 
     // Enhanced marker icon selector with different appearances for shelters by type
-    const getMarkerIcon = (type: string) => {
+    const getMarkerIcon = (type: string, jenis_bencana?: string) => {
         if (type === 'shelter') {
             return shelterIcon;
         }
-        return disasterIcon;
+        if (type === 'earthquake') {
+            return getDisasterIcon('gempa');
+        }
+        if (type === 'disaster' && jenis_bencana) {
+            return getDisasterIcon(jenis_bencana);
+        }
+        return getDisasterIcon('default');
     };
 
     // Function to handle editing a disaster
@@ -474,7 +578,8 @@ export default function BencanaMap() {
     const handleDeleteDisaster = async (id: number) => {
         try {
             setSaving(true);
-            await axios.delete(`/laporans/${id}`);
+            // Updated to use the admin-specific route
+            await axios.delete(`/admin/laporans/${id}`);
             toast({ title: 'Berhasil', description: 'Bencana berhasil dihapus.' });
             setRefreshCount((c) => c + 1);
             setShowDeleteConfirm(false);
@@ -496,7 +601,9 @@ export default function BencanaMap() {
         if (!judul || !jenisBencana || !deskripsi || !lokasi || !position) {
             toast({
                 title: 'Peringatan',
-                description: 'Lengkapi semua data bencana dan tentukan lokasi di peta!',
+                description: !jenisBencana 
+                    ? 'Pilih jenis bencana terlebih dahulu sebelum menentukan lokasi di peta!' 
+                    : 'Lengkapi semua data bencana dan tentukan lokasi di peta!',
                 variant: 'destructive',
             });
             return;
@@ -513,8 +620,8 @@ export default function BencanaMap() {
             };
 
             if (editMode && selectedDisaster) {
-                // Update existing disaster
-                await axios.put(`/laporans/${selectedDisaster.id}`, disasterData);
+                // Update existing disaster with the correct admin route
+                await axios.put(`/admin/laporans/${selectedDisaster.id}`, disasterData);
                 toast({ title: 'Berhasil', description: 'Bencana berhasil diperbarui.' });
             } else {
                 // Create new disaster
@@ -604,6 +711,25 @@ export default function BencanaMap() {
         );
     };
 
+    // Add console debug to see what's happening with kekeringan icons
+    useEffect(() => {
+        // Debug logging for kekeringan markers
+        const kekeringanMarkers = allMarkers.filter(marker => 
+            marker.jenis_bencana === 'kekeringan'
+        );
+        if (kekeringanMarkers.length) {
+            console.log('Kekeringan markers found:', kekeringanMarkers.length);
+        } else {
+            console.log('No kekeringan markers found in data');
+        }
+        
+        // Look for kekeringan in the original data
+        const kekeringanPoints = bencanaPoints.filter(point => 
+            point.jenis_bencana === 'kekeringan'
+        );
+        console.log('Kekeringan in original data:', kekeringanPoints.length);
+    }, [allMarkers, bencanaPoints]);
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -660,7 +786,7 @@ export default function BencanaMap() {
 
                                     {/* Render all markers */}
                                     {filteredMarkers.map((marker) => (
-                                        <Marker key={marker.id} position={marker.position} icon={getMarkerIcon(marker.type)}>
+                                        <Marker key={marker.id} position={marker.position} icon={getMarkerIcon(marker.type, marker.jenis_bencana)}>
                                             <Popup className="wider-popup">
                                                 <div className="font-bold">{marker.title}</div>
                                                 {marker.type === 'shelter' && (
@@ -1055,7 +1181,7 @@ export default function BencanaMap() {
                                     <SelectItem value="tsunami">Tsunami</SelectItem>
                                     <SelectItem value="angin-topan">Angin Topan</SelectItem>
                                     <SelectItem value="kebakaran">Kebakaran</SelectItem>
-                                    <SelectItem value="gunung-meletus">Gunung Meletus</SelectItem>
+                                    <SelectItem value="kekeringan">Kekeringan</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1076,15 +1202,43 @@ export default function BencanaMap() {
                     <div className="mt-4">
                         <Label>Pilih Titik pada Peta</Label>
                         <div className="mt-2 h-[300px] w-full overflow-hidden rounded-md">
-                            <div className="h-full w-full">
-                                <MapContainer center={[-2.5489, 118.0149]} zoom={5} style={{ height: '100%', width: '100%' }}>
-                                    <TileLayer attribution={getTileLayerAttribution()} url={getTileLayerUrl()} />
-                                    <MarkerCreator position={position} setPosition={setPosition} />
-                                </MapContainer>
-                            </div>
+                            {!jenisBencana ? (
+                                <div className="flex h-full w-full items-center justify-center rounded-md border-2 border-dashed border-gray-300 bg-gray-50">
+                                    <div className="text-center">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            className="mx-auto mb-2 text-gray-400"
+                                        >
+                                            <circle cx="12" cy="12" r="10" />
+                                            <path d="M12 8v4M12 16h.01" />
+                                        </svg>
+                                        <p className="text-sm font-medium text-gray-600">Pilih jenis bencana terlebih dahulu</p>
+                                        <p className="text-xs text-gray-500">Anda harus memilih jenis bencana sebelum menentukan lokasi</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="h-full w-full">
+                                    <MapContainer center={[-2.5489, 118.0149]} zoom={5} style={{ height: '100%', width: '100%' }}>
+                                        <TileLayer attribution={getTileLayerAttribution()} url={getTileLayerUrl()} />
+                                        <MarkerCreator position={position} setPosition={setPosition} jenisBencana={jenisBencana} />
+                                    </MapContainer>
+                                </div>
+                            )}
                         </div>
                         <div className="mt-2 text-xs text-gray-600">
-                            {position ? `Lokasi: ${position[0]}, ${position[1]}` : 'Klik pada peta untuk menentukan lokasi.'}
+                            {!jenisBencana 
+                                ? 'Pilih jenis bencana di atas terlebih dahulu.'
+                                : position 
+                                    ? `Lokasi: ${position[0]}, ${position[1]}` 
+                                    : 'Klik pada peta untuk menentukan lokasi.'}
                         </div>
                     </div>
                     <div className="mt-4 flex justify-end space-x-2">

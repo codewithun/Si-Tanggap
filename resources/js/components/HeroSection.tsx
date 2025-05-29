@@ -8,8 +8,8 @@ const HeroSection: React.FC = () => {
     const { auth } = usePage<SharedData>().props;
     const isAuthenticated = !!auth.user;
 
-    // Determine the redirect URL for "Laporkan Bencana" button
-    const reportLink = isAuthenticated ? '/laporan-bencana/create' : '/login?redirect=/laporan-bencana/create';
+    // Use relative path for better hosting compatibility
+    const reportLink = '/login';
 
     return (
         <section className="relative overflow-hidden bg-gradient-to-r from-blue-800 to-indigo-900 py-12 sm:py-16 md:py-20 lg:py-32">

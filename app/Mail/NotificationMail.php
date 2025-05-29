@@ -46,11 +46,11 @@ class NotificationMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.notification',
+            view: 'emails.emergency',
             with: [
                 'title' => $this->title,
                 'content' => $this->content,
-                'type' => $this->type,
+                'name' => 'Pengguna', // Default name jika tidak tersedia
             ],
         );
     }
@@ -75,6 +75,11 @@ class NotificationMail extends Mailable
         Log::info('Building email with subject: [GeoSiaga] ' . $this->title);
 
         return $this->subject('[GeoSiaga] ' . $this->title)
-            ->view('emails.notification');
+            ->view('emails.emergency')
+            ->with([
+                'title' => $this->title,
+                'content' => $this->content,
+                'name' => 'Pengguna', // Default name jika tidak tersedia
+            ]);
     }
 }

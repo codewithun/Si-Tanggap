@@ -85,6 +85,7 @@ class UserController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
+                'email_verified_at' => now(), // Otomatis isi email_verified_at dengan waktu saat ini
             ]);
 
             // Assign role via Spatie
@@ -215,7 +216,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
         
-        $users = User::select('id', 'name', 'email', 'created_at')
+        $users = User::select('id', 'name', 'email', 'email_verified_at', 'created_at')
             ->get()
             ->map(function ($user) {
                 $role = $user->getRoleNames()->first() ?? 'masyarakat';
@@ -224,6 +225,7 @@ class UserController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'email_verified_at' => $user->email_verified_at ? $user->email_verified_at->format('d M Y H:i') : null,
                     'role' => $role,
                     'status' => true, // Atau tambahkan kolom status di tabel users
                     'created_at' => $user->created_at->format('d M Y'),

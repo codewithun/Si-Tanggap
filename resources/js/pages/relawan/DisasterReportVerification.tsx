@@ -10,7 +10,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
 import L from 'leaflet';
-import { CheckCircleIcon, MapPinIcon, XCircleIcon } from 'lucide-react';
+import { CheckCircleIcon, ImageIcon, MapPinIcon, XCircleIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 
@@ -45,12 +45,68 @@ interface Laporan {
 
 // Function to get a specific disaster icon based on type
 const getDisasterMapIcon = (type: string) => {
-    return L.icon({
-        iconUrl: `/icons/${type}.svg`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-    });
+    // Add cache buster to prevent caching issues
+    const cacheBuster = `?v=${new Date().getTime()}`;
+    
+    switch (type.toLowerCase()) {
+        case 'banjir':
+            return L.icon({
+                iconUrl: `/icons/icon-banjir.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'kebakaran':
+            return L.icon({
+                iconUrl: `/icons/icon-kebakaran.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'gempa':
+            return L.icon({
+                iconUrl: `/icons/gempa.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'longsor':
+            return L.icon({
+                iconUrl: `/icons/icon-tanahlongsor.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'angin-topan':
+        case 'angin_topan':
+            return L.icon({
+                iconUrl: `/icons/default-marker.svg${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'tsunami':
+            return L.icon({
+                iconUrl: `/icons/icon-tsunami.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'kekeringan':
+            return L.icon({
+                iconUrl: `/icons/icon-kekeringan.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        default:
+            return L.icon({
+                iconUrl: `/icons/disaster.svg${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+    }
 };
 
 export default function DisasterReportVerification() {
@@ -65,11 +121,23 @@ export default function DisasterReportVerification() {
     const [verificationStatus, setVerificationStatus] = useState<'diverifikasi' | 'ditolak'>('diverifikasi');
     const [adminNote, setAdminNote] = useState('');
     const [showMapDialog, setShowMapDialog] = useState(false);
+    
+    // Add state for image preview dialog
+    const [showImageDialog, setShowImageDialog] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    // Add state for image loading status
+    const [imageLoadError, setImageLoadError] = useState<{[key: number]: boolean}>({});
+    
+    // Add state for image loading indicators
+    const [loadingImages, setLoadingImages] = useState<{[key: number]: boolean}>({});
 
     const fetchReports = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await axios.get('/laporans');
+            // Use the correct endpoint - adjust it based on your API setup
+            const response = await axios.get('/api/relawan/laporans');
+            
             // Filter reports that are not verified
             const data = response.data.data || response.data;
             const unverifiedReports = Array.isArray(data) ? data.filter((report: Laporan) => report.status === 'menunggu') : [];
@@ -116,7 +184,9 @@ export default function DisasterReportVerification() {
 
         try {
             const endpoint =
-                verificationStatus === 'diverifikasi' ? `/admin/laporans/${selectedReport.id}/verify` : `/admin/laporans/${selectedReport.id}/reject`;
+                verificationStatus === 'diverifikasi' 
+                    ? `/api/relawan/laporans/${selectedReport.id}/verify` 
+                    : `/api/relawan/laporans/${selectedReport.id}/reject`;
 
             await axios.put(endpoint, {
                 catatan_admin: adminNote.trim() || null,
@@ -141,6 +211,126 @@ export default function DisasterReportVerification() {
         } finally {
             setProcessingIds((prev) => prev.filter((reportId) => reportId !== selectedReport.id));
         }
+    };
+
+    // Function to extract filename from path
+    const getFilenameFromPath = (path: string): string => {
+        // Handle both formats: "storage/laporans/xyz.jpg" or "/storage/laporans/xyz.jpg" or "public/laporans/xyz.jpg"
+        const pathParts = path.split('/');
+        return pathParts.pop() || path;
+    };
+    
+    // Function to format image URL properly
+    const getFormattedImageUrl = (imageUrl: string): string => {
+        if (!imageUrl) return '/images/placeholder-image.png';
+        
+        // Check if the URL is already absolute (starts with http or https)
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+            return imageUrl;
+        }
+        
+        // Add a cache buster to prevent caching issues
+        const cacheBuster = `?v=${new Date().getTime()}`;
+        
+        // Try to standardize the path format
+        let standardPath = imageUrl;
+        
+        // Remove any 'public/' prefix as it's not accessible in the browser
+        if (standardPath.startsWith('public/')) {
+            standardPath = standardPath.substring(7); // Remove 'public/'
+        }
+        
+        // Make sure paths are properly formatted with leading slash if needed
+        if (standardPath.startsWith('storage/')) {
+            standardPath = `/${standardPath}`;
+        }
+        
+        // Handle case where URL already has /storage/ prefix
+        if (standardPath.startsWith('/storage/')) {
+            return standardPath + cacheBuster;
+        }
+        
+        // Default: add storage prefix to the path
+        return `/storage/${standardPath}${cacheBuster}`;
+    };
+
+    // Better image error handling 
+    const handleImageError = (reportId: number, imgElement: HTMLImageElement) => {
+        // Get the current URL that failed
+        const currentUrl = imgElement.src;
+        console.log(`Image load failed for report ${reportId}:`, currentUrl);
+        
+        // Count retry attempts
+        const retryCount = parseInt(imgElement.dataset.retryCount || '0');
+        
+        // If we've tried too many times, show placeholder
+        if (retryCount >= 3) {
+            console.log(`Giving up after ${retryCount} retries for report ${reportId}`);
+            setImageLoadError(prev => ({...prev, [reportId]: true}));
+            toast({
+                title: "Peringatan",
+                description: "Gambar tidak dapat dimuat. Menggunakan gambar placeholder.",
+                variant: "default",
+            });
+            imgElement.src = '/images/placeholder-image.png';
+            return;
+        }
+        
+        // Increment retry counter
+        imgElement.dataset.retryCount = (retryCount + 1).toString();
+        
+        // Get the report data
+        const report = reports.find(r => r.id === reportId);
+        if (!report || !report.foto) return;
+        
+        console.log(`Retrying image load (attempt ${retryCount + 1}) for report ${reportId}`);
+        
+        // Try different fallback strategies based on retry count
+        let newSrc = '';
+        
+        if (retryCount === 0) {
+            // First retry: try direct path with storage
+            const cleanPath = report.foto.replace(/^public\/|^storage\/|^\//g, '');
+            newSrc = `/storage/${cleanPath}?v=${new Date().getTime()}`;
+        } else if (retryCount === 1) {
+            // Second retry: try with just the filename
+            const filename = report.foto.split('/').pop() || report.foto;
+            newSrc = `/storage/laporans/${filename}?v=${new Date().getTime()}`;
+        } else {
+            // Last retry: try without /storage prefix
+            const cleanPath = report.foto.replace(/^public\/|^storage\/|^\//g, '');
+            newSrc = `/${cleanPath}?v=${new Date().getTime()}`;
+        }
+        
+        console.log(`Trying alternate URL: ${newSrc}`);
+        imgElement.src = newSrc;
+    };
+
+    // Function to check if file exists at URL (doesn't work for CORS restricted resources)
+    const checkImageExists = (url: string): Promise<boolean> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+            img.src = url;
+        });
+    };
+
+    const openImagePreview = (report: Laporan) => {
+        setSelectedReport(report);
+        
+        // Get image URL with fallback strategies
+        const imageUrl = getFormattedImageUrl(report.foto);
+        console.log(`Opening image preview for report ${report.id} with URL: ${imageUrl}`);
+        setSelectedImage(imageUrl);
+        setShowImageDialog(true);
+        
+        // Reset any previous error state for this image in the preview
+        setImageLoadError(prev => {
+            const newState = {...prev};
+            delete newState[report.id];
+            return newState;
+        });
     };
 
     if (loading) {
@@ -239,7 +429,70 @@ export default function DisasterReportVerification() {
                                     {report.foto && (
                                         <div className="mt-2">
                                             <p className="mb-1 text-sm font-medium">Foto Kejadian:</p>
-                                            <img src={report.foto} alt={report.judul} className="h-40 w-full rounded-md object-cover" />
+                                            <div className="relative">
+                                                {imageLoadError[report.id] ? (
+                                                    <div className="h-40 w-full flex items-center justify-center rounded-md bg-gray-100 border">
+                                                        <div className="text-center p-4">
+                                                            <ImageIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                                                            <p className="text-sm text-gray-500">Gambar tidak dapat dimuat</p>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm"
+                                                                className="text-xs mt-1"
+                                                                onClick={() => {
+                                                                    // Reset error state and try again
+                                                                    setImageLoadError(prev => {
+                                                                        const newState = {...prev};
+                                                                        delete newState[report.id];
+                                                                        return newState;
+                                                                    });
+                                                                    // Set loading state
+                                                                    setLoadingImages(prev => ({...prev, [report.id]: true}));
+                                                                }}
+                                                            >
+                                                                Coba Lagi
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div 
+                                                        className="h-40 w-full rounded-md cursor-pointer hover:opacity-90 transition-opacity relative bg-gray-100 overflow-hidden"
+                                                        onClick={() => openImagePreview(report)}
+                                                    >
+                                                        {loadingImages[report.id] && (
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+                                                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                                                            </div>
+                                                        )}
+                                                        <img 
+                                                            src={getFormattedImageUrl(report.foto)} 
+                                                            alt="Foto kejadian"
+                                                            className="w-full h-full object-cover"
+                                                            data-retry-count="0"
+                                                            onLoad={() => {
+                                                                // Remove loading state when image loads successfully
+                                                                setLoadingImages(prev => {
+                                                                    const newState = {...prev};
+                                                                    delete newState[report.id];
+                                                                    return newState;
+                                                                });
+                                                            }}
+                                                            onError={(e) => handleImageError(report.id, e.target as HTMLImageElement)}
+                                                            loading="lazy"
+                                                        />
+                                                        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30"></div>
+                                                    </div>
+                                                )}
+                                                <Button 
+                                                    variant="secondary" 
+                                                    size="sm"
+                                                    className="absolute bottom-2 right-2 h-8 w-8 p-0 bg-white/70 hover:bg-white/90"
+                                                    onClick={() => openImagePreview(report)}
+                                                >
+                                                    <ImageIcon className="h-4 w-4" />
+                                                    <span className="sr-only">Lihat foto</span>
+                                                </Button>
+                                            </div>
                                         </div>
                                     )}
                                 </CardContent>
@@ -293,6 +546,132 @@ export default function DisasterReportVerification() {
                             <Button variant="outline" onClick={() => setShowMapDialog(false)}>
                                 Tutup
                             </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Image Preview Dialog */}
+                <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+                    <DialogContent className="sm:max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Foto Kejadian</DialogTitle>
+                            <DialogDescription>
+                                {selectedReport?.judul || 'Detail foto kejadian'}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex flex-col items-center justify-center overflow-hidden rounded-md p-2">
+                            <div className="text-xs text-gray-500 mb-2">
+                                {selectedReport && <span>Lokasi: {selectedReport.lokasi}</span>}
+                            </div>
+                            {selectedImage ? (
+                                <div className="relative">
+                                    <div className="relative min-h-[300px] flex items-center justify-center">
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                                        </div>
+                                        <img
+                                            src={selectedImage}
+                                            alt="Foto kejadian"
+                                            className="max-h-[600px] w-auto object-contain relative z-10 opacity-0 transition-opacity duration-300"
+                                            data-retry-count="0"
+                                            onLoad={(e) => {
+                                                // Hide spinner when image loads
+                                                const target = e.target as HTMLImageElement;
+                                                target.classList.remove('opacity-0');
+                                                target.classList.add('opacity-100');
+                                                // Hide spinner element (assuming it's the parent's first child)
+                                                const spinnerEl = target.parentElement?.querySelector('div:first-of-type');
+                                                if (spinnerEl) {
+                                                    spinnerEl.classList.add('hidden');
+                                                }
+                                            }}
+                                            onError={(e) => {
+                                                const target = e.target as HTMLImageElement;
+                                                
+                                                // Count retry attempts
+                                                const retryCount = parseInt(target.dataset.retryCount || '0');
+                                                
+                                                // If we've tried too many times, show placeholder
+                                                if (retryCount >= 2) {
+                                                    console.log(`Preview image load failed after ${retryCount} retries`);
+                                                    target.src = '/images/placeholder-image.png';
+                                                    target.onerror = null; // Prevent further error handling
+                                                    toast({
+                                                        title: "Peringatan",
+                                                        description: "Gambar tidak dapat dimuat dengan benar.",
+                                                        variant: "default",
+                                                    });
+                                                    // Show the image anyway with the placeholder
+                                                    target.classList.remove('opacity-0');
+                                                    target.classList.add('opacity-100');
+                                                    // Hide spinner element
+                                                    const spinnerEl = target.parentElement?.querySelector('div:first-of-type');
+                                                    if (spinnerEl) {
+                                                        spinnerEl.classList.add('hidden');
+                                                    }
+                                                    return;
+                                                }
+                                                
+                                                // Increment retry counter
+                                                target.dataset.retryCount = (retryCount + 1).toString();
+                                                
+                                                if (selectedReport && selectedReport.foto) {
+                                                    let newSrc = '';
+                                                    
+                                                    if (retryCount === 0) {
+                                                        // First retry: try with direct filename approach
+                                                        const filename = selectedReport.foto.split('/').pop() || selectedReport.foto;
+                                                        newSrc = `/storage/laporans/${filename}?v=${new Date().getTime()}`;
+                                                    } else {
+                                                        // Last retry: try with raw path
+                                                        newSrc = `/${selectedReport.foto}?v=${new Date().getTime()}`;
+                                                    }
+                                                    
+                                                    console.log(`Preview retry with: ${newSrc}`);
+                                                    target.src = newSrc;
+                                                } else {
+                                                    target.src = '/images/placeholder-image.png';
+                                                    target.onerror = null;
+                                                    // Show the image anyway with the placeholder
+                                                    target.classList.remove('opacity-0');
+                                                    target.classList.add('opacity-100');
+                                                    // Hide spinner element
+                                                    const spinnerEl = target.parentElement?.querySelector('div:first-of-type');
+                                                    if (spinnerEl) {
+                                                        spinnerEl.classList.add('hidden');
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="h-[300px] w-full flex items-center justify-center bg-gray-100 rounded-md">
+                                    <div className="text-center p-4">
+                                        <ImageIcon className="h-16 w-16 mx-auto text-gray-400 mb-3" />
+                                        <p className="text-gray-500">Tidak ada gambar yang tersedia</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <div className="flex space-x-2">
+                                {selectedReport?.foto && (
+                                    <Button 
+                                        variant="secondary" 
+                                        onClick={() => {
+                                            // Open image in new tab if available
+                                            const imgUrl = selectedImage || getFormattedImageUrl(selectedReport?.foto || '');
+                                            window.open(imgUrl, '_blank');
+                                        }}
+                                    >
+                                        Lihat Gambar Asli
+                                    </Button>
+                                )}
+                                <Button variant="outline" onClick={() => setShowImageDialog(false)}>
+                                    Tutup
+                                </Button>
+                            </div>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

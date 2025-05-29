@@ -313,46 +313,114 @@ export default function EvacuationRouteForm() {
         setLoading(true);
 
         try {
+            // Gunakan format konsisten untuk koordinat
+            // Pastikan semua koordinat adalah objek dengan struktur {lat: number, lng: number}
+            // Format ini digunakan oleh AdminMap.tsx dan diharapkan oleh JalurEvakuasiController 
+            const coordinates = points.map(([lat, lng]) => ({
+                lat: parseFloat(lat.toFixed(6)),
+                lng: parseFloat(lng.toFixed(6)),
+            }));
+            
             const formData = {
                 nama: routeName,
                 deskripsi: 'Jalur evakuasi',
-                // PENTING: Pastikan ini menggunakan semua points dari rute
-                koordinat: points.map(([lat, lng]) => ({
-                    lat: parseFloat(lat.toFixed(6)),
-                    lng: parseFloat(lng.toFixed(6)),
-                })),
+                koordinat: coordinates,
                 jenis_bencana: disasterType,
                 warna: routeColor,
             };
+            
+            // Log data yang akan dikirim untuk debugging
+            console.log('Sending evacuation route data:', formData);
 
+            let response;
             // Check if we're editing or creating new
             if (editRouteId !== null) {
                 // Update existing route
-                await axios.put(`/jalur-evakuasi/${editRouteId}`, formData);
+                response = await axios.put(`/jalur-evakuasi/${editRouteId}`, formData);
                 toast({
                     title: 'Berhasil',
                     description: 'Jalur evakuasi berhasil diperbarui',
                 });
             } else {
                 // Create new route
-                await axios.post('/jalur-evakuasi', formData);
+                response = await axios.post('/jalur-evakuasi', formData);
                 toast({
                     title: 'Berhasil',
                     description: 'Jalur evakuasi berhasil disimpan',
                 });
             }
 
-            // Reset form after successful operation
-            resetForm();
+            // Save new data ID
+            const newDataId = editRouteId || (response?.data?.data?.id || 'new-route-' + Date.now());
+            
+            // Agresif cache-busting - refresh data di semua tab
+            const timestamp = Date.now();
+            
+            // 1. Simpan ke localStorage untuk persistence
+            localStorage.setItem('lastEvacuationDataUpdate', timestamp.toString());
+            localStorage.setItem('lastAddedRouteId', newDataId.toString());
+            localStorage.setItem('lastAddedRouteData', JSON.stringify(formData));
+            
+            // 2. Force server-side cache refresh dengan beberapa request cache-busting
+            const cacheBuster = `?t=${timestamp}`;
+            try {
+                const requests = [
+                    axios.head(`/jalur-evakuasi${cacheBuster}`),
+                    axios.get(`/jalur-evakuasi?nocache=${timestamp}`),
+                    axios.get(`/admin/map${cacheBuster}`),
+                    axios.get(`/jalur-evakuasi?forcerefresh=true&t=${timestamp}`)
+                ];
+                
+                // Jalankan requests secara parallel
+                console.log('Executing cache-busting requests');
+                await Promise.all(requests);
+                console.log('Cache-busting completed');
+                
+            } catch (e) {
+                console.warn('Some cache-busting requests failed:', e);
+            }
+            
+            // 3. Dispatch event untuk notifikasi real-time ke AdminMap
+            const dispatchEvent = () => {
+                try {
+                    const detail = { 
+                        timestamp,
+                        action: editRouteId !== null ? 'update' : 'create',
+                        id: newDataId,
+                        data: formData
+                    };
+                    
+                    const dataChangeEvent = new CustomEvent('evac-data-change', { detail });
+                    window.dispatchEvent(dataChangeEvent);
+                    console.log('Event evac-data-change dispatched with details:', detail);
+                    
+                    // Also try to dispatch with broader scope for cross-tab communication
+                    if (typeof window.parent !== 'undefined') {
+                        window.parent.dispatchEvent(new CustomEvent('evac-data-change', { detail }));
+                    }
+                } catch (e) {
+                    console.error('Error dispatching event:', e);
+                }
+            };
+            
+            // Dispatch event immediately and multiple times with delays
+            dispatchEvent();
+            setTimeout(dispatchEvent, 500);
+            setTimeout(dispatchEvent, 1500);
+            setTimeout(dispatchEvent, 3000);
+            
+            // 4. Force reload data in this component
             fetchExistingRoutes();
             refetchAllRoutes();
-        } catch (error: unknown) {
-            console.error('Failed to save evacuation route:', error);
-            const typedError = error as ApiError;
-            const errorMessage = typedError?.response?.data?.message || 'Gagal menyimpan jalur evakuasi';
+            
+            // 5. Reset form for new entry
+            resetForm();
+            
+        } catch (error) {
+            console.error('Error saving route:', error);
             toast({
                 title: 'Error',
-                description: errorMessage,
+                description: 'Gagal menyimpan jalur evakuasi',
                 variant: 'destructive',
             });
         } finally {
@@ -489,18 +557,26 @@ export default function EvacuationRouteForm() {
                 title: 'Berhasil',
                 description: 'Jalur evakuasi berhasil dihapus',
             });
+            
+            // Add a cache-busting request
+            await axios.head(`/jalur-evakuasi?t=${Date.now()}`);
+            
             // If currently editing this route, reset the form
             if (editRouteId === deleteTargetId) {
                 resetForm();
             }
             fetchExistingRoutes();
             refetchAllRoutes();
-        } catch {
+            
+            // Close the dialog after successful deletion
+            setIsDeleteDialog(false);
+        } catch (error) {
             toast({
                 title: 'Error',
                 description: 'Gagal menghapus jalur evakuasi',
                 variant: 'destructive',
             });
+            // Keep the dialog open in case of error
         }
     };
 
@@ -530,7 +606,26 @@ export default function EvacuationRouteForm() {
         }
 
         setPoints(pointsArray);
-        setManualPoints(pointsArray); // Tambahkan ini
+        
+        // Fix for the icon bug: set manualPoints to include first and last point for proper icon display
+        if (pointsArray.length >= 2) {
+            // Get first and last point for start/end markers
+            const firstPoint = pointsArray[0];
+            const lastPoint = pointsArray[pointsArray.length - 1];
+            setManualPoints([firstPoint, lastPoint]);
+            
+            // Set route points to display the full route
+            setRoutePoints(pointsArray);
+            setIsRouteFound(true);
+            routeNotificationShownRef.current = true;
+        } else if (pointsArray.length === 1) {
+            // If there's only one point
+            setManualPoints([pointsArray[0]]);
+        } else {
+            // No points
+            setManualPoints([]);
+        }
+        
         setEditRouteId(jalur.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -596,12 +691,14 @@ export default function EvacuationRouteForm() {
                                         />
 
                                         {/* Routing machine */}
-                                        <RoutingMachine startPoint={startPoint} endPoint={endPoint} onRouteFound={handleRouteFound} />
+                                        {(!editRouteId || points.length === 0) && (
+                                            <RoutingMachine startPoint={startPoint} endPoint={endPoint} onRouteFound={handleRouteFound} />
+                                        )}
 
                                         {/* Display route points as polyline (tetap tampilkan ini) */}
-                                        {routePoints.length > 0 && (
+                                        {(routePoints.length > 0 || (editRouteId && points.length > 0)) && (
                                             <Polyline
-                                                positions={routePoints}
+                                                positions={routePoints.length > 0 ? routePoints : points}
                                                 smoothFactor={1.5}
                                                 pathOptions={{
                                                     color: routeColor,
@@ -613,6 +710,9 @@ export default function EvacuationRouteForm() {
 
                                         {/* Tampilkan semua jalur di map */}
                                         {allRoutes.map((jalur) => {
+                                            // Don't show the current editing route to avoid duplication
+                                            if (editRouteId === jalur.id) return null;
+                                            
                                             return jalur.koordinat && jalur.koordinat.length > 0 ? (
                                                 <Polyline
                                                     key={jalur.id}

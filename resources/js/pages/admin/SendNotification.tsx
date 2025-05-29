@@ -1,16 +1,14 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/useToast';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { BellIcon, MailIcon } from 'lucide-react';
+import { BellIcon } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -27,9 +25,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function SendNotification() {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const [type, setType] = useState('info');
-    const [target, setTarget] = useState('all');
-    const [useEmail, setUseEmail] = useState(false);
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
@@ -48,31 +43,24 @@ export default function SendNotification() {
         setLoading(true);
 
         try {
-            const response = await axios.post('/api/notifications/send', {
-                title,
-                content,
-                type,
-                target,
-                useEmail,
+            await axios.post('/api/notifikasi', {
+                judul: title,
+                isi: content,
             });
-            
-            if (response.data.success) {
-                toast({
-                    title: 'Berhasil',
-                    description: `Notifikasi berhasil dikirim${useEmail ? ' (email & in-app)' : ''}`,
-                });
 
-                // Reset form
-                setTitle('');
-                setContent('');
-            } else {
-                throw new Error(response.data.message || 'Failed to send notification');
-            }
+            toast({
+                title: 'Berhasil',
+                description: 'Notifikasi berhasil dikirim ke semua pengguna',
+            });
+
+            // Reset form
+            setTitle('');
+            setContent('');
         } catch (error) {
             console.error(error);
             toast({
                 title: 'Error',
-                description: 'Gagal mengirim notifikasi. Silakan coba lagi.',
+                description: 'Gagal mengirim notifikasi',
                 variant: 'destructive',
             });
         } finally {
@@ -80,22 +68,22 @@ export default function SendNotification() {
         }
     };
 
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Kirim Notifikasi" />
 
             <div className="p-6">
                 <h1 className="mb-4 text-2xl font-semibold text-gray-800">Kirim Notifikasi</h1>
+                <p className="mb-6 text-gray-600">Kirim notifikasi peringatan bencana ke semua pengguna aplikasi.</p>
 
                 <Card>
                     <CardHeader>
                         <CardTitle>Kirim Notifikasi Bencana</CardTitle>
-
+                        <CardDescription>Kirim notifikasi ke semua pengguna aplikasi</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="grid gap-6 md:grid-cols-2">
+                        <form onSubmit={handleSubmit}>
+                            <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="title">Judul Notifikasi</Label>
                                     <Input
@@ -108,58 +96,21 @@ export default function SendNotification() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="type">Jenis Notifikasi</Label>
-                                    <Select value={type} onValueChange={setType}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Pilih jenis notifikasi" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="info">Informasi</SelectItem>
-                                            <SelectItem value="warning">Peringatan</SelectItem>
-                                            <SelectItem value="emergency">Darurat</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="content">Isi Notifikasi</Label>
-                                <Textarea
-                                    id="content"
-                                    value={content}
-                                    onChange={(e) => setContent(e.target.value)}
-                                    placeholder="Masukkan isi notifikasi yang ingin disampaikan"
-                                    rows={6}
-                                    required
-                                />
-                            </div>
-
-                            <div className="grid gap-6 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="target">Target Penerima</Label>
-                                    <Select value={target} onValueChange={setTarget}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Pilih target penerima" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Semua Pengguna</SelectItem>
-                                            <SelectItem value="masyarakat">Masyarakat</SelectItem>
-                                            <SelectItem value="relawan">Relawan</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="flex items-center space-x-2 pt-8">
-                                    <Switch id="useEmail" checked={useEmail} onCheckedChange={setUseEmail} />
-                                    <Label htmlFor="useEmail" className="flex items-center gap-2">
-                                        <MailIcon className="h-4 w-4" />
-                                        Kirim juga melalui Email
-                                    </Label>
+                                    <Label htmlFor="content">Isi Notifikasi</Label>
+                                    <Textarea
+                                        id="content"
+                                        value={content}
+                                        onChange={(e) => setContent(e.target.value)}
+                                        placeholder="Masukkan isi notifikasi yang ingin disampaikan"
+                                        rows={6}
+                                        required
+                                    />
                                 </div>
                             </div>
                         </form>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex justify-between">
+                        <p className="text-sm text-gray-500">Notifikasi akan dikirim ke semua pengguna aplikasi</p>
                         <Button type="submit" onClick={handleSubmit} disabled={loading || !title.trim() || !content.trim()}>
                             <BellIcon className="mr-2 h-4 w-4" />
                             {loading ? 'Mengirim...' : 'Kirim Notifikasi'}

@@ -508,7 +508,7 @@ const AboutSection: React.FC = () => {
                                 transition={{ delay: 0.4 }}
                             >
                                 <motion.a
-                                    href="#"
+                                    href="/register"
                                     className="rounded-lg border-2 border-white bg-white px-6 py-3 font-medium text-blue-600 transition-colors hover:bg-transparent hover:text-white"
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}

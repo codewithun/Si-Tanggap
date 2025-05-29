@@ -31,10 +31,11 @@ Route::get('/peta-bencana', fn() => Inertia::render('masyarakat/BencanaMaps'))->
 // Rute pengujian email
 Route::get('/test-email', [TestEmailController::class, 'sendTestEmail'])->name('test.email');
 Route::get('/send-test-email', [TestEmailController::class, 'sendToAddress'])->name('send.test.email');
+Route::get('/test-email-by-role', [\App\Http\Controllers\RoleEmailTestController::class, 'testByRole'])->name('test.email.role');
 Route::get('/debug-email', [EmailDebugController::class, 'debug'])->name('debug.email');
 Route::get('/check-smtp', [EmailDebugController::class, 'checkSmtp'])->name('check.smtp');
 Route::get('/email-tester', function() {
-    return view('test-email');
+    return view('email-tester');
 })->name('email.tester');
 
 Route::name('jalur-evakuasi.')->prefix('jalur-evakuasi')->group(function () {
@@ -90,6 +91,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/evacuation-and-shelter-map', fn() => Inertia::render('relawan/EvacuationAndShelterMap'))->name('evacuation-map');
         Route::get('/add-evacuation-and-shelter', fn() => Inertia::render('relawan/AddEvacuationAndShelter'))->name('add-evacuation');
         Route::get('/disaster-report-verification', fn() => Inertia::render('relawan/DisasterReportVerification'))->name('report-verification');
+        
+        // Add these routes for laporan verification in relawan section
+        Route::get('/laporans', [LaporanController::class, 'getUnverifiedReports'])->name('laporans.index');
+        Route::put('/laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
+        Route::put('/laporans/{laporan}/reject', [LaporanController::class, 'reject'])->name('laporans.reject');
     });
 
     // 🔄 Shared (Relawan + Admin)
@@ -128,6 +134,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
         Route::put('laporans/{laporan}/reject', [LaporanController::class, 'reject'])->name('laporans.reject');
         Route::delete('laporans/{laporan}', [LaporanController::class, 'destroy'])->name('laporans.destroy');
+        
+        // Add these new routes for update functionality
+        Route::put('laporans/{laporan}', [LaporanController::class, 'update'])->name('laporans.update');
+        Route::patch('laporans/{laporan}', [LaporanController::class, 'update'])->name('laporans.update');
 
         // Notifikasi
         Route::post('notifikasi', [NotifikasiController::class, 'send'])->name('notifikasi.send');
@@ -148,6 +158,9 @@ Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
 
     // Add this route to fix the 404 error when sending notifications
     Route::post('/notifikasi', [NotifikasiController::class, 'send'])->name('api.notifikasi.send');
+
+    // Add API endpoint for relawan to get unverified reports
+    Route::get('/relawan/laporans', [LaporanController::class, 'getUnverifiedReports'])->name('api.relawan.laporans');
 });
 
 // ------------------------

@@ -181,13 +181,34 @@ export default function ReportManagement() {
     };
 
     const getDisasterIconPath = (type: string) => {
-        return `/icons/${type}.svg`;
+        // Add a timestamp to prevent browser caching
+        const cacheBuster = `?v=${Date.now()}`;
+        
+        // Map each disaster type to its specific icon
+        switch (type.toLowerCase()) {
+            case 'banjir':
+                return `/icons/icon-banjir.png${cacheBuster}`;
+            case 'kebakaran':
+                return `/icons/icon-kebakaran.png${cacheBuster}`;
+            case 'gempa':
+                return `/icons/gempa.png${cacheBuster}`;
+            case 'longsor':
+                return `/icons/icon-tanahlongsor.png${cacheBuster}`;
+            case 'angin_topan':
+                return `/icons/default-marker.svg${cacheBuster}`;
+            case 'tsunami':
+                return `/icons/icon-tsunami.png${cacheBuster}`;
+            case 'kekeringan':
+                return `/icons/icon-kekeringan.png${cacheBuster}`;
+            default:
+                return `/icons/disaster.svg${cacheBuster}`;
+        }
     };
 
     // Function to get a specific disaster icon based on type
     const getDisasterMapIcon = (type: string) => {
         return L.icon({
-            iconUrl: `/icons/${type}.svg`,
+            iconUrl: getDisasterIconPath(type),
             iconSize: [32, 32],
             iconAnchor: [16, 32],
             popupAnchor: [0, -32],

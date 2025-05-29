@@ -1,4 +1,9 @@
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/useToast';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
@@ -113,19 +118,70 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const disasterIcon = L.icon({
-    iconUrl: '/icons/gempa.svg',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-});
+// Replace the single disasterIcon with a function to get appropriate icon by type
+const getDisasterIcon = (type: string) => {
+    const cacheBuster = `?v=${new Date().getTime()}`;
 
-const shelterIcon = L.icon({
-    iconUrl: '/icons/posko.png',
-    iconSize: [38, 38],
-    iconAnchor: [19, 38],
-    popupAnchor: [0, -38],
-});
+    switch (type.toLowerCase()) {
+        case 'banjir':
+            return L.icon({
+                iconUrl: `/icons/icon-banjir.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'kebakaran':
+            return L.icon({
+                iconUrl: `/icons/icon-kebakaran.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'gempa':
+            return L.icon({
+                iconUrl: `/icons/gempa.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'longsor':
+            return L.icon({
+                iconUrl: `/icons/icon-tanahlongsor.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'angin-topan':
+        case 'angin_topan':
+            return L.icon({
+                iconUrl: `/icons/default-marker.svg${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'tsunami':
+            return L.icon({
+                iconUrl: `/icons/icon-tsunami.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        case 'kekeringan':
+            return L.icon({
+                iconUrl: `/icons/icon-kekeringan.png${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+        default:
+            return L.icon({
+                iconUrl: `/icons/disaster.svg${cacheBuster}`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32],
+            });
+    }
+};
 
 export default function BencanaMaps() {
     const [bencanaPoints, setBencanaPoints] = useState<Bencana[]>([]);
@@ -133,10 +189,25 @@ export default function BencanaMaps() {
     const [jalurEvakuasi, setJalurEvakuasi] = useState<JalurEvakuasi[]>([]);
     const [posko, setPosko] = useState<Posko[]>([]);
     const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
 
     // Map controls
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
-    const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>(['gempabumi']);
+    const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>([
+        'banjir', 
+        'banjir_bandang', 
+        'cuaca_ekstrim', 
+        'gelombang_ekstrim', 
+        'gempabumi', 
+        'kebakaran_hutan', 
+        'kekeringan', 
+        'letusan_gunung_api', 
+        'tanah_longsor', 
+        'tsunami', 
+        'multi_bahaya',
+        'likuefaksi',
+        'covid19'
+    ]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showDisasters, setShowDisasters] = useState(true);
     const [showShelters, setShowShelters] = useState(true);
@@ -173,21 +244,38 @@ export default function BencanaMaps() {
         try {
             setLoading(true);
             const response = await axios.get('/laporans');
+
+            // Handle both paginated and non-paginated responses
             const data = response.data.data || response.data;
+
             if (Array.isArray(data)) {
+                // Filter only verified reports
                 const verifiedReports = data.filter((report) => report.status === 'diverifikasi');
+
+                // Add risk level to each disaster
                 const enhancedData = verifiedReports.map((disaster: Bencana) => ({
                     ...disaster,
                     tingkat_bahaya: getRiskLevel(disaster),
                 }));
+
                 setBencanaPoints(enhancedData);
             } else {
                 setBencanaPoints([]);
             }
+        } catch (error: unknown) {
+            console.error('Failed to fetch disaster points:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data titik bencana';
+
+            toast({
+                title: 'Error',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+            setBencanaPoints([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [toast]);
 
     const fetchEarthquakeData = useCallback(async () => {
         try {
@@ -209,20 +297,37 @@ export default function BencanaMaps() {
         try {
             const response = await axios.get('/jalur-evakuasi');
             setJalurEvakuasi(response.data.data);
-        } catch {
-            /* ignore */
+            return response.data.data;
+        } catch (error: unknown) {
+            console.error('Failed to fetch evacuation routes:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data jalur evakuasi';
+            toast({
+                title: 'Error',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+            return [];
         }
-    }, []);
+    }, [toast]);
 
     const fetchPosko = useCallback(async () => {
         try {
             const response = await axios.get('/poskos');
             const poskoData = Array.isArray(response.data) ? response.data : response.data.data;
             setPosko(poskoData || []);
-        } catch {
-            /* ignore */
+            return poskoData || [];
+        } catch (error: unknown) {
+            console.error('Failed to fetch evacuation shelters:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data posko evakuasi';
+            toast({
+                title: 'Error',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+            setPosko([]);
+            return [];
         }
-    }, []);
+    }, [toast]);
 
     const refreshAll = () => {
         setLoading(true);
@@ -345,8 +450,77 @@ export default function BencanaMaps() {
         }
     };
 
-    const getMarkerIcon = (type: string) => {
-        return type === 'shelter' ? shelterIcon : disasterIcon;
+    // Format description for better readability
+    const formatDescription = (description: string) => {
+        const lines = description
+            .trim()
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean);
+
+        return (
+            <div className="disaster-popup-content">
+                {lines.map((line, index) => (
+                    <div key={index}>{line}</div>
+                ))}
+            </div>
+        );
+    };
+
+    // Add custom CSS for wider popups when component mounts
+    useEffect(() => {
+        // Add custom style for wider popups
+        const style = document.createElement('style');
+        style.textContent = `
+            .leaflet-popup-content {
+                min-width: 260px !important;
+                max-width: 300px;
+            }
+            .disaster-popup-content {
+                white-space: pre-line;
+                line-height: 1.5;
+            }
+            .disaster-popup-content div {
+                margin-bottom: 2px;
+            }
+            /* Control map z-index to prevent overlapping UI elements */
+            .leaflet-container {
+                z-index: 1 !important;
+            }
+            .leaflet-pane,
+            .leaflet-control,
+            .leaflet-top,
+            .leaflet-bottom {
+                z-index: 400 !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        return () => {
+            document.head.removeChild(style);
+        };
+    }, []);
+
+    // Define shelter icon
+    const shelterIcon = L.icon({
+        iconUrl: `/icons/posko.png?v=${new Date().getTime()}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32],
+    });
+
+    // Enhanced marker icon selector with different appearances for shelters by type
+    const getMarkerIcon = (type: string, jenis_bencana?: string) => {
+        if (type === 'shelter') {
+            return shelterIcon;
+        }
+        if (type === 'earthquake') {
+            return getDisasterIcon('gempa');
+        }
+        if (type === 'disaster' && jenis_bencana) {
+            return getDisasterIcon(jenis_bencana);
+        }
+        return getDisasterIcon('default');
     };
 
     return (
@@ -357,6 +531,21 @@ export default function BencanaMaps() {
                     <h2 className="text-xl font-bold sm:text-2xl">Peta Bencana & Evakuasi</h2>
                     <div className="flex space-x-2">
                         <Button variant="outline" size="sm" onClick={() => setSidebarOpen((v) => !v)}>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="mr-2"
+                            >
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <path d="M9 3v18M3 9h18" />
+                            </svg>
                             Layer
                         </Button>
                         <Button variant="outline" size="sm" onClick={refreshAll} disabled={loading}>
@@ -364,55 +553,70 @@ export default function BencanaMaps() {
                         </Button>
                     </div>
                 </div>
+
                 <div className="relative overflow-hidden">
+                    {/* Main Map Area with dynamic padding */}
                     <div
-                        className={`h-[300px] w-full overflow-hidden rounded-lg transition-all duration-300 sm:h-[600px] ${sidebarOpen ? 'sm:pr-[300px]' : ''}`}
+                        className={`h-[300px] w-full overflow-hidden rounded-lg transition-all duration-300 sm:h-[600px] ${
+                            sidebarOpen ? 'sm:pr-[300px]' : ''
+                        }`}
                     >
                         {loading ? (
                             <div className="h-full w-full animate-pulse rounded-lg bg-gray-200"></div>
                         ) : (
                             <MapContainer center={[-2.5489, 118.0149]} zoom={5} style={{ height: '100%', width: '100%' }}>
                                 <TileLayer url={getTileLayerUrl()} attribution={getTileLayerAttribution()} />
+
                                 {filteredMarkers.map((marker: MapMarker) => (
-                                    <Marker key={marker.id} position={marker.position} icon={getMarkerIcon(marker.type)}>
+                                    <Marker key={marker.id} position={marker.position} icon={getMarkerIcon(marker.type, marker.jenis_bencana)}>
                                         <Popup>
-                                            <div className="max-w-xs">
-                                                <h3 className="mb-2 text-lg font-semibold">{marker.title}</h3>
-                                                <div className="text-sm whitespace-pre-line">{marker.description}</div>
-                                                {marker.type === 'shelter' && (
-                                                    <div className="mt-2">
-                                                        <p>
-                                                            <strong>Alamat:</strong> {marker.alamat}
-                                                        </p>
-                                                        <p>
-                                                            <strong>Kontak:</strong> {marker.kontak}
-                                                        </p>
-                                                        <p>
-                                                            <strong>Jenis:</strong> {marker.jenis}
-                                                        </p>
-                                                        <p>
-                                                            <strong>Status:</strong>{' '}
-                                                            <span className={marker.statusPosko === 'Aktif' ? 'text-green-600' : 'text-red-600'}>
-                                                                {marker.statusPosko}
-                                                            </span>
-                                                        </p>
+                                            <div className="font-bold">{marker.title}</div>
+                                            {marker.type === 'shelter' && (
+                                                <>
+                                                    <div className="mt-2 text-xs">{marker.description}</div>
+                                                    <div className="disaster-popup-content mt-2 text-xs">
+                                                        <div>
+                                                            <span className="font-semibold">Alamat:</span>{' '}
+                                                            {(marker as unknown as { alamat: string }).alamat}
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-semibold">Kontak:</span>{' '}
+                                                            {(marker as unknown as { kontak: string }).kontak}
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-semibold">Jenis:</span>{' '}
+                                                            {(marker as unknown as { jenis: string }).jenis}
+                                                        </div>
+                                                        <div>
+                                                            <span className="font-semibold">Status:</span>{' '}
+                                                            {(marker as unknown as { statusPosko: string }).statusPosko}
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
+                                                </>
+                                            )}
+                                            {marker.type !== 'shelter' && (
+                                                <div className="mt-2 text-xs">{formatDescription(marker.description)}</div>
+                                            )}
                                         </Popup>
                                     </Marker>
                                 ))}
+
                                 {showEvacRoutes &&
                                     validPaths.map((jalur: JalurEvakuasi) => (
                                         <Polyline
-                                            key={jalur.id}
+                                            key={`jalur-${jalur.id}`}
                                             positions={jalur.koordinat.map((k) => [k.lat, k.lng])}
-                                            pathOptions={{ color: jalur.warna || '#FF0000', weight: 3 }}
+                                            pathOptions={{
+                                                color: jalur.warna || '#3B82F6',
+                                                weight: 4,
+                                                opacity: 0.7,
+                                            }}
                                         >
                                             <Popup>
-                                                <div>
-                                                    <h3 className="font-semibold">{jalur.nama}</h3>
-                                                    <p>{jalur.deskripsi}</p>
+                                                <div className="font-bold">{jalur.nama}</div>
+                                                <div className="text-xs">{jalur.deskripsi}</div>
+                                                <div className="mt-2 text-xs">
+                                                    <span className="font-semibold">Jenis Bencana:</span> {jalur.jenis_bencana || 'Umum'}
                                                 </div>
                                             </Popup>
                                         </Polyline>
@@ -420,101 +624,259 @@ export default function BencanaMaps() {
                             </MapContainer>
                         )}
                     </div>
-                    {/* Layer Panel */}
+
+                    {/* Floating Layer Panel - Modern UI */}
                     <div
-                        className={`absolute top-0 right-0 z-30 h-[300px] w-[300px] overflow-hidden border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 sm:h-[500px] ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                        id="layer-drawer"
+                        className={`absolute top-0 right-0 z-30 h-full w-[300px] overflow-hidden border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 ${
+                            sidebarOpen ? 'translate-x-0' : 'translate-x-full'
+                        }`}
                     >
-                        <div className="h-full overflow-x-hidden overflow-y-auto p-4">
-                            <h3 className="mb-4 text-lg font-semibold">Pengaturan Layer</h3>
-                            <div className="mb-4">
-                                <label className="mb-2 block text-sm font-medium">Tipe Peta</label>
-                                <select
-                                    value={mapType}
-                                    onChange={(e) => setMapType(e.target.value as 'standard' | 'satellite' | 'terrain')}
-                                    className="w-full rounded border p-1"
+                        <div className="h-full overflow-x-hidden overflow-y-auto">
+                            <div className="flex items-center justify-between border-b border-slate-200 p-3">
+                                <h3 className="text-sm font-medium">Layer Control</h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 rounded-full p-0 hover:bg-gray-100"
+                                    onClick={() => setSidebarOpen(false)}
                                 >
-                                    <option value="standard">Standar</option>
-                                    <option value="satellite">Satelit</option>
-                                    <option value="terrain">Terrain</option>
-                                </select>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <path d="M18 6L6 18M6 6l12 12" />
+                                    </svg>
+                                </Button>
                             </div>
-                            <div className="mb-4">
-                                <label className="mb-2 block text-sm font-medium">Layer Bencana</label>
-                                <div className="mb-2 flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="show-disasters"
-                                        checked={showDisasters}
-                                        onChange={(e) => setShowDisasters(e.target.checked)}
-                                    />
-                                    <label htmlFor="show-disasters">Tampilkan Bencana</label>
+
+                            <div className="space-y-4 p-3">
+                                {/* Map Type Section */}
+                                <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+                                    <div className="border-b border-slate-200 p-2">
+                                        <h4 className="text-xs font-medium text-slate-800">Tipe Peta</h4>
+                                    </div>
+                                    <div className="p-2">
+                                        <RadioGroup
+                                            value={mapType}
+                                            onValueChange={(value: 'standard' | 'satellite' | 'terrain') => setMapType(value)}
+                                        >
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <RadioGroupItem value="standard" id="standard" className="peer sr-only" />
+                                                    <Label
+                                                        htmlFor="standard"
+                                                        className="flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-transparent p-2 transition-all peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 hover:border-slate-300 hover:bg-slate-50"
+                                                    >
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            width="20"
+                                                            height="20"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            className="text-slate-600 peer-data-[state=checked]:text-blue-600"
+                                                        >
+                                                            <rect width="18" height="18" x="3" y="3" rx="2" />
+                                                            <path d="M3 9h18" />
+                                                            <path d="M9 3v18" />
+                                                        </svg>
+                                                        <span className="text-xs font-medium">Standar</span>
+                                                    </Label>
+                                                </div>
+                                                <div>
+                                                    <RadioGroupItem value="satellite" id="satellite" className="peer sr-only" />
+                                                    <Label
+                                                        htmlFor="satellite"
+                                                        className="flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-transparent p-2 transition-all peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 hover:border-slate-300 hover:bg-slate-50"
+                                                    >
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            width="20"
+                                                            height="20"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            className="text-slate-600 peer-data-[state=checked]:text-blue-600"
+                                                        >
+                                                            <path d="M12 12a4 4 0 0 0-4-4 4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4Z" />
+                                                            <path d="M15 15l2-2" />
+                                                        </svg>
+                                                        <span className="text-xs font-medium">Satelit</span>
+                                                    </Label>
+                                                </div>
+                                                <div>
+                                                    <RadioGroupItem value="terrain" id="terrain" className="peer sr-only" />
+                                                    <Label
+                                                        htmlFor="terrain"
+                                                        className="flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-transparent p-2 transition-all peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50 hover:border-slate-300 hover:bg-slate-50"
+                                                    >
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            width="20"
+                                                            height="20"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            className="text-slate-600 peer-data-[state=checked]:text-blue-600"
+                                                        >
+                                                            <path d="M22 19h-6l-4-4-4 4H2" />
+                                                            <path d="M2 19 12 5l10 14" />
+                                                        </svg>
+                                                        <span className="text-xs font-medium">Terrain</span>
+                                                    </Label>
+                                                </div>
+                                            </div>
+                                        </RadioGroup>
+                                    </div>
                                 </div>
-                                {showDisasters && (
-                                    <div className="ml-6 space-y-2">
-                                        <div className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                id="gempabumi"
-                                                checked={selectedHazardLayers.includes('gempabumi')}
-                                                onChange={(e) => handleHazardLayerChange('gempabumi', e.target.checked)}
-                                            />
-                                            <label htmlFor="gempabumi">Gempa Bumi</label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                id="banjir"
-                                                checked={selectedHazardLayers.includes('banjir')}
-                                                onChange={(e) => handleHazardLayerChange('banjir', e.target.checked)}
-                                            />
-                                            <label htmlFor="banjir">Banjir</label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                id="tanah_longsor"
-                                                checked={selectedHazardLayers.includes('tanah_longsor')}
-                                                onChange={(e) => handleHazardLayerChange('tanah_longsor', e.target.checked)}
-                                            />
-                                            <label htmlFor="tanah_longsor">Tanah Longsor</label>
+
+                                {/* Enhanced Data Layer Types */}
+                                <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+                                    <div className="flex items-center justify-between border-b border-slate-200 p-2">
+                                        <h4 className="text-xs font-medium text-slate-800">Tipe Data</h4>
+                                    </div>
+                                    <div className="p-2">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="show-disasters"
+                                                    checked={showDisasters}
+                                                    onCheckedChange={(checked) => setShowDisasters(checked as boolean)}
+                                                />
+                                                <Label htmlFor="show-disasters">Titik Bencana</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="show-shelters"
+                                                    checked={showShelters}
+                                                    onCheckedChange={(checked) => setShowShelters(checked as boolean)}
+                                                />
+                                                <Label htmlFor="show-shelters">Posko Evakuasi</Label>
+                                            </div>
+
+                                            {/* Shelter type filter */}
+                                            {showShelters && (
+                                                <div className="mt-1 ml-6 space-y-2 border-l-2 border-gray-200 pl-2">
+                                                    <div className="text-xs text-gray-500">Filter Jenis Posko:</div>
+                                                    <Select value={shelterTypeFilter} onValueChange={(v) => setShelterTypeFilter(v)}>
+                                                        <SelectTrigger className="h-7 text-xs">
+                                                            <SelectValue placeholder="Semua Jenis" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all">Semua Jenis</SelectItem>
+                                                            <SelectItem value="pengungsian">Pengungsian</SelectItem>
+                                                            <SelectItem value="kesehatan">Kesehatan</SelectItem>
+                                                            <SelectItem value="logistik">Logistik</SelectItem>
+                                                            <SelectItem value="dapur-umum">Dapur Umum</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="show-evacroutes"
+                                                    checked={showEvacRoutes}
+                                                    onCheckedChange={(checked) => setShowEvacRoutes(checked as boolean)}
+                                                />
+                                                <Label htmlFor="show-evacroutes">Jalur Evakuasi</Label>
+                                            </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                            <div className="mb-4">
-                                <label className="mb-2 block text-sm font-medium">Layer Posko</label>
-                                <div className="mb-2 flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="show-shelters"
-                                        checked={showShelters}
-                                        onChange={(e) => setShowShelters(e.target.checked)}
-                                    />
-                                    <label htmlFor="show-shelters">Tampilkan Posko</label>
                                 </div>
-                                {showShelters && (
-                                    <select
-                                        value={shelterTypeFilter}
-                                        onChange={(e) => setShelterTypeFilter(e.target.value)}
-                                        className="w-full rounded border p-1"
-                                    >
-                                        <option value="all">Semua Posko</option>
-                                        <option value="pengungsian">Pengungsian</option>
-                                        <option value="kesehatan">Kesehatan</option>
-                                        <option value="logistik">Logistik</option>
-                                    </select>
-                                )}
+
+                                {/* Hazard Layers Section */}
+                                <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+                                    <div className="flex items-center justify-between border-b border-slate-200 p-2">
+                                        <h4 className="text-xs font-medium text-slate-800">Jenis Bahaya</h4>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                            onClick={() => {
+                                                setSelectedHazardLayers([]);
+                                            }}
+                                        >
+                                            Reset
+                                        </Button>
+                                    </div>
+                                    <div className="max-h-[200px] overflow-y-auto p-2">
+                                        <div className="space-y-1">
+                                            {(
+                                                [
+                                                    { id: 'banjir', label: 'Banjir' },
+                                                    { id: 'banjir_bandang', label: 'Banjir Bandang' },
+                                                    { id: 'cuaca_ekstrim', label: 'Cuaca Ekstrim' },
+                                                    { id: 'gelombang_ekstrim', label: 'Gelombang Ekstrim' },
+                                                    { id: 'gempabumi', label: 'Gempabumi' },
+                                                    { id: 'kebakaran_hutan', label: 'Kebakaran' },
+                                                    { id: 'kekeringan', label: 'Kekeringan' },
+                                                    { id: 'letusan_gunung_api', label: 'Gunung Api' },
+                                                    { id: 'tanah_longsor', label: 'Tanah Longsor' },
+                                                    { id: 'tsunami', label: 'Tsunami' },
+                                                    { id: 'multi_bahaya', label: 'Lainnya' },
+                                                ] as const
+                                            ).map((item) => (
+                                                <div key={item.id} className="flex items-center space-x-2 rounded px-1 py-1 hover:bg-slate-50">
+                                                    <Checkbox
+                                                        id={`hazard-${item.id}`}
+                                                        checked={selectedHazardLayers.includes(item.id as HazardLayerType)}
+                                                        onCheckedChange={(checked) =>
+                                                            handleHazardLayerChange(item.id as HazardLayerType, checked as boolean)
+                                                        }
+                                                        className="h-3 w-3 rounded border-gray-300 text-blue-600"
+                                                    />
+                                                    <Label
+                                                        htmlFor={`hazard-${item.id}`}
+                                                        className="flex-1 cursor-pointer text-xs font-medium text-slate-700"
+                                                    >
+                                                        {item.label}
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="mb-4">
-                                <label className="mb-2 block text-sm font-medium">Layer Jalur Evakuasi</label>
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="show-evac-routes"
-                                        checked={showEvacRoutes}
-                                        onChange={(e) => setShowEvacRoutes(e.target.checked)}
-                                    />
-                                    <label htmlFor="show-evac-routes">Tampilkan Jalur Evakuasi</label>
+
+                            {/* Layer statistics */}
+                            <div className="sticky bottom-0 border-t border-slate-200 bg-white p-3 text-xs">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex justify-between">
+                                        <span>Titik Bencana:</span>
+                                        <span>{bencanaPoints.length + earthquakes.length}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Posko:</span>
+                                        <span>
+                                            {posko.length} ({shelterTypeFilter === 'all' ? 'semua' : shelterTypeFilter})
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Jalur Evakuasi:</span>
+                                        <span>{validPaths.length}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Layer:</span>
+                                        <span>{selectedHazardLayers.length}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

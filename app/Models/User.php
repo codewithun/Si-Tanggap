@@ -21,6 +21,7 @@ class User extends Authenticatable
         'organization',
         'experience',
         'motivation',
+        'email_verified_at',
     ];
 
     protected $hidden = [
