@@ -172,7 +172,6 @@ const HeroSection: React.FC = () => {
                             </motion.div>
 
                             {/* Enhanced Animated Map Markers */}
-
                         </div>
                     </motion.div>
                 </div>

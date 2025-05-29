@@ -59,7 +59,7 @@ export default function UserManagement() {
         try {
             setLoading(true);
             const response = await axios.get('/admin/users/data');
-            
+
             // Periksa format response
             if (Array.isArray(response.data)) {
                 // Format response langsung array
@@ -116,7 +116,7 @@ export default function UserManagement() {
         try {
             // Log data yang akan dikirim
             console.log('Mengirim data pengguna baru:', formData);
-            
+
             await axios.post('/admin/users', formData);
             toast({
                 title: 'Berhasil',
@@ -132,7 +132,7 @@ export default function UserManagement() {
             if (axios.isAxiosError(error) && error.response) {
                 console.error('Response status:', error.response.status);
                 console.error('Response data:', error.response.data);
-                
+
                 if (error.response.data.errors) {
                     const validationErrors = Object.values(error.response.data.errors as Record<string, string[]>).flat();
                     toast({

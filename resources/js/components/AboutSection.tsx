@@ -218,8 +218,8 @@ const AboutSection: React.FC = () => {
                                     viewport={{ once: true }}
                                     transition={{ delay: 0.5 }}
                                 >
-                                    Aplikasi ini menyediakan data spasial berupa peta interaktif yang menampilkan titik-titik bencana, jalur evakuasi, dan
-                                    lokasi posko bantuan.
+                                    Aplikasi ini menyediakan data spasial berupa peta interaktif yang menampilkan titik-titik bencana, jalur evakuasi,
+                                    dan lokasi posko bantuan.
                                 </motion.p>
 
                                 <motion.div
@@ -288,7 +288,13 @@ const AboutSection: React.FC = () => {
                             >
                                 <div className="flex items-start space-x-4">
                                     <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-6 w-6"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
                                             <path
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
@@ -313,7 +319,13 @@ const AboutSection: React.FC = () => {
                             >
                                 <div className="flex items-start space-x-4">
                                     <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-6 w-6"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
                                             <path
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
@@ -339,7 +351,13 @@ const AboutSection: React.FC = () => {
                             >
                                 <div className="flex items-start space-x-4">
                                     <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-6 w-6"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
                                             <path
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
@@ -502,7 +520,7 @@ const AboutSection: React.FC = () => {
                     </motion.div>
                 </div>
             </section>
-            
+
             {/* Add Footer component here */}
             <Footer scrollToSection={scrollToSection} />
 
