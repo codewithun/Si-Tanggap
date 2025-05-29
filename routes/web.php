@@ -100,12 +100,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/notifications', fn() => Inertia::render('admin/SendNotification'))->name('notifications');
         Route::get('/map', fn() => Inertia::render('admin/AdminMap'))->name('map');
 
-        // GET untuk halaman UserManagement & datatable user
+        // PERBAIKAN: Gunakan satu route definition yang jelas untuk halaman manajemen user
         Route::get('/users', fn() => Inertia::render('admin/UserManagement'))->name('users.index');
-        Route::get('/users/data', [UserController::class, 'getUsers'])->name('users.data');
 
-        // Resource users tanpa index (agar tidak bentrok dengan GET /users di atas)
-        Route::resource('users', UserController::class)->except(['index']);
+        // CRUD operations untuk users
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+        // API endpoint untuk mengambil data user
+        Route::get('/users/data', [UserController::class, 'getUsers'])->name('users.data');
 
         // Laporans
         Route::put('laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
@@ -124,10 +130,13 @@ Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
     Route::get('/laporan-saya', [LaporanController::class, 'getMyReports'])->name('api.laporan-saya');
     Route::put('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
     Route::get('/users', [UserController::class, 'index'])->name('api.users.index');
-    
+
     // Tambahkan endpoint baru untuk dashboard relawan
     Route::get('/relawan/dashboard-stats', [StatistikController::class, 'relawanDashboardStats'])
         ->name('api.relawan.dashboard-stats');
+
+    // Add this route to fix the 404 error when sending notifications
+    Route::post('/notifikasi', [NotifikasiController::class, 'send'])->name('api.notifikasi.send');
 });
 
 // ------------------------
@@ -145,3 +154,24 @@ Route::prefix('api')->group(function () {
 // ------------------------
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
+
+// Add this debugging route to check the API response directly
+Route::get('/debug-bnpb-api', function () {
+    $client = new \GuzzleHttp\Client();
+    $response = $client->get('URL_OF_YOUR_BNPB_API_HERE');
+    $data = json_decode($response->getBody(), true);
+
+    // Return sample data with image URLs
+    return response()->json([
+        'status' => 'success',
+        'data' => array_map(function ($item) {
+            return [
+                'title' => $item['title'],
+                'image' => $item['image'],
+                'processed_image' => (!empty($item['image']) && !str_starts_with($item['image'], 'http'))
+                    ? "https://bnpb.go.id" . (str_starts_with($item['image'], '/') ? '' : '/') . $item['image']
+                    : $item['image']
+            ];
+        }, array_slice($data['berita'], 0, 3))
+    ]);
+});

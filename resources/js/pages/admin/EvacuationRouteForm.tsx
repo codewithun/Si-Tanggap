@@ -13,6 +13,8 @@ import 'leaflet-routing-machine';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import { Edit2, Flag, MapPin, RotateCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { renderToString } from 'react-dom/server';
+import toast from 'react-hot-toast';
 import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import { useToast } from '../../hooks/useToast';
 
@@ -51,7 +53,7 @@ interface PaginationData {
     data: JalurEvakuasi[];
 }
 
-// Add routing control component
+// Ubah RoutingMachine component untuk menggunakan OSRM API langsung
 const RoutingMachine = ({
     startPoint,
     endPoint,
@@ -62,54 +64,79 @@ const RoutingMachine = ({
     onRouteFound?: (coordinates: [number, number][]) => void;
 }) => {
     const map = useMap();
-    const routingControlRef = useRef<L.Routing.Control | null>(null);
     const routeNotifiedRef = useRef(false);
+    // Tambahkan ref untuk melacak polyline
+    const polylineRef = useRef<L.Polyline | null>(null);
 
     useEffect(() => {
         if (!startPoint || !endPoint) {
-            // Clean up previous routing if any
-            if (routingControlRef.current) {
-                routingControlRef.current.remove();
-                routingControlRef.current = null;
-            }
             routeNotifiedRef.current = false;
             return;
         }
 
-        // Create routing control
-        const routingControl = L.Routing.control({
-            waypoints: [L.latLng(startPoint[0], startPoint[1]), L.latLng(endPoint[0], endPoint[1])],
-            routeWhileDragging: true,
-            lineOptions: {
-                styles: [{ color: '#6366f1', opacity: 0.7, weight: 5 }],
-                extendToWaypoints: true,
-                missingRouteTolerance: 0,
-            },
-            show: false, // Don't show turn-by-turn instructions
-            addWaypoints: false, // Disable adding waypoints by clicking on route
-        }).addTo(map);
+        // HAPUS dulu polyline sebelumnya saat routing ulang
+        if (polylineRef.current) {
+            map.removeLayer(polylineRef.current);
+            polylineRef.current = null;
+        }
 
-        // Capture the route points when a route is calculated
-        routingControl.on('routesfound', function (e) {
-            const routes = e.routes;
-            if (routes && routes.length > 0) {
-                const coordinates: [number, number][] = routes[0].coordinates.map(
-                    (coord: { lat: number; lng: number }) => [coord.lat, coord.lng] as [number, number],
+        const fetchOSRMRoute = async () => {
+            try {
+                // Format koordinat untuk OSRM: lng,lat bukan lat,lng
+                const startLng = startPoint[1];
+                const startLat = startPoint[0];
+                const endLng = endPoint[1];
+                const endLat = endPoint[0];
+
+                const response = await axios.get(
+                    `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson&alternatives=true`,
+                    { timeout: 10000 },
                 );
 
+                if (response.data && response.data.routes && response.data.routes.length > 0) {
+                    const routeGeometry = response.data.routes[0].geometry.coordinates;
+                    const coordinates: [number, number][] = routeGeometry.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number]);
+
+                    if (onRouteFound && !routeNotifiedRef.current) {
+                        console.log('OSRM route coordinates:', coordinates);
+                        onRouteFound(coordinates);
+                        routeNotifiedRef.current = true;
+
+                        // JANGAN TAMBAHKAN POLYLINE KE MAP
+                        // Simpan saja koordinat, polyline akan ditampilkan oleh komponen Polyline
+                        // di MapContainer dengan warna yang sesuai
+
+                        map.fitBounds(
+                            [
+                                [Math.min(startPoint[0], endPoint[0]), Math.min(startPoint[1], endPoint[1])],
+                                [Math.max(startPoint[0], endPoint[0]), Math.max(startPoint[1], endPoint[1])],
+                            ],
+                            {
+                                padding: [50, 50],
+                            },
+                        );
+                    }
+                } else {
+                    throw new Error('No routes found in OSRM response');
+                }
+            } catch (error) {
+                console.error('Error fetching OSRM route:', error);
+
                 if (onRouteFound && !routeNotifiedRef.current) {
-                    onRouteFound(coordinates);
+                    toast('Peringatan: Gagal mendapatkan rute, membuat garis lurus sebagai gantinya.');
+                    onRouteFound([startPoint, endPoint]);
                     routeNotifiedRef.current = true;
                 }
             }
-        });
+        };
 
-        routingControlRef.current = routingControl;
+        fetchOSRMRoute();
 
-        // Clean up on unmount
+        // Cleanup function untuk menghapus polyline saat komponen unmount
         return () => {
-            if (routingControlRef.current) {
-                routingControlRef.current.remove();
+            if (polylineRef.current) {
+                map.removeLayer(polylineRef.current);
+                polylineRef.current = null;
             }
         };
     }, [map, startPoint, endPoint, onRouteFound]);
@@ -117,18 +144,19 @@ const RoutingMachine = ({
     return null;
 };
 
+// Ubah komponen PolylineCreator untuk hanya menampilkan marker titik awal & akhir
 const PolylineCreator = ({
-    points,
     setPoints,
-    color,
     isRoutingMode,
     onPointClick,
+    manualPoints = [],
 }: {
     points: [number, number][];
     setPoints: React.Dispatch<React.SetStateAction<[number, number][]>>;
     color: string;
     isRoutingMode: boolean;
     onPointClick?: (position: [number, number]) => void;
+    manualPoints?: [number, number][];
 }) => {
     useMapEvents({
         click: (e) => {
@@ -145,10 +173,33 @@ const PolylineCreator = ({
 
     return (
         <>
-            <Polyline positions={points} pathOptions={{ color }} />
-            {points.map((position, idx) => (
-                <Marker key={`marker-${idx}`} position={position} />
-            ))}
+            {/* Marker untuk titik awal */}
+            {manualPoints.length > 0 && (
+                <Marker
+                    key="start-point"
+                    position={manualPoints[0]}
+                    icon={L.divIcon({
+                        html: renderToString(<Flag className="h-6 w-6 text-green-600" />),
+                        className: 'custom-div-icon',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24],
+                    })}
+                />
+            )}
+
+            {/* Marker untuk titik akhir */}
+            {manualPoints.length > 1 && (
+                <Marker
+                    key="end-point"
+                    position={manualPoints[1]}
+                    icon={L.divIcon({
+                        html: renderToString(<MapPin className="h-6 w-6 text-red-600" />),
+                        className: 'custom-div-icon',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24],
+                    })}
+                />
+            )}
         </>
     );
 };
@@ -157,6 +208,7 @@ export default function EvacuationRouteForm() {
     const [jalurList, setJalurList] = useState<JalurEvakuasi[]>([]);
     const [allRoutes, setAllRoutes] = useState<JalurEvakuasi[]>([]);
     const [points, setPoints] = useState<[number, number][]>([]);
+    const [manualPoints, setManualPoints] = useState<[number, number][]>([]); // Tambahkan ini
     const [routeName, setRouteName] = useState('');
     const [disasterType, setDisasterType] = useState('');
     const [routeColor, setRouteColor] = useState('#FF5733');
@@ -174,8 +226,7 @@ export default function EvacuationRouteForm() {
     const [isRouteFound, setIsRouteFound] = useState(false);
     const routeNotificationShownRef = useRef(false);
 
-    // Add state for editing mode
-    const [isEditing, setIsEditing] = useState(false);
+    // (Removed unused isEditing state)
 
     // Fetch for table with pagination (current page only)
     const fetchExistingRoutes = useCallback(async () => {
@@ -240,6 +291,7 @@ export default function EvacuationRouteForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Gunakan points yang berisi semua titik dari routePoints
         if (points.length < 2) {
             toast({
                 title: 'Peringatan',
@@ -264,6 +316,7 @@ export default function EvacuationRouteForm() {
             const formData = {
                 nama: routeName,
                 deskripsi: 'Jalur evakuasi',
+                // PENTING: Pastikan ini menggunakan semua points dari rute
                 koordinat: points.map(([lat, lng]) => ({
                     lat: parseFloat(lat.toFixed(6)),
                     lng: parseFloat(lng.toFixed(6)),
@@ -310,82 +363,89 @@ export default function EvacuationRouteForm() {
     // Reset form function - updated to keep routing mode true
     const resetForm = () => {
         setPoints([]);
+        setManualPoints([]); // Tambahkan ini
         setRouteName('');
         setDisasterType('');
         setRouteColor('#FF5733');
         setEditRouteId(null);
-        setIsEditing(false);
-        // Also reset routing
         resetRouting();
-        // No need to toggle isRoutingMode since it's always true
     };
-
     // Handle routing point selection
+    const [isProcessingClick, setIsProcessingClick] = useState(false);
+
+    // Ubah handleRoutingPointClick agar hanya menggunakan 2 titik (awal & akhir)
     const handleRoutingPointClick = (position: [number, number]) => {
-        if (!startPoint) {
-            setStartPoint(position);
-            toast({
-                title: 'Titik Awal',
-                description: 'Titik awal rute ditentukan. Silahkan tentukan titik tujuan.',
-            });
-        } else if (!endPoint) {
-            setEndPoint(position);
-            toast({
-                title: 'Titik Tujuan',
-                description: 'Titik tujuan ditentukan. Mencari rute terbaik...',
-            });
-        } else {
-            // Reset and start new route
-            setStartPoint(position);
-            setEndPoint(null);
-            setRoutePoints([]);
-            setIsRouteFound(false);
-            toast({
-                title: 'Titik Awal Baru',
-                description: 'Titik awal baru ditentukan. Silahkan tentukan titik tujuan.',
-            });
+        if (isProcessingClick) return;
+        setIsProcessingClick(true);
+
+        try {
+            // Jika belum ada titik sama sekali, ini adalah titik awal
+            if (manualPoints.length === 0) {
+                setManualPoints([position]);
+                setPoints([position]);
+                setStartPoint(null);
+                setEndPoint(null);
+                setRoutePoints([]);
+                setIsRouteFound(false);
+                routeNotificationShownRef.current = false;
+                toast({
+                    title: 'Titik Awal',
+                    description: 'Titik awal rute ditentukan. Klik titik berikutnya untuk titik akhir rute.',
+                });
+            }
+            // Jika sudah ada 1 titik, ini adalah titik akhir
+            else if (manualPoints.length === 1) {
+                setStartPoint(manualPoints[0]);
+                setEndPoint(position);
+                setManualPoints([manualPoints[0], position]);
+                setRoutePoints([]);
+                setIsRouteFound(false);
+                routeNotificationShownRef.current = false;
+                toast({
+                    title: 'Titik Akhir',
+                    description: 'Titik akhir rute ditentukan. Mencari rute terbaik...',
+                });
+            }
+            // Jika sudah ada 2 titik atau lebih, reset dulu semua titik
+            else {
+                // Reset dan tambahkan titik baru sebagai titik awal
+                resetRouting();
+                setManualPoints([position]);
+                setPoints([position]);
+                toast({
+                    title: 'Titik Awal Baru',
+                    description: 'Rute sebelumnya dihapus. Klik titik berikutnya untuk titik akhir rute baru.',
+                });
+            }
+        } finally {
+            setTimeout(() => {
+                setIsProcessingClick(false);
+            }, 500);
         }
-    };
+    }; // Tunggu 300ms untuk mencegah klik ganda/spam
+
+    // (simplifyRoute function removed because it was unused)
 
     // Handle when a route is found
     const handleRouteFound = (coordinates: [number, number][]) => {
         if (!routeNotificationShownRef.current) {
             setRoutePoints(coordinates);
             setIsRouteFound(true);
-            toast({
-                title: 'Rute Ditemukan',
-                description: `Rute terbaik dengan ${coordinates.length} titik telah ditemukan.`,
-            });
-            routeNotificationShownRef.current = true;
-        } else {
-            // Just update the coordinates without showing notification again
-            setRoutePoints(coordinates);
-            setIsRouteFound(true);
-        }
-    };
 
-    // Add route points to evacuation route
-    const addRouteToEvacuationPath = () => {
-        if (routePoints.length > 0) {
-            // If we're in edit mode, replace the entire path with the new route
-            if (isEditing) {
-                setPoints([...routePoints]);
+            if (coordinates.length > 1) {
+                // PENTING: Simpan SEMUA titik dari rute OSRM ke points
+                // Jangan hanya titik awal dan akhir
+                setPoints(coordinates);
+
                 toast({
-                    title: 'Rute Diperbarui',
-                    description: `Jalur evakuasi diperbarui dengan ${routePoints.length} titik baru.`,
-                });
-            } else {
-                // In create mode, just add points to the existing path
-                setPoints((current) => [...current, ...routePoints]);
-                toast({
-                    title: 'Rute Ditambahkan',
-                    description: `${routePoints.length} titik rute ditambahkan ke jalur evakuasi.`,
+                    title: 'Rute Ditemukan',
+                    description: `Rute terbaik dengan ${coordinates.length} titik telah ditentukan.`,
                 });
             }
 
-            // Reset routing
-            resetRouting();
-            // No need to toggle isRoutingMode since it's always true
+            setStartPoint(null);
+            setEndPoint(null);
+            routeNotificationShownRef.current = true;
         }
     };
 
@@ -396,11 +456,14 @@ export default function EvacuationRouteForm() {
         setRoutePoints([]);
         setIsRouteFound(false);
         routeNotificationShownRef.current = false;
+        setPoints([]);
+        setManualPoints([]); // Tambahkan ini
     };
 
     // Add function to clear existing points and start with routing mode
     const startNewRouteFromScratch = () => {
         setPoints([]);
+        setManualPoints([]); // Tambahkan ini
         resetRouting();
         toast({
             title: 'Mode Rute Aktif',
@@ -409,12 +472,12 @@ export default function EvacuationRouteForm() {
     };
 
     // State for delete confirmation dialog
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialog] = useState(false);
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
     const handleDeleteClick = (id: number) => {
         setDeleteTargetId(id);
-        setIsDeleteDialogOpen(true);
+        setIsDeleteDialog(true);
     };
 
     const handleDelete = async () => {
@@ -438,9 +501,6 @@ export default function EvacuationRouteForm() {
                 description: 'Gagal menghapus jalur evakuasi',
                 variant: 'destructive',
             });
-        } finally {
-            setIsDeleteDialogOpen(false);
-            setDeleteTargetId(null);
         }
     };
 
@@ -448,7 +508,6 @@ export default function EvacuationRouteForm() {
         setRouteName(jalur.nama);
         setDisasterType(jalur.jenis_bencana);
         setRouteColor(jalur.warna);
-        setIsEditing(true);
 
         // Check the structure of koordinat and convert appropriately
         let pointsArray: [number, number][] = [];
@@ -471,6 +530,7 @@ export default function EvacuationRouteForm() {
         }
 
         setPoints(pointsArray);
+        setManualPoints(pointsArray); // Tambahkan ini
         setEditRouteId(jalur.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -524,51 +584,29 @@ export default function EvacuationRouteForm() {
                                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                         />
-                                        {/* Only use PolylineCreator for routing mode */}
+
+                                        {/* PolylineCreator dengan manual points */}
                                         <PolylineCreator
                                             points={points}
                                             setPoints={setPoints}
                                             color={routeColor}
                                             isRoutingMode={true}
                                             onPointClick={handleRoutingPointClick}
+                                            manualPoints={manualPoints}
                                         />
 
                                         {/* Routing machine */}
                                         <RoutingMachine startPoint={startPoint} endPoint={endPoint} onRouteFound={handleRouteFound} />
 
-                                        {/* Route start and end markers */}
-                                        {startPoint && (
-                                            <Marker
-                                                position={startPoint}
-                                                icon={L.divIcon({
-                                                    html: renderToString(<Flag className="h-6 w-6 text-green-600" />),
-                                                    className: 'custom-div-icon',
-                                                    iconSize: [24, 24],
-                                                    iconAnchor: [12, 24],
-                                                })}
-                                            />
-                                        )}
-                                        {endPoint && (
-                                            <Marker
-                                                position={endPoint}
-                                                icon={L.divIcon({
-                                                    html: renderToString(<MapPin className="h-6 w-6 text-red-600" />),
-                                                    className: 'custom-div-icon',
-                                                    iconSize: [24, 24],
-                                                    iconAnchor: [12, 24],
-                                                })}
-                                            />
-                                        )}
-
-                                        {/* Display route points as polyline */}
+                                        {/* Display route points as polyline (tetap tampilkan ini) */}
                                         {routePoints.length > 0 && (
                                             <Polyline
                                                 positions={routePoints}
+                                                smoothFactor={1.5}
                                                 pathOptions={{
-                                                    color: '#4f46e5',
+                                                    color: routeColor,
                                                     weight: 5,
-                                                    dashArray: '10, 5',
-                                                    opacity: 0.7,
+                                                    opacity: 1.0,
                                                 }}
                                             />
                                         )}
@@ -590,7 +628,7 @@ export default function EvacuationRouteForm() {
                                     </MapContainer>
                                 </div>
 
-                                {/* Map mode controls - simplified */}
+                                {/* Map mode controls - simplified - hapus tombol Tambah */}
                                 <div className="flex flex-wrap items-center gap-3">
                                     {/* Add button for replacing path when editing */}
                                     {editRouteId && (
@@ -603,17 +641,11 @@ export default function EvacuationRouteForm() {
                                         <RotateCw className="mr-1 h-4 w-4" /> Reset Rute
                                     </Button>
 
-                                    {isRouteFound && (
-                                        <Button type="button" onClick={addRouteToEvacuationPath} size="sm">
-                                            {isEditing ? 'Ganti Jalur dengan Rute' : 'Tambahkan Rute ke Jalur'}
-                                        </Button>
-                                    )}
-
                                     <div className="text-sm text-gray-500">
                                         {!startPoint && 'Klik untuk menentukan titik awal'}
                                         {startPoint && !endPoint && 'Klik untuk menentukan titik tujuan'}
                                         {startPoint && endPoint && !isRouteFound && 'Mencari rute terbaik...'}
-                                        {isRouteFound && `${routePoints.length} titik rute ditemukan`}
+                                        {isRouteFound && 'Rute ditemukan dan disederhanakan'}
                                     </div>
                                 </div>
 
@@ -818,7 +850,7 @@ export default function EvacuationRouteForm() {
             </div>
 
             {/* Delete Confirmation Dialog */}
-            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialog}>
                 <DialogContent className="dialog-content">
                     <DialogHeader>
                         <DialogTitle>Hapus Jalur Evakuasi</DialogTitle>
@@ -827,7 +859,7 @@ export default function EvacuationRouteForm() {
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                        <Button type="button" variant="outline" onClick={() => setIsDeleteDialog(false)}>
                             Batal
                         </Button>
                         <Button variant="destructive" onClick={handleDelete}>
@@ -840,5 +872,8 @@ export default function EvacuationRouteForm() {
     );
 }
 
-// Helper function to render React components as SVG icons
-import { renderToString } from 'react-dom/server';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const prevPoints = (current: [number, number][], newPoints: [number, number][]) => {
+    // Hanya ambil titik yang tidak ada di newPoints
+    return current.filter((point) => !newPoints.some((newPoint) => newPoint[0] === point[0] && newPoint[1] === point[1]));
+};

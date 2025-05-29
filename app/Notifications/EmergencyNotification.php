@@ -7,20 +7,20 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class EmergencyNotification extends Notification implements ShouldQueue
+class EmergencyNotification extends Notification
 {
     use Queueable;
 
     protected $title;
-    protected $content;
+    protected $message;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(string $title, string $content)
+    public function __construct(string $title, string $message)
     {
         $this->title = $title;
-        $this->content = $content;
+        $this->message = $message;
     }
 
     /**
@@ -30,19 +30,7 @@ class EmergencyNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
-    }
-
-    /**
-     * Get the mail representation of the notification.
-     */
-    public function toMail(object $notifiable): MailMessage
-    {
-        return (new MailMessage)
-            ->subject($this->title)
-            ->line('Notifikasi Darurat Bencana:')
-            ->line($this->content)
-            ->line('Harap tetap waspada dan ikuti arahan dari petugas terkait.');
+        return ['database'];
     }
 
     /**
@@ -54,8 +42,8 @@ class EmergencyNotification extends Notification implements ShouldQueue
     {
         return [
             'title' => $this->title,
-            'content' => $this->content,
-            'type' => 'emergency',
+            'message' => $this->message,
+            'time' => now()->toIsoString(),
         ];
     }
 }

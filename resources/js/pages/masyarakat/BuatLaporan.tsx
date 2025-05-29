@@ -136,7 +136,7 @@ export default function BuatLaporan() {
             setPreviewImage(null);
 
             // Redirect to laporan list
-            window.location.href = '/dashboard';
+            window.location.href = '/masyarakat/laporan-saya';
         } catch (error: unknown) {
             console.error('Error submitting report:', error);
 

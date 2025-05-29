@@ -69,6 +69,10 @@ interface StatisticsData {
     totalLaporan: number;
     totalLaporanVerified: number;
     totalPosko: number;
+    totalUsers: number;
+    totalMasyarakat: number;
+    totalRelawan: number;
+    totalAdmin: number;
     bencanaBerdasarkanJenis: Record<string, number>;
     laporanBulanan: Record<string, number>;
 }
@@ -80,39 +84,26 @@ export default function AdminDashboard() {
 
     const fetchStatistics = useCallback(async () => {
         try {
+            setLoading(true);
             const response = await axios.get('/statistik-bencana');
+            console.log('Statistics API response:', response.data); // Debug log
 
             // Ensure all disaster types are represented in statistics
             const standardizedData = { ...response.data };
 
-            if (standardizedData.bencanaBerdasarkanJenis) {
-                // Create a standardized object with all disaster types initialized to 0
-                const standardizedCounts: Record<string, number> = {
-                    banjir: 0,
-                    gempa: 0,
-                    longsor: 0,
-                    tsunami: 0,
-                    'angin-topan': 0,
-                    kebakaran: 0,
-                };
+            // Use default empty objects if data is missing
+            if (!standardizedData.bencanaBerdasarkanJenis) {
+                standardizedData.bencanaBerdasarkanJenis = {};
+            }
 
-                // Map the incoming data to our standardized structure
-                Object.entries(standardizedData.bencanaBerdasarkanJenis).forEach(([key, value]) => {
-                    // Use original key if it exists in our map, otherwise keep as is
-                    const normalizedKey = key.toLowerCase();
-                    if (Object.prototype.hasOwnProperty.call(standardizedCounts, normalizedKey)) {
-                        standardizedCounts[normalizedKey] = value as number;
-                    } else {
-                        // Handle any unexpected disaster types
-                        standardizedCounts[key] = value as number;
-                    }
-                });
-
-                standardizedData.bencanaBerdasarkanJenis = standardizedCounts;
+            if (!standardizedData.laporanBulanan) {
+                standardizedData.laporanBulanan = {};
             }
 
             setStats(standardizedData);
         } catch (error) {
+            console.error('Error fetching statistics:', error); // Debug log
+
             if (axios.isAxiosError(error)) {
                 toast({
                     title: 'Error',
@@ -126,6 +117,20 @@ export default function AdminDashboard() {
                     variant: 'destructive',
                 });
             }
+
+            // Set default empty statistics
+            setStats({
+                totalBencana: 0,
+                totalLaporan: 0,
+                totalLaporanVerified: 0,
+                totalPosko: 0,
+                totalUsers: 0,
+                totalMasyarakat: 0,
+                totalRelawan: 0,
+                totalAdmin: 0,
+                bencanaBerdasarkanJenis: {},
+                laporanBulanan: {},
+            });
         } finally {
             setLoading(false);
         }
@@ -135,6 +140,7 @@ export default function AdminDashboard() {
         fetchStatistics();
     }, [fetchStatistics]);
 
+    // Update the Bar chart data to handle null/undefined bencanaBerdasarkanJenis
     const disasterTypeChartData = {
         labels: stats?.bencanaBerdasarkanJenis ? Object.keys(stats.bencanaBerdasarkanJenis).map((key) => disasterTypeMap[key] || key) : [],
         datasets: [

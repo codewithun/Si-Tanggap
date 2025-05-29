@@ -21,7 +21,7 @@ import { renderToString } from 'react-dom/server';
 
 // Add shelter icon definition just like in PoskoForm
 const shelterIcon = icon({
-    iconUrl: '/icons/shelter-marker.svg',
+    iconUrl: '/icons/posko.png',
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
