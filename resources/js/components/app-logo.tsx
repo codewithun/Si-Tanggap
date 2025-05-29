@@ -1,13 +1,14 @@
-import AppLogoIcon from './app-logo-icon';
-
 export default function AppLogo() {
     return (
         <>
-            <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">
-                <AppLogoIcon className="size-5 fill-current text-white dark:text-black" />
+            <div className="mr-2 flex items-center justify-center">
+                <img src="/img/logo.png" alt="GeoSiaga Logo" className="h-12 w-12 object-contain" />
             </div>
-            <div className="ml-1 grid flex-1 text-left text-sm">
-                <span className="mb-0.5 truncate leading-none font-semibold">Laravel Starter Kit</span>
+            <div className="grid flex-1 text-left">
+                <span className="truncate text-xl leading-tight font-bold">
+                    <span className="text-black dark:text-white">Geo</span>
+                    <span className="text-blue-400">Siaga</span>
+                </span>
             </div>
         </>
     );

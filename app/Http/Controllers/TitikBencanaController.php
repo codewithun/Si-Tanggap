@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Laporan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TitikBencanaController extends Controller
 {
     /**
      * Display a listing of all disaster points for the map.
-     */    public function index(Request $request)
+     */
+    public function index(Request $request)
     {
         try {
             $query = Laporan::select(
@@ -69,7 +71,7 @@ class TitikBencanaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Error in TitikBencanaController@index: ' . $e->getMessage());
+            Log::error('Error in TitikBencanaController@index: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Terjadi kesalahan saat mengambil data titik bencana',
                 'error' => $e->getMessage()

@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Laporan;
 use App\Models\Posko;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Carbon\Carbon;
 
 class StatistikController extends Controller
 {
@@ -15,44 +18,71 @@ class StatistikController extends Controller
     public function index()
     {
         try {
-            // Count total disaster reports
-            $totalLaporan = Laporan::count();
+            // Hitung total bencana dengan status yang benar (diverifikasi)
+            $totalBencana = Laporan::where('status', 'diverifikasi')->count();
 
-            // Count verified reports
+            // Hitung total laporan terverifikasi
             $totalLaporanVerified = Laporan::where('status', 'diverifikasi')->count();
 
-            // Count distinct disaster locations (verified reports as disasters) - compatible with SQLite
-            $locations = Laporan::where('status', 'diverifikasi')
-                ->get(['latitude', 'longitude']);
-            $totalBencana = $locations->unique(function ($item) {
-                return $item['latitude'] . ',' . $item['longitude'];
-            })->count();
+            // Hitung total laporan keseluruhan
+            $totalLaporan = Laporan::count();
 
-            // Count total shelters
+            // Hitung total posko
             $totalPosko = Posko::count();
 
-            // Count disasters by type
+            // Periksa apakah kolom 'role' ada di tabel users
+            $totalUsers = User::count();
+            $totalMasyarakat = 0;
+            $totalRelawan = 0;
+            $totalAdmin = 0;
+
+            // Periksa terlebih dahulu apakah kolom role ada
+            if (Schema::hasColumn('users', 'role')) {
+                $totalMasyarakat = User::where('role', 'masyarakat')->count();
+                $totalRelawan = User::where('role', 'relawan')->count();
+                $totalAdmin = User::where('role', 'admin')->count();
+            }
+            // Coba dengan 'user_role' sebagai alternatif
+            else if (Schema::hasColumn('users', 'user_role')) {
+                $totalMasyarakat = User::where('user_role', 'masyarakat')->count();
+                $totalRelawan = User::where('user_role', 'relawan')->count();
+                $totalAdmin = User::where('user_role', 'admin')->count();
+            }
+            // Coba dengan 'type' sebagai alternatif
+            else if (Schema::hasColumn('users', 'type')) {
+                $totalMasyarakat = User::where('type', 'masyarakat')->count();
+                $totalRelawan = User::where('type', 'relawan')->count();
+                $totalAdmin = User::where('type', 'admin')->count();
+            }
+            // Cek apakah menggunakan Spatie permission
+            else {
+                try {
+                    $totalMasyarakat = User::role('masyarakat')->count();
+                    $totalRelawan = User::role('relawan')->count();
+                    $totalAdmin = User::role('admin')->count();
+                } catch (\Exception $e) {
+                    // Jika gagal, gunakan default
+                    $totalMasyarakat = 0;
+                    $totalRelawan = 0;
+                    $totalAdmin = 0;
+                }
+            }
+
+            // Hitung bencana berdasarkan jenis
             $bencanaBerdasarkanJenis = Laporan::where('status', 'diverifikasi')
                 ->select('jenis_bencana', DB::raw('count(*) as total'))
                 ->groupBy('jenis_bencana')
                 ->pluck('total', 'jenis_bencana')
                 ->toArray();
 
-            // Get monthly report counts for the current year (SQLite compatible)
-            $laporanBulanan = Laporan::select(
-                DB::raw("strftime('%Y-%m', created_at) as month"),
-                DB::raw('count(*) as total')
-            )
-                ->whereYear('created_at', date('Y'))
-                ->groupBy('month')
-                ->pluck('total', 'month')
-                ->toArray();
-
-            // Format the month names
-            $formattedLaporanBulanan = [];
-            foreach ($laporanBulanan as $month => $count) {
-                $date = \Carbon\Carbon::createFromFormat('Y-m', $month);
-                $formattedLaporanBulanan[$date->format('F')] = $count;
+            // Hitung laporan bulanan untuk 6 bulan terakhir
+            $laporanBulanan = [];
+            for ($i = 5; $i >= 0; $i--) {
+                $month = Carbon::now()->subMonths($i);
+                $count = Laporan::whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month)
+                    ->count();
+                $laporanBulanan[$month->format('M Y')] = $count;
             }
 
             return response()->json([
@@ -60,12 +90,16 @@ class StatistikController extends Controller
                 'totalLaporan' => $totalLaporan,
                 'totalLaporanVerified' => $totalLaporanVerified,
                 'totalPosko' => $totalPosko,
+                'totalUsers' => $totalUsers,
+                'totalMasyarakat' => $totalMasyarakat,
+                'totalRelawan' => $totalRelawan,
+                'totalAdmin' => $totalAdmin,
                 'bencanaBerdasarkanJenis' => $bencanaBerdasarkanJenis,
-                'laporanBulanan' => $formattedLaporanBulanan,
+                'laporanBulanan' => $laporanBulanan
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Failed to retrieve statistics',
+                'error' => 'Terjadi kesalahan saat mengambil data statistik',
                 'message' => $e->getMessage()
             ], 500);
         }
@@ -76,27 +110,39 @@ class StatistikController extends Controller
      */
     public function relawanDashboardStats()
     {
-        // Hitung total laporan dari tabel laporans
-        $totalLaporan = Laporan::count();
+        try {
+            // Dapatkan 5 laporan terbaru yang menunggu verifikasi
+            $laporanTerbaru = \App\Models\Laporan::with('user')
+                ->where('status', 'menunggu')
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get()
+                ->map(function ($laporan) {
+                    return [
+                        'id' => $laporan->id,
+                        'judul' => $laporan->judul,
+                        'jenis_bencana' => $laporan->jenis_bencana,
+                        'lokasi' => $laporan->lokasi,
+                        'created_at' => $laporan->created_at,
+                    ];
+                });
 
-        // Hitung laporan dengan status "diverifikasi"
-        $laporanDiverifikasi = Laporan::where('status', 'diverifikasi')->count();
+            // Hitung statistik yang diperlukan
+            $totalLaporan = \App\Models\Laporan::count();
+            $laporanDiverifikasi = \App\Models\Laporan::where('status', 'diverifikasi')->count();
+            $poskoAktif = \App\Models\Posko::where('status', 'aktif')->count();
 
-        // Hitung posko aktif dari tabel poskos
-        $poskoAktif = Posko::where('status', 'aktif')->count();
-
-        // Ambil 5 laporan terbaru yang masih berstatus menunggu
-        $laporanTerbaru = Laporan::where('status', 'menunggu')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get(['id', 'judul', 'jenis_bencana', 'lokasi', 'created_at']);
-
-        // Kembalikan data dalam format JSON
-        return response()->json([
-            'totalLaporan' => $totalLaporan,
-            'laporanDiverifikasi' => $laporanDiverifikasi,
-            'poskoAktif' => $poskoAktif,
-            'laporanTerbaru' => $laporanTerbaru
-        ]);
+            return response()->json([
+                'totalLaporan' => $totalLaporan,
+                'laporanDiverifikasi' => $laporanDiverifikasi,
+                'poskoAktif' => $poskoAktif,
+                'laporanTerbaru' => $laporanTerbaru
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Terjadi kesalahan saat mengambil data statistik',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -8,14 +8,14 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { useEffect, useRef, useState } from 'react';
-import { toast } from 'react-hot-toast';
-import 'leaflet/dist/leaflet.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import 'leaflet/dist/leaflet.css';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 
 // Gunakan icon default Leaflet agar marker tidak error 404
 const customIcon = L.icon({
@@ -58,14 +58,13 @@ export default function BuatLaporan() {
         jenis_bencana: '' as BencanaType,
         deskripsi: '',
         lokasi: '',
-        latitude: -6.200000, // Default to Jakarta's coordinates
+        latitude: -6.2, // Default to Jakarta's coordinates
         longitude: 106.816666,
         foto: null as File | null,
     });
 
     // Map initialization if needed in the future
-    useEffect(() => {
-    }, []);
+    useEffect(() => {}, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -136,7 +135,7 @@ export default function BuatLaporan() {
             setPreviewImage(null);
 
             // Redirect to laporan list
-            window.location.href = '/dashboard';
+            window.location.href = '/masyarakat/laporan-saya';
         } catch (error: unknown) {
             console.error('Error submitting report:', error);
 
@@ -236,9 +235,9 @@ export default function BuatLaporan() {
 
                             <div className="grid gap-2">
                                 <Label>Lokasi di Peta</Label>
-                                <div className="h-[400px] rounded-md border overflow-hidden" ref={mapRef}>
+                                <div className="h-[400px] overflow-hidden rounded-md border" ref={mapRef}>
                                     <MapContainer
-                                        center={[-6.200000, 106.816666]}
+                                        center={[-6.2, 106.816666]}
                                         zoom={13}
                                         scrollWheelZoom={false}
                                         className="h-full w-full"

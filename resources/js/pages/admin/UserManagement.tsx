@@ -57,16 +57,20 @@ export default function UserManagement() {
 
     const fetchUsers = useCallback(async () => {
         try {
-            // Menggunakan endpoint yang sudah terdaftar di web.php
+            setLoading(true);
             const response = await axios.get('/admin/users/data');
 
-            // Pastikan kita mendapatkan array dari response
-            if (response.data && response.data.data) {
+            // Periksa format response
+            if (Array.isArray(response.data)) {
+                // Format response langsung array
+                setUsers(response.data);
+            } else if (response.data && Array.isArray(response.data.data)) {
+                // Format response { data: [...] }
                 setUsers(response.data.data);
             } else {
-                // Jika format tidak sesuai, set array kosong
+                // Format tidak dikenal, log dan set array kosong
+                console.error('Format response tidak dikenali:', response.data);
                 setUsers([]);
-                console.error('Format response tidak sesuai:', response.data);
             }
         } catch (error) {
             console.error('Failed to fetch users:', error);
@@ -75,7 +79,6 @@ export default function UserManagement() {
                 description: 'Gagal memuat data pengguna',
                 variant: 'destructive',
             });
-            // Set array kosong jika terjadi error
             setUsers([]);
         } finally {
             setLoading(false);
@@ -111,6 +114,9 @@ export default function UserManagement() {
         e.preventDefault();
 
         try {
+            // Log data yang akan dikirim
+            console.log('Mengirim data pengguna baru:', formData);
+
             await axios.post('/admin/users', formData);
             toast({
                 title: 'Berhasil',
@@ -122,14 +128,25 @@ export default function UserManagement() {
         } catch (error: unknown) {
             console.error('Failed to add user:', error);
 
-            // Show validation errors if available
-            if (axios.isAxiosError(error) && error.response?.data?.errors) {
-                const validationErrors = Object.values(error.response.data.errors as Record<string, string[]>).flat();
-                toast({
-                    title: 'Error Validasi',
-                    description: validationErrors.join(', '),
-                    variant: 'destructive',
-                });
+            // Show detailed validation errors if available
+            if (axios.isAxiosError(error) && error.response) {
+                console.error('Response status:', error.response.status);
+                console.error('Response data:', error.response.data);
+
+                if (error.response.data.errors) {
+                    const validationErrors = Object.values(error.response.data.errors as Record<string, string[]>).flat();
+                    toast({
+                        title: 'Error Validasi',
+                        description: validationErrors.join(', '),
+                        variant: 'destructive',
+                    });
+                } else if (error.response.data.message) {
+                    toast({
+                        title: 'Error',
+                        description: error.response.data.message,
+                        variant: 'destructive',
+                    });
+                }
             } else {
                 toast({
                     title: 'Error',

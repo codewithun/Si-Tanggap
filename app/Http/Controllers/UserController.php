@@ -209,20 +209,27 @@ class UserController extends Controller
     }
 
     /**
-     * Get users data for AJAX requests
+     * Get users data for datatable
      */
     public function getUsers()
     {
-        $users = User::all()->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->getRoleNames()->first(),
-                'status' => true // Atau sesuaikan dengan field status jika ada
-            ];
-        });
+        $this->authorize('viewAny', User::class);
         
-        return response()->json(['data' => $users]);
+        $users = User::select('id', 'name', 'email', 'created_at')
+            ->get()
+            ->map(function ($user) {
+                $role = $user->getRoleNames()->first() ?? 'masyarakat';
+                
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $role,
+                    'status' => true, // Atau tambahkan kolom status di tabel users
+                    'created_at' => $user->created_at->format('d M Y'),
+                ];
+            });
+        
+        return response()->json($users);
     }
 }

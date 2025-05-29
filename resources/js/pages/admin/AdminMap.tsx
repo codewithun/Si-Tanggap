@@ -138,14 +138,16 @@ function CustomMap({
                     .map((jalur) => (
                         <Polyline
                             key={`jalur-${jalur.id}`}
-                            positions={jalur.koordinat.map((point) => [point.lat, point.lng] as [number, number])}
-                            pathOptions={{ color: jalur.warna || '#3B82F6', weight: 3, opacity: 0.8 }}
+                            positions={jalur.koordinat.map((point) => [point.lat, point.lng])}
+                            pathOptions={{
+                                color: jalur.warna || '#3B82F6',
+                                weight: 3,
+                                opacity: 0.8,
+                            }}
                         >
                             <Popup>
-                                <div>
-                                    <div className="font-bold">{jalur.nama}</div>
-                                    <div className="text-xs text-gray-600">jalur evakuasi</div>
-                                </div>
+                                <div className="font-bold">{jalur.nama}</div>
+                                <div className="text-xs">{jalur.deskripsi}</div>
                             </Popup>
                         </Polyline>
                     ))}

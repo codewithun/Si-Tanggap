@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import axios from 'axios';
-import { Head } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
+import { Head } from '@inertiajs/react';
+import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { BreadcrumbItem } from '@/types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
 
 // Define risk levels for filtering
 type RiskLevel = 'tinggi' | 'sedang' | 'rendah' | 'semua';
@@ -107,7 +107,6 @@ function disasterToHazardLayer(jenisBencana: string): HazardLayerType {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-
     {
         title: 'Peta Bencana & Evakuasi',
         href: '/peta-bencana',
@@ -167,9 +166,7 @@ export default function BencanaMaps() {
 
     // Add this function for hazard layer checkbox
     const handleHazardLayerChange = (type: HazardLayerType, checked: boolean) => {
-        setSelectedHazardLayers((prev) =>
-            checked ? [...prev, type] : prev.filter((t) => t !== type)
-        );
+        setSelectedHazardLayers((prev) => (checked ? [...prev, type] : prev.filter((t) => t !== type)));
     };
 
     const fetchBencanaPoints = useCallback(async () => {
@@ -203,14 +200,18 @@ export default function BencanaMaps() {
             const response = await fetch(url);
             const data = await response.json();
             setEarthquakes(data.features || []);
-        } catch { /* ignore */ }
+        } catch {
+            /* ignore */
+        }
     }, []);
 
     const fetchJalurEvakuasi = useCallback(async () => {
         try {
             const response = await axios.get('/jalur-evakuasi');
             setJalurEvakuasi(response.data.data);
-        } catch { /* ignore */ }
+        } catch {
+            /* ignore */
+        }
     }, []);
 
     const fetchPosko = useCallback(async () => {
@@ -218,17 +219,14 @@ export default function BencanaMaps() {
             const response = await axios.get('/poskos');
             const poskoData = Array.isArray(response.data) ? response.data : response.data.data;
             setPosko(poskoData || []);
-        } catch { /* ignore */ }
+        } catch {
+            /* ignore */
+        }
     }, []);
 
     const refreshAll = () => {
         setLoading(true);
-        Promise.all([
-            fetchBencanaPoints(),
-            fetchEarthquakeData(),
-            fetchJalurEvakuasi(),
-            fetchPosko(),
-        ]).finally(() => setLoading(false));
+        Promise.all([fetchBencanaPoints(), fetchEarthquakeData(), fetchJalurEvakuasi(), fetchPosko()]).finally(() => setLoading(false));
     };
 
     useEffect(() => {
@@ -302,8 +300,7 @@ export default function BencanaMaps() {
                 Array.isArray(jalur.koordinat) &&
                 jalur.koordinat.length >= 2 &&
                 jalur.koordinat.every(
-                    (point: { lat: number; lng: number }) =>
-                        point && typeof point.lat === 'number' && typeof point.lng === 'number'
+                    (point: { lat: number; lng: number }) => point && typeof point.lat === 'number' && typeof point.lng === 'number',
                 )
             );
         });
@@ -368,7 +365,9 @@ export default function BencanaMaps() {
                     </div>
                 </div>
                 <div className="relative overflow-hidden">
-                    <div className={`h-[300px] w-full overflow-hidden rounded-lg transition-all duration-300 sm:h-[600px] ${sidebarOpen ? 'sm:pr-[300px]' : ''}`}>
+                    <div
+                        className={`h-[300px] w-full overflow-hidden rounded-lg transition-all duration-300 sm:h-[600px] ${sidebarOpen ? 'sm:pr-[300px]' : ''}`}
+                    >
                         {loading ? (
                             <div className="h-full w-full animate-pulse rounded-lg bg-gray-200"></div>
                         ) : (
@@ -379,43 +378,61 @@ export default function BencanaMaps() {
                                         <Popup>
                                             <div className="max-w-xs">
                                                 <h3 className="mb-2 text-lg font-semibold">{marker.title}</h3>
-                                                <div className="whitespace-pre-line text-sm">{marker.description}</div>
+                                                <div className="text-sm whitespace-pre-line">{marker.description}</div>
                                                 {marker.type === 'shelter' && (
                                                     <div className="mt-2">
-                                                        <p><strong>Alamat:</strong> {marker.alamat}</p>
-                                                        <p><strong>Kontak:</strong> {marker.kontak}</p>
-                                                        <p><strong>Jenis:</strong> {marker.jenis}</p>
-                                                        <p><strong>Status:</strong> <span className={marker.statusPosko === 'Aktif' ? 'text-green-600' : 'text-red-600'}>{marker.statusPosko}</span></p>
+                                                        <p>
+                                                            <strong>Alamat:</strong> {marker.alamat}
+                                                        </p>
+                                                        <p>
+                                                            <strong>Kontak:</strong> {marker.kontak}
+                                                        </p>
+                                                        <p>
+                                                            <strong>Jenis:</strong> {marker.jenis}
+                                                        </p>
+                                                        <p>
+                                                            <strong>Status:</strong>{' '}
+                                                            <span className={marker.statusPosko === 'Aktif' ? 'text-green-600' : 'text-red-600'}>
+                                                                {marker.statusPosko}
+                                                            </span>
+                                                        </p>
                                                     </div>
                                                 )}
                                             </div>
                                         </Popup>
                                     </Marker>
                                 ))}
-                                {showEvacRoutes && validPaths.map((jalur: JalurEvakuasi) => (
-                                    <Polyline
-                                        key={jalur.id}
-                                        positions={jalur.koordinat.map((k) => [k.lat, k.lng])}
-                                        pathOptions={{ color: jalur.warna || '#FF0000', weight: 3 }}
-                                    >
-                                        <Popup>
-                                            <div>
-                                                <h3 className="font-semibold">{jalur.nama}</h3>
-                                                <p>{jalur.deskripsi}</p>
-                                            </div>
-                                        </Popup>
-                                    </Polyline>
-                                ))}
+                                {showEvacRoutes &&
+                                    validPaths.map((jalur: JalurEvakuasi) => (
+                                        <Polyline
+                                            key={jalur.id}
+                                            positions={jalur.koordinat.map((k) => [k.lat, k.lng])}
+                                            pathOptions={{ color: jalur.warna || '#FF0000', weight: 3 }}
+                                        >
+                                            <Popup>
+                                                <div>
+                                                    <h3 className="font-semibold">{jalur.nama}</h3>
+                                                    <p>{jalur.deskripsi}</p>
+                                                </div>
+                                            </Popup>
+                                        </Polyline>
+                                    ))}
                             </MapContainer>
                         )}
                     </div>
                     {/* Layer Panel */}
-                    <div className={`absolute top-0 right-0 z-30 h-[300px] w-[300px] overflow-hidden border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 sm:h-[500px] ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                    <div
+                        className={`absolute top-0 right-0 z-30 h-[300px] w-[300px] overflow-hidden border-l border-slate-200 bg-white shadow-xl transition-transform duration-300 sm:h-[500px] ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                    >
                         <div className="h-full overflow-x-hidden overflow-y-auto p-4">
                             <h3 className="mb-4 text-lg font-semibold">Pengaturan Layer</h3>
                             <div className="mb-4">
                                 <label className="mb-2 block text-sm font-medium">Tipe Peta</label>
-                                <select value={mapType} onChange={e => setMapType(e.target.value as 'standard' | 'satellite' | 'terrain')} className="w-full border rounded p-1">
+                                <select
+                                    value={mapType}
+                                    onChange={(e) => setMapType(e.target.value as 'standard' | 'satellite' | 'terrain')}
+                                    className="w-full rounded border p-1"
+                                >
                                     <option value="standard">Standar</option>
                                     <option value="satellite">Satelit</option>
                                     <option value="terrain">Terrain</option>
@@ -423,22 +440,42 @@ export default function BencanaMaps() {
                             </div>
                             <div className="mb-4">
                                 <label className="mb-2 block text-sm font-medium">Layer Bencana</label>
-                                <div className="flex items-center space-x-2 mb-2">
-                                    <input type="checkbox" id="show-disasters" checked={showDisasters} onChange={e => setShowDisasters(e.target.checked)} />
+                                <div className="mb-2 flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="show-disasters"
+                                        checked={showDisasters}
+                                        onChange={(e) => setShowDisasters(e.target.checked)}
+                                    />
                                     <label htmlFor="show-disasters">Tampilkan Bencana</label>
                                 </div>
                                 {showDisasters && (
                                     <div className="ml-6 space-y-2">
                                         <div className="flex items-center space-x-2">
-                                            <input type="checkbox" id="gempabumi" checked={selectedHazardLayers.includes('gempabumi')} onChange={e => handleHazardLayerChange('gempabumi', e.target.checked)} />
+                                            <input
+                                                type="checkbox"
+                                                id="gempabumi"
+                                                checked={selectedHazardLayers.includes('gempabumi')}
+                                                onChange={(e) => handleHazardLayerChange('gempabumi', e.target.checked)}
+                                            />
                                             <label htmlFor="gempabumi">Gempa Bumi</label>
                                         </div>
                                         <div className="flex items-center space-x-2">
-                                            <input type="checkbox" id="banjir" checked={selectedHazardLayers.includes('banjir')} onChange={e => handleHazardLayerChange('banjir', e.target.checked)} />
+                                            <input
+                                                type="checkbox"
+                                                id="banjir"
+                                                checked={selectedHazardLayers.includes('banjir')}
+                                                onChange={(e) => handleHazardLayerChange('banjir', e.target.checked)}
+                                            />
                                             <label htmlFor="banjir">Banjir</label>
                                         </div>
                                         <div className="flex items-center space-x-2">
-                                            <input type="checkbox" id="tanah_longsor" checked={selectedHazardLayers.includes('tanah_longsor')} onChange={e => handleHazardLayerChange('tanah_longsor', e.target.checked)} />
+                                            <input
+                                                type="checkbox"
+                                                id="tanah_longsor"
+                                                checked={selectedHazardLayers.includes('tanah_longsor')}
+                                                onChange={(e) => handleHazardLayerChange('tanah_longsor', e.target.checked)}
+                                            />
                                             <label htmlFor="tanah_longsor">Tanah Longsor</label>
                                         </div>
                                     </div>
@@ -446,12 +483,21 @@ export default function BencanaMaps() {
                             </div>
                             <div className="mb-4">
                                 <label className="mb-2 block text-sm font-medium">Layer Posko</label>
-                                <div className="flex items-center space-x-2 mb-2">
-                                    <input type="checkbox" id="show-shelters" checked={showShelters} onChange={e => setShowShelters(e.target.checked)} />
+                                <div className="mb-2 flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="show-shelters"
+                                        checked={showShelters}
+                                        onChange={(e) => setShowShelters(e.target.checked)}
+                                    />
                                     <label htmlFor="show-shelters">Tampilkan Posko</label>
                                 </div>
                                 {showShelters && (
-                                    <select value={shelterTypeFilter} onChange={e => setShelterTypeFilter(e.target.value)} className="w-full border rounded p-1">
+                                    <select
+                                        value={shelterTypeFilter}
+                                        onChange={(e) => setShelterTypeFilter(e.target.value)}
+                                        className="w-full rounded border p-1"
+                                    >
                                         <option value="all">Semua Posko</option>
                                         <option value="pengungsian">Pengungsian</option>
                                         <option value="kesehatan">Kesehatan</option>
@@ -462,7 +508,12 @@ export default function BencanaMaps() {
                             <div className="mb-4">
                                 <label className="mb-2 block text-sm font-medium">Layer Jalur Evakuasi</label>
                                 <div className="flex items-center space-x-2">
-                                    <input type="checkbox" id="show-evac-routes" checked={showEvacRoutes} onChange={e => setShowEvacRoutes(e.target.checked)} />
+                                    <input
+                                        type="checkbox"
+                                        id="show-evac-routes"
+                                        checked={showEvacRoutes}
+                                        onChange={(e) => setShowEvacRoutes(e.target.checked)}
+                                    />
                                     <label htmlFor="show-evac-routes">Tampilkan Jalur Evakuasi</label>
                                 </div>
                             </div>

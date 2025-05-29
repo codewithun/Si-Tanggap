@@ -12,15 +12,15 @@ class EmergencyNotification extends Notification
     use Queueable;
 
     protected $title;
-    protected $content;
+    protected $message;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(string $title, string $content)
+    public function __construct(string $title, string $message)
     {
         $this->title = $title;
-        $this->content = $content;
+        $this->message = $message;
     }
 
     /**
@@ -30,39 +30,7 @@ class EmergencyNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
-    }
 
-    /**
-     * Get the mail representation of the notification.
-     */
-    public function toMail(object $notifiable): MailMessage
-    {
-        $message = new MailMessage;
-        $message->from(config('mail.from.address'), config('mail.from.name'));
-        $message->replyTo('info@geosiaga.com', 'Info GeoSiaga');
-        $message->subject('PENTING: ' . $this->title);
-        $message->greeting('Halo ' . $notifiable->name . ',');
-        $message->line('**INFORMASI PENTING KEBENCANAAN:**');
-        $message->line($this->content);
-        $message->line('**Harap tetap waspada dan ikuti arahan dari petugas terkait.**');
-        $message->action('Lihat Detail di Aplikasi', url('/dashboard'));
-        $message->line('Pesan ini dikirim melalui sistem notifikasi GeoSiaga.');
-        $message->salutation('Salam,<br>Tim GeoSiaga');
-        $message->priority(1);
-        
-        // Setting header khusus untuk menghindari spam filter
-        $message->withSymfonyMessage(function ($message) {
-            $message->getHeaders()
-                ->addTextHeader('X-Priority', '1')
-                ->addTextHeader('X-MSMail-Priority', 'High')
-                ->addTextHeader('Importance', 'High')
-                ->addTextHeader('X-Auto-Response-Suppress', 'OOF, DR, RN, NRN, AutoReply')
-                ->addTextHeader('Precedence', 'urgent')
-                ->addTextHeader('X-Entity-Ref-ID', uniqid('geosiaga-', true));
-        });
-        
-        return $message;
     }
 
     /**
@@ -74,8 +42,8 @@ class EmergencyNotification extends Notification
     {
         return [
             'title' => $this->title,
-            'content' => $this->content,
-            'type' => 'emergency',
+            'message' => $this->message,
+            'time' => now()->toIsoString(),
         ];
     }
 }

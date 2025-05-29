@@ -7,11 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/useToast';
 import { type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
-import { format } from 'date-fns';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUp, CalendarIcon, ChevronLeft, Search } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import { format } from 'date-fns';
+import { AnimatePresence, motion, PanInfo } from 'framer-motion'; // Import PanInfo for swipe handling
+import { ArrowUp, CalendarIcon, ChevronLeft, Search } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface BnpbNews {
     title: string;
@@ -76,14 +76,14 @@ export default function NewsPage() {
     const fetchNews = useCallback(async () => {
         try {
             setLoading(true);
-            
+
             // Fetch news from the BNPB API endpoint with pages parameter
             const response = await axios.get('/berita-bnpb?pages=10');
-            
+
             // Check if we have berita data and it's an array
             if (response.data.berita && Array.isArray(response.data.berita)) {
                 console.log(`Fetched ${response.data.berita.length} news items from API`);
-                
+
                 // Transform the data to match our NewsItem format
                 const transformedNews = response.data.berita.map((item: BnpbNews, index: number) => ({
                     id: index + 1,
@@ -99,7 +99,7 @@ export default function NewsPage() {
 
                 setNews(transformedNews);
                 setFilteredNews(transformedNews);
-                
+
                 // Log the number of items loaded into state
                 console.log(`Successfully loaded ${transformedNews.length} news items into state`);
             } else {
@@ -111,7 +111,7 @@ export default function NewsPage() {
                     variant: 'destructive',
                 });
             }
-            
+
             setLoading(false);
         } catch (error) {
             console.error('Error fetching news:', error);
@@ -136,21 +136,37 @@ export default function NewsPage() {
     // Helper function to determine category based on title keywords
     const determineCategory = (title: string): string => {
         const lowerTitle = title.toLowerCase();
-        
-        if (lowerTitle.includes('bencana') || lowerTitle.includes('banjir') || 
-            lowerTitle.includes('gempa') || lowerTitle.includes('longsor') || 
-            lowerTitle.includes('tsunami')) {
+
+        if (
+            lowerTitle.includes('bencana') ||
+            lowerTitle.includes('banjir') ||
+            lowerTitle.includes('gempa') ||
+            lowerTitle.includes('longsor') ||
+            lowerTitle.includes('tsunami')
+        ) {
             return 'bencana alam';
-        } else if (lowerTitle.includes('peringatan') || lowerTitle.includes('warning') || 
-                 lowerTitle.includes('siaga') || lowerTitle.includes('waspada')) {
+        } else if (
+            lowerTitle.includes('peringatan') ||
+            lowerTitle.includes('warning') ||
+            lowerTitle.includes('siaga') ||
+            lowerTitle.includes('waspada')
+        ) {
             return 'peringatan dini';
         } else if (lowerTitle.includes('evakuasi') || lowerTitle.includes('pengungsian')) {
             return 'evakuasi';
-        } else if (lowerTitle.includes('pemulihan') || lowerTitle.includes('rehabilitasi') || 
-                 lowerTitle.includes('rekonstruksi') || lowerTitle.includes('bantuan')) {
+        } else if (
+            lowerTitle.includes('pemulihan') ||
+            lowerTitle.includes('rehabilitasi') ||
+            lowerTitle.includes('rekonstruksi') ||
+            lowerTitle.includes('bantuan')
+        ) {
             return 'pemulihan';
-        } else if (lowerTitle.includes('edukasi') || lowerTitle.includes('latihan') || 
-                 lowerTitle.includes('simulasi') || lowerTitle.includes('workshop')) {
+        } else if (
+            lowerTitle.includes('edukasi') ||
+            lowerTitle.includes('latihan') ||
+            lowerTitle.includes('simulasi') ||
+            lowerTitle.includes('workshop')
+        ) {
             return 'edukasi';
         } else {
             return 'edukasi'; // Default category
@@ -182,9 +198,17 @@ export default function NewsPage() {
         return filteredNews.slice(startIndex, endIndex);
     };
 
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Handle page change with optional animation direction
+    const handlePageChange = (page: number, animate: boolean = true) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+
+            if (animate) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                window.scrollTo({ top: 0 });
+            }
+        }
     };
 
     const openNewsDetail = (item: NewsItem) => {
@@ -260,11 +284,91 @@ export default function NewsPage() {
         console.log(`Current page: ${currentPage}`);
         console.log(`Items per page: ${itemsPerPage}`);
         console.log(`Total pages: ${totalPages}`);
-        
+
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         console.log(`Current page items: ${startIndex}-${endIndex}`);
     }, [filteredNews, currentPage, itemsPerPage, totalPages]);
+
+    // Function to generate page numbers with ellipsis
+    const getPageNumbers = () => {
+        let pages = [];
+        const maxPagesToShow = 5; // Max number of page buttons to show (excluding prev/next buttons)
+
+        if (totalPages <= maxPagesToShow) {
+            // If we have few pages, show all page numbers
+            pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+        } else {
+            // Always include first page
+            pages.push(1);
+
+            // Calculate start and end of page numbers around current page
+            let startPage = Math.max(2, currentPage - 1);
+            let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+            // Adjust the range to show maxPagesToShow - 2 pages (excluding first and last page)
+            if (endPage - startPage < maxPagesToShow - 3) {
+                if (currentPage < totalPages / 2) {
+                    // If current page is closer to start, extend endPage
+                    endPage = Math.min(startPage + maxPagesToShow - 3, totalPages - 1);
+                } else {
+                    // If current page is closer to end, lower startPage
+                    startPage = Math.max(2, endPage - (maxPagesToShow - 3));
+                }
+            }
+
+            // Add ellipsis after first page if needed
+            if (startPage > 2) {
+                pages.push('ellipsis-start');
+            }
+
+            // Add the range of pages around current page
+            for (let i = startPage; i <= endPage; i++) {
+                pages.push(i);
+            }
+
+            // Add ellipsis before last page if needed
+            if (endPage < totalPages - 1) {
+                pages.push('ellipsis-end');
+            }
+
+            // Always include last page
+            if (totalPages > 1) {
+                pages.push(totalPages);
+            }
+        }
+
+        return pages;
+    };
+
+    // Reference to the news grid container for swipe actions
+    const newsContainerRef = useRef<HTMLDivElement>(null);
+
+    // State to track swipe feedback
+    const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+
+    // Handle swipe on news container
+    const handleSwipe = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+        // Only process horizontal swipes with significant movement
+        if (Math.abs(info.offset.x) > 100) {
+            if (info.offset.x > 0) {
+                // Swipe right (go to previous page)
+                setSwipeDirection('right');
+                if (currentPage > 1) {
+                    handlePageChange(currentPage - 1);
+                }
+            } else {
+                // Swipe left (go to next page)
+                setSwipeDirection('left');
+                if (currentPage < totalPages) {
+                    handlePageChange(currentPage + 1);
+                }
+            }
+
+            // Reset swipe direction after animation
+            setTimeout(() => setSwipeDirection(null), 300);
+        }
+    };
 
     return (
         <>
@@ -411,7 +515,7 @@ export default function NewsPage() {
                         </div>
                     </section>
 
-                    {/* News Grid Section with Animations */}
+                    {/* News Grid Section with Swipe Support */}
                     <section className="py-12">
                         <div className="container mx-auto px-4">
                             {loading ? (
@@ -445,9 +549,7 @@ export default function NewsPage() {
                                             {category === 'all' ? 'Semua Berita BNPB' : `Berita - ${category}`}
                                         </h2>
                                         <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                                            <span className="rounded-full bg-blue-50 px-3 py-1">
-                                                {filteredNews.length} artikel ditemukan
-                                            </span>
+                                            <span className="rounded-full bg-blue-50 px-3 py-1">{filteredNews.length} artikel ditemukan</span>
                                             <span>
                                                 Menampilkan {(currentPage - 1) * itemsPerPage + 1}-
                                                 {Math.min(currentPage * itemsPerPage, filteredNews.length)} dari {filteredNews.length}
@@ -455,84 +557,118 @@ export default function NewsPage() {
                                         </div>
                                     </motion.div>
 
+                                    {/* News container with swipe gesture support */}
                                     <motion.div
-                                        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-                                        variants={staggerContainer}
-                                        initial="hidden"
-                                        animate="visible"
+                                        ref={newsContainerRef}
+                                        className="relative touch-pan-y" // Enable touch panning
+                                        drag="x"
+                                        dragConstraints={{ left: 0, right: 0 }}
+                                        dragElastic={0.1}
+                                        onDragEnd={handleSwipe}
+                                        animate={swipeDirection === 'left' ? { x: [-20, 0] } : swipeDirection === 'right' ? { x: [20, 0] } : {}}
                                     >
-                                        {getCurrentPageItems().map((item, index) => (
-                                            <motion.div
-                                                key={item.id}
-                                                className="overflow-hidden rounded-xl bg-white shadow-sm transition-all duration-300 hover:shadow-lg"
-                                                variants={cardVariants}
-                                                custom={index}
-                                                whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                                            >
-                                                <div className="aspect-video w-full overflow-hidden">
-                                                    <motion.img
-                                                        src={item.image}
-                                                        alt={item.title}
-                                                        className="h-full w-full object-cover"
-                                                        whileHover={{ scale: 1.08 }}
-                                                        transition={{ duration: 0.4 }}
-                                                        onError={(e) => {
-                                                            // Fallback if image fails to load
-                                                            e.currentTarget.src = 'https://via.placeholder.com/800x400?text=BNPB';
-                                                        }}
-                                                    />
-                                                </div>
-                                                <div className="p-6">
-                                                    <div className="mb-2 flex items-center gap-2">
-                                                        <motion.span
-                                                            className={`rounded-full px-3 py-1 text-xs font-medium ${getCategoryBadgeClasses(item.category)}`}
-                                                            whileHover={{ scale: 1.05 }}
-                                                        >
-                                                            {item.category}
-                                                        </motion.span>
+                                        {/* Visual indicators for swipe actions */}
+                                        <div
+                                            className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-blue-500/10 to-transparent opacity-0 transition-opacity duration-300 md:hidden"
+                                            style={{ opacity: currentPage > 1 ? 0.7 : 0 }}
+                                        ></div>
+
+                                        <div
+                                            className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-blue-500/10 to-transparent opacity-0 transition-opacity duration-300 md:hidden"
+                                            style={{ opacity: currentPage < totalPages ? 0.7 : 0 }}
+                                        ></div>
+
+                                        <motion.div
+                                            className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+                                            variants={staggerContainer}
+                                            initial="hidden"
+                                            animate="visible"
+                                        >
+                                            {getCurrentPageItems().map((item, index) => (
+                                                <motion.div
+                                                    key={item.id}
+                                                    className="overflow-hidden rounded-xl bg-white shadow-sm transition-all duration-300 hover:shadow-lg"
+                                                    variants={cardVariants}
+                                                    custom={index}
+                                                    whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                                                >
+                                                    <div className="aspect-video w-full overflow-hidden">
+                                                        <motion.img
+                                                            src={item.image}
+                                                            alt={item.title}
+                                                            className="h-full w-full object-cover"
+                                                            whileHover={{ scale: 1.08 }}
+                                                            transition={{ duration: 0.4 }}
+                                                            onError={(e) => {
+                                                                // Fallback if image fails to load
+                                                                e.currentTarget.src = 'https://via.placeholder.com/800x400?text=BNPB';
+                                                            }}
+                                                        />
                                                     </div>
-                                                    <h3
-                                                        className="mb-3 line-clamp-2 cursor-pointer text-xl font-bold transition-colors hover:text-blue-600"
-                                                        onClick={() => openNewsDetail(item)}
-                                                    >
-                                                        {item.title}
-                                                    </h3>
-                                                    <p className="mb-4 line-clamp-3 text-gray-600">{item.content}</p>
-                                                    <div className="flex items-center justify-between border-t pt-4 text-sm text-gray-500">
-                                                        <div className="flex items-center gap-1">
-                                                            <CalendarIcon className="h-4 w-4" />
-                                                            <span>{formatDate(item.date)}</span>
-                                                        </div>
-                                                        <motion.button
-                                                            className="flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800"
-                                                            onClick={() => openNewsDetail(item)}
-                                                            whileHover={{ x: 3 }}
-                                                            whileTap={{ scale: 0.98 }}
-                                                        >
-                                                            Baca selengkapnya
-                                                            <svg
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                className="h-4 w-4"
-                                                                viewBox="0 0 20 20"
-                                                                fill="currentColor"
+                                                    <div className="p-6">
+                                                        <div className="mb-2 flex items-center gap-2">
+                                                            <motion.span
+                                                                className={`rounded-full px-3 py-1 text-xs font-medium ${getCategoryBadgeClasses(item.category)}`}
+                                                                whileHover={{ scale: 1.05 }}
                                                             >
-                                                                <path
-                                                                    fillRule="evenodd"
-                                                                    d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
-                                                                    clipRule="evenodd"
-                                                                />
-                                                            </svg>
-                                                        </motion.button>
+                                                                {item.category}
+                                                            </motion.span>
+                                                        </div>
+                                                        <h3
+                                                            className="mb-3 line-clamp-2 cursor-pointer text-xl font-bold transition-colors hover:text-blue-600"
+                                                            onClick={() => openNewsDetail(item)}
+                                                        >
+                                                            {item.title}
+                                                        </h3>
+                                                        <p className="mb-4 line-clamp-3 text-gray-600">{item.content}</p>
+                                                        <div className="flex items-center justify-between border-t pt-4 text-sm text-gray-500">
+                                                            <div className="flex items-center gap-1">
+                                                                <CalendarIcon className="h-4 w-4" />
+                                                                <span>{formatDate(item.date)}</span>
+                                                            </div>
+                                                            <motion.button
+                                                                className="flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800"
+                                                                onClick={() => openNewsDetail(item)}
+                                                                whileHover={{ x: 3 }}
+                                                                whileTap={{ scale: 0.98 }}
+                                                            >
+                                                                Baca selengkapnya
+                                                                <svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    className="h-4 w-4"
+                                                                    viewBox="0 0 20 20"
+                                                                    fill="currentColor"
+                                                                >
+                                                                    <path
+                                                                        fillRule="evenodd"
+                                                                        d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
+                                                                        clipRule="evenodd"
+                                                                    />
+                                                                </svg>
+                                                            </motion.button>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                </motion.div>
+                                            ))}
+                                        </motion.div>
+
+                                        {/* Mobile swipe hint - show only on small screens on first page load */}
+                                        {currentPage === 1 && (
+                                            <motion.div
+                                                className="mt-4 flex items-center justify-center text-sm text-gray-500 md:hidden"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                transition={{ delay: 1 }}
+                                            >
+                                                <span>← Geser untuk navigasi halaman →</span>
                                             </motion.div>
-                                        ))}
+                                        )}
                                     </motion.div>
 
-                                    {/* Pagination with Animation */}
+                                    {/* Desktop Pagination - hide on mobile */}
                                     {totalPages > 1 && (
                                         <motion.div
-                                            className="mt-12"
+                                            className="mt-12 hidden md:block"
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ duration: 0.5, delay: 0.3 }}
@@ -547,18 +683,26 @@ export default function NewsPage() {
                                                         </PaginationItem>
                                                     )}
 
-                                                    {[...Array(totalPages)].map((_, i) => (
-                                                        <PaginationItem key={i}>
-                                                            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-                                                                <PaginationLink
-                                                                    isActive={currentPage === i + 1}
-                                                                    onClick={() => handlePageChange(i + 1)}
-                                                                >
-                                                                    {i + 1}
-                                                                </PaginationLink>
-                                                            </motion.div>
-                                                        </PaginationItem>
-                                                    ))}
+                                                    {getPageNumbers().map((page, i) =>
+                                                        typeof page === 'number' ? (
+                                                            <PaginationItem key={`page-${page}`}>
+                                                                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                                                                    <PaginationLink
+                                                                        isActive={currentPage === page}
+                                                                        onClick={() => handlePageChange(page)}
+                                                                    >
+                                                                        {page}
+                                                                    </PaginationLink>
+                                                                </motion.div>
+                                                            </PaginationItem>
+                                                        ) : (
+                                                            <PaginationItem key={`${page}-${i}`}>
+                                                                <span className="flex h-9 w-9 items-center justify-center text-sm text-gray-400">
+                                                                    &hellip;
+                                                                </span>
+                                                            </PaginationItem>
+                                                        ),
+                                                    )}
 
                                                     {currentPage < totalPages && (
                                                         <PaginationItem>
@@ -570,6 +714,49 @@ export default function NewsPage() {
                                                 </PaginationContent>
                                             </Pagination>
                                         </motion.div>
+                                    )}
+
+                                    {/* Mobile-friendly pagination indicator */}
+                                    {totalPages > 1 && (
+                                        <div className="mt-8 flex items-center justify-center gap-2 md:hidden">
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                                                        currentPage === 1 ? 'text-gray-300' : 'bg-blue-100 text-blue-700'
+                                                    }`}
+                                                    onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                                                    disabled={currentPage === 1}
+                                                >
+                                                    <ChevronLeft size={16} />
+                                                </button>
+
+                                                <span className="mx-2 text-sm">
+                                                    Halaman {currentPage} dari {totalPages}
+                                                </span>
+
+                                                <button
+                                                    className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                                                        currentPage === totalPages ? 'text-gray-300' : 'bg-blue-100 text-blue-700'
+                                                    }`}
+                                                    onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                                                    disabled={currentPage === totalPages}
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        width="16"
+                                                        height="16"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    >
+                                                        <path d="m9 18 6-6-6-6" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
                                 </>
                             ) : (
@@ -668,10 +855,10 @@ export default function NewsPage() {
                                             animate={{ opacity: 1, scale: 1 }}
                                             transition={{ delay: 0.5, duration: 0.4 }}
                                         >
-                                            <img 
-                                                src={selectedNews.image} 
-                                                alt={selectedNews.title} 
-                                                className="h-auto w-full object-cover" 
+                                            <img
+                                                src={selectedNews.image}
+                                                alt={selectedNews.title}
+                                                className="h-auto w-full object-cover"
                                                 onError={(e) => {
                                                     e.currentTarget.src = 'https://via.placeholder.com/800x400?text=BNPB';
                                                 }}
@@ -690,10 +877,15 @@ export default function NewsPage() {
                                         </motion.div>
 
                                         {selectedNews.link && (
-                                            <motion.div className="mt-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
-                                                <a 
-                                                    href={selectedNews.link} 
-                                                    target="_blank" 
+                                            <motion.div
+                                                className="mt-6"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                transition={{ delay: 0.7 }}
+                                            >
+                                                <a
+                                                    href={selectedNews.link}
+                                                    target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="inline-flex items-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
                                                 >
