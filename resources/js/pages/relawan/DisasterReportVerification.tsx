@@ -47,7 +47,7 @@ interface Laporan {
 const getDisasterMapIcon = (type: string) => {
     // Add cache buster to prevent caching issues
     const cacheBuster = `?v=${new Date().getTime()}`;
-    
+
     switch (type.toLowerCase()) {
         case 'banjir':
             return L.icon({
@@ -121,23 +121,23 @@ export default function DisasterReportVerification() {
     const [verificationStatus, setVerificationStatus] = useState<'diverifikasi' | 'ditolak'>('diverifikasi');
     const [adminNote, setAdminNote] = useState('');
     const [showMapDialog, setShowMapDialog] = useState(false);
-    
+
     // Add state for image preview dialog
     const [showImageDialog, setShowImageDialog] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     // Add state for image loading status
-    const [imageLoadError, setImageLoadError] = useState<{[key: number]: boolean}>({});
-    
+    const [imageLoadError, setImageLoadError] = useState<{ [key: number]: boolean }>({});
+
     // Add state for image loading indicators
-    const [loadingImages, setLoadingImages] = useState<{[key: number]: boolean}>({});
+    const [loadingImages, setLoadingImages] = useState<{ [key: number]: boolean }>({});
 
     const fetchReports = useCallback(async () => {
         try {
             setLoading(true);
             // Use the correct endpoint - adjust it based on your API setup
             const response = await axios.get('/api/relawan/laporans');
-            
+
             // Filter reports that are not verified
             const data = response.data.data || response.data;
             const unverifiedReports = Array.isArray(data) ? data.filter((report: Laporan) => report.status === 'menunggu') : [];
@@ -184,8 +184,8 @@ export default function DisasterReportVerification() {
 
         try {
             const endpoint =
-                verificationStatus === 'diverifikasi' 
-                    ? `/api/relawan/laporans/${selectedReport.id}/verify` 
+                verificationStatus === 'diverifikasi'
+                    ? `/api/relawan/laporans/${selectedReport.id}/verify`
                     : `/api/relawan/laporans/${selectedReport.id}/reject`;
 
             await axios.put(endpoint, {
@@ -213,81 +213,74 @@ export default function DisasterReportVerification() {
         }
     };
 
-    // Function to extract filename from path
-    const getFilenameFromPath = (path: string): string => {
-        // Handle both formats: "storage/laporans/xyz.jpg" or "/storage/laporans/xyz.jpg" or "public/laporans/xyz.jpg"
-        const pathParts = path.split('/');
-        return pathParts.pop() || path;
-    };
-    
     // Function to format image URL properly
     const getFormattedImageUrl = (imageUrl: string): string => {
         if (!imageUrl) return '/images/placeholder-image.png';
-        
+
         // Check if the URL is already absolute (starts with http or https)
         if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
             return imageUrl;
         }
-        
+
         // Add a cache buster to prevent caching issues
         const cacheBuster = `?v=${new Date().getTime()}`;
-        
+
         // Try to standardize the path format
         let standardPath = imageUrl;
-        
+
         // Remove any 'public/' prefix as it's not accessible in the browser
         if (standardPath.startsWith('public/')) {
             standardPath = standardPath.substring(7); // Remove 'public/'
         }
-        
+
         // Make sure paths are properly formatted with leading slash if needed
         if (standardPath.startsWith('storage/')) {
             standardPath = `/${standardPath}`;
         }
-        
+
         // Handle case where URL already has /storage/ prefix
         if (standardPath.startsWith('/storage/')) {
             return standardPath + cacheBuster;
         }
-        
+
         // Default: add storage prefix to the path
         return `/storage/${standardPath}${cacheBuster}`;
     };
 
-    // Better image error handling 
+    // Better image error handling
     const handleImageError = (reportId: number, imgElement: HTMLImageElement) => {
         // Get the current URL that failed
         const currentUrl = imgElement.src;
         console.log(`Image load failed for report ${reportId}:`, currentUrl);
-        
+
         // Count retry attempts
         const retryCount = parseInt(imgElement.dataset.retryCount || '0');
-        
+
         // If we've tried too many times, show placeholder
         if (retryCount >= 3) {
             console.log(`Giving up after ${retryCount} retries for report ${reportId}`);
-            setImageLoadError(prev => ({...prev, [reportId]: true}));
+            setImageLoadError((prev) => ({ ...prev, [reportId]: true }));
             toast({
-                title: "Peringatan",
-                description: "Gambar tidak dapat dimuat. Menggunakan gambar placeholder.",
-                variant: "default",
+                title: 'Peringatan',
+                description: 'Gambar tidak dapat dimuat. Menggunakan gambar placeholder.',
+                variant: 'default',
             });
             imgElement.src = '/images/placeholder-image.png';
             return;
         }
-        
+
         // Increment retry counter
         imgElement.dataset.retryCount = (retryCount + 1).toString();
-        
+
         // Get the report data
-        const report = reports.find(r => r.id === reportId);
+        const report = reports.find((r) => r.id === reportId);
         if (!report || !report.foto) return;
-        
+
         console.log(`Retrying image load (attempt ${retryCount + 1}) for report ${reportId}`);
-        
+
         // Try different fallback strategies based on retry count
         let newSrc = '';
-        
+
         if (retryCount === 0) {
             // First retry: try direct path with storage
             const cleanPath = report.foto.replace(/^public\/|^storage\/|^\//g, '');
@@ -301,33 +294,23 @@ export default function DisasterReportVerification() {
             const cleanPath = report.foto.replace(/^public\/|^storage\/|^\//g, '');
             newSrc = `/${cleanPath}?v=${new Date().getTime()}`;
         }
-        
+
         console.log(`Trying alternate URL: ${newSrc}`);
         imgElement.src = newSrc;
     };
 
-    // Function to check if file exists at URL (doesn't work for CORS restricted resources)
-    const checkImageExists = (url: string): Promise<boolean> => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => resolve(true);
-            img.onerror = () => resolve(false);
-            img.src = url;
-        });
-    };
-
     const openImagePreview = (report: Laporan) => {
         setSelectedReport(report);
-        
+
         // Get image URL with fallback strategies
         const imageUrl = getFormattedImageUrl(report.foto);
         console.log(`Opening image preview for report ${report.id} with URL: ${imageUrl}`);
         setSelectedImage(imageUrl);
         setShowImageDialog(true);
-        
+
         // Reset any previous error state for this image in the preview
-        setImageLoadError(prev => {
-            const newState = {...prev};
+        setImageLoadError((prev) => {
+            const newState = { ...prev };
             delete newState[report.id];
             return newState;
         });
@@ -431,23 +414,23 @@ export default function DisasterReportVerification() {
                                             <p className="mb-1 text-sm font-medium">Foto Kejadian:</p>
                                             <div className="relative">
                                                 {imageLoadError[report.id] ? (
-                                                    <div className="h-40 w-full flex items-center justify-center rounded-md bg-gray-100 border">
-                                                        <div className="text-center p-4">
-                                                            <ImageIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                                                    <div className="flex h-40 w-full items-center justify-center rounded-md border bg-gray-100">
+                                                        <div className="p-4 text-center">
+                                                            <ImageIcon className="mx-auto mb-2 h-8 w-8 text-gray-400" />
                                                             <p className="text-sm text-gray-500">Gambar tidak dapat dimuat</p>
-                                                            <Button 
-                                                                variant="ghost" 
+                                                            <Button
+                                                                variant="ghost"
                                                                 size="sm"
-                                                                className="text-xs mt-1"
+                                                                className="mt-1 text-xs"
                                                                 onClick={() => {
                                                                     // Reset error state and try again
-                                                                    setImageLoadError(prev => {
-                                                                        const newState = {...prev};
+                                                                    setImageLoadError((prev) => {
+                                                                        const newState = { ...prev };
                                                                         delete newState[report.id];
                                                                         return newState;
                                                                     });
                                                                     // Set loading state
-                                                                    setLoadingImages(prev => ({...prev, [report.id]: true}));
+                                                                    setLoadingImages((prev) => ({ ...prev, [report.id]: true }));
                                                                 }}
                                                             >
                                                                 Coba Lagi
@@ -455,24 +438,24 @@ export default function DisasterReportVerification() {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div 
-                                                        className="h-40 w-full rounded-md cursor-pointer hover:opacity-90 transition-opacity relative bg-gray-100 overflow-hidden"
+                                                    <div
+                                                        className="relative h-40 w-full cursor-pointer overflow-hidden rounded-md bg-gray-100 transition-opacity hover:opacity-90"
                                                         onClick={() => openImagePreview(report)}
                                                     >
                                                         {loadingImages[report.id] && (
-                                                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-                                                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                                                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100">
+                                                                <div className="border-primary h-8 w-8 animate-spin rounded-full border-t-2 border-b-2"></div>
                                                             </div>
                                                         )}
-                                                        <img 
-                                                            src={getFormattedImageUrl(report.foto)} 
+                                                        <img
+                                                            src={getFormattedImageUrl(report.foto)}
                                                             alt="Foto kejadian"
-                                                            className="w-full h-full object-cover"
+                                                            className="h-full w-full object-cover"
                                                             data-retry-count="0"
                                                             onLoad={() => {
                                                                 // Remove loading state when image loads successfully
-                                                                setLoadingImages(prev => {
-                                                                    const newState = {...prev};
+                                                                setLoadingImages((prev) => {
+                                                                    const newState = { ...prev };
                                                                     delete newState[report.id];
                                                                     return newState;
                                                                 });
@@ -483,10 +466,10 @@ export default function DisasterReportVerification() {
                                                         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30"></div>
                                                     </div>
                                                 )}
-                                                <Button 
-                                                    variant="secondary" 
+                                                <Button
+                                                    variant="secondary"
                                                     size="sm"
-                                                    className="absolute bottom-2 right-2 h-8 w-8 p-0 bg-white/70 hover:bg-white/90"
+                                                    className="absolute right-2 bottom-2 h-8 w-8 bg-white/70 p-0 hover:bg-white/90"
                                                     onClick={() => openImagePreview(report)}
                                                 >
                                                     <ImageIcon className="h-4 w-4" />
@@ -555,24 +538,20 @@ export default function DisasterReportVerification() {
                     <DialogContent className="sm:max-w-2xl">
                         <DialogHeader>
                             <DialogTitle>Foto Kejadian</DialogTitle>
-                            <DialogDescription>
-                                {selectedReport?.judul || 'Detail foto kejadian'}
-                            </DialogDescription>
+                            <DialogDescription>{selectedReport?.judul || 'Detail foto kejadian'}</DialogDescription>
                         </DialogHeader>
                         <div className="flex flex-col items-center justify-center overflow-hidden rounded-md p-2">
-                            <div className="text-xs text-gray-500 mb-2">
-                                {selectedReport && <span>Lokasi: {selectedReport.lokasi}</span>}
-                            </div>
+                            <div className="mb-2 text-xs text-gray-500">{selectedReport && <span>Lokasi: {selectedReport.lokasi}</span>}</div>
                             {selectedImage ? (
                                 <div className="relative">
-                                    <div className="relative min-h-[300px] flex items-center justify-center">
+                                    <div className="relative flex min-h-[300px] items-center justify-center">
                                         <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                                            <div className="border-primary h-12 w-12 animate-spin rounded-full border-t-2 border-b-2"></div>
                                         </div>
                                         <img
                                             src={selectedImage}
                                             alt="Foto kejadian"
-                                            className="max-h-[600px] w-auto object-contain relative z-10 opacity-0 transition-opacity duration-300"
+                                            className="relative z-10 max-h-[600px] w-auto object-contain opacity-0 transition-opacity duration-300"
                                             data-retry-count="0"
                                             onLoad={(e) => {
                                                 // Hide spinner when image loads
@@ -587,19 +566,19 @@ export default function DisasterReportVerification() {
                                             }}
                                             onError={(e) => {
                                                 const target = e.target as HTMLImageElement;
-                                                
+
                                                 // Count retry attempts
                                                 const retryCount = parseInt(target.dataset.retryCount || '0');
-                                                
+
                                                 // If we've tried too many times, show placeholder
                                                 if (retryCount >= 2) {
                                                     console.log(`Preview image load failed after ${retryCount} retries`);
                                                     target.src = '/images/placeholder-image.png';
                                                     target.onerror = null; // Prevent further error handling
                                                     toast({
-                                                        title: "Peringatan",
-                                                        description: "Gambar tidak dapat dimuat dengan benar.",
-                                                        variant: "default",
+                                                        title: 'Peringatan',
+                                                        description: 'Gambar tidak dapat dimuat dengan benar.',
+                                                        variant: 'default',
                                                     });
                                                     // Show the image anyway with the placeholder
                                                     target.classList.remove('opacity-0');
@@ -611,13 +590,13 @@ export default function DisasterReportVerification() {
                                                     }
                                                     return;
                                                 }
-                                                
+
                                                 // Increment retry counter
                                                 target.dataset.retryCount = (retryCount + 1).toString();
-                                                
+
                                                 if (selectedReport && selectedReport.foto) {
                                                     let newSrc = '';
-                                                    
+
                                                     if (retryCount === 0) {
                                                         // First retry: try with direct filename approach
                                                         const filename = selectedReport.foto.split('/').pop() || selectedReport.foto;
@@ -626,7 +605,7 @@ export default function DisasterReportVerification() {
                                                         // Last retry: try with raw path
                                                         newSrc = `/${selectedReport.foto}?v=${new Date().getTime()}`;
                                                     }
-                                                    
+
                                                     console.log(`Preview retry with: ${newSrc}`);
                                                     target.src = newSrc;
                                                 } else {
@@ -646,9 +625,9 @@ export default function DisasterReportVerification() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="h-[300px] w-full flex items-center justify-center bg-gray-100 rounded-md">
-                                    <div className="text-center p-4">
-                                        <ImageIcon className="h-16 w-16 mx-auto text-gray-400 mb-3" />
+                                <div className="flex h-[300px] w-full items-center justify-center rounded-md bg-gray-100">
+                                    <div className="p-4 text-center">
+                                        <ImageIcon className="mx-auto mb-3 h-16 w-16 text-gray-400" />
                                         <p className="text-gray-500">Tidak ada gambar yang tersedia</p>
                                     </div>
                                 </div>
@@ -657,8 +636,8 @@ export default function DisasterReportVerification() {
                         <DialogFooter>
                             <div className="flex space-x-2">
                                 {selectedReport?.foto && (
-                                    <Button 
-                                        variant="secondary" 
+                                    <Button
+                                        variant="secondary"
                                         onClick={() => {
                                             // Open image in new tab if available
                                             const imgUrl = selectedImage || getFormattedImageUrl(selectedReport?.foto || '');

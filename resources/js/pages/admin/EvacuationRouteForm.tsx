@@ -280,14 +280,6 @@ export default function EvacuationRouteForm() {
         await fetchAllRoutes();
     };
 
-    interface ApiError {
-        response?: {
-            data?: {
-                message?: string;
-            };
-        };
-    }
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -315,12 +307,12 @@ export default function EvacuationRouteForm() {
         try {
             // Gunakan format konsisten untuk koordinat
             // Pastikan semua koordinat adalah objek dengan struktur {lat: number, lng: number}
-            // Format ini digunakan oleh AdminMap.tsx dan diharapkan oleh JalurEvakuasiController 
+            // Format ini digunakan oleh AdminMap.tsx dan diharapkan oleh JalurEvakuasiController
             const coordinates = points.map(([lat, lng]) => ({
                 lat: parseFloat(lat.toFixed(6)),
                 lng: parseFloat(lng.toFixed(6)),
             }));
-            
+
             const formData = {
                 nama: routeName,
                 deskripsi: 'Jalur evakuasi',
@@ -328,7 +320,7 @@ export default function EvacuationRouteForm() {
                 jenis_bencana: disasterType,
                 warna: routeColor,
             };
-            
+
             // Log data yang akan dikirim untuk debugging
             console.log('Sending evacuation route data:', formData);
 
@@ -351,16 +343,16 @@ export default function EvacuationRouteForm() {
             }
 
             // Save new data ID
-            const newDataId = editRouteId || (response?.data?.data?.id || 'new-route-' + Date.now());
-            
+            const newDataId = editRouteId || response?.data?.data?.id || 'new-route-' + Date.now();
+
             // Agresif cache-busting - refresh data di semua tab
             const timestamp = Date.now();
-            
+
             // 1. Simpan ke localStorage untuk persistence
             localStorage.setItem('lastEvacuationDataUpdate', timestamp.toString());
             localStorage.setItem('lastAddedRouteId', newDataId.toString());
             localStorage.setItem('lastAddedRouteData', JSON.stringify(formData));
-            
+
             // 2. Force server-side cache refresh dengan beberapa request cache-busting
             const cacheBuster = `?t=${timestamp}`;
             try {
@@ -368,32 +360,31 @@ export default function EvacuationRouteForm() {
                     axios.head(`/jalur-evakuasi${cacheBuster}`),
                     axios.get(`/jalur-evakuasi?nocache=${timestamp}`),
                     axios.get(`/admin/map${cacheBuster}`),
-                    axios.get(`/jalur-evakuasi?forcerefresh=true&t=${timestamp}`)
+                    axios.get(`/jalur-evakuasi?forcerefresh=true&t=${timestamp}`),
                 ];
-                
+
                 // Jalankan requests secara parallel
                 console.log('Executing cache-busting requests');
                 await Promise.all(requests);
                 console.log('Cache-busting completed');
-                
             } catch (e) {
                 console.warn('Some cache-busting requests failed:', e);
             }
-            
+
             // 3. Dispatch event untuk notifikasi real-time ke AdminMap
             const dispatchEvent = () => {
                 try {
-                    const detail = { 
+                    const detail = {
                         timestamp,
                         action: editRouteId !== null ? 'update' : 'create',
                         id: newDataId,
-                        data: formData
+                        data: formData,
                     };
-                    
+
                     const dataChangeEvent = new CustomEvent('evac-data-change', { detail });
                     window.dispatchEvent(dataChangeEvent);
                     console.log('Event evac-data-change dispatched with details:', detail);
-                    
+
                     // Also try to dispatch with broader scope for cross-tab communication
                     if (typeof window.parent !== 'undefined') {
                         window.parent.dispatchEvent(new CustomEvent('evac-data-change', { detail }));
@@ -402,20 +393,19 @@ export default function EvacuationRouteForm() {
                     console.error('Error dispatching event:', e);
                 }
             };
-            
+
             // Dispatch event immediately and multiple times with delays
             dispatchEvent();
             setTimeout(dispatchEvent, 500);
             setTimeout(dispatchEvent, 1500);
             setTimeout(dispatchEvent, 3000);
-            
+
             // 4. Force reload data in this component
             fetchExistingRoutes();
             refetchAllRoutes();
-            
+
             // 5. Reset form for new entry
             resetForm();
-            
         } catch (error) {
             console.error('Error saving route:', error);
             toast({
@@ -557,20 +547,20 @@ export default function EvacuationRouteForm() {
                 title: 'Berhasil',
                 description: 'Jalur evakuasi berhasil dihapus',
             });
-            
+
             // Add a cache-busting request
             await axios.head(`/jalur-evakuasi?t=${Date.now()}`);
-            
+
             // If currently editing this route, reset the form
             if (editRouteId === deleteTargetId) {
                 resetForm();
             }
             fetchExistingRoutes();
             refetchAllRoutes();
-            
+
             // Close the dialog after successful deletion
             setIsDeleteDialog(false);
-        } catch (error) {
+        } catch {
             toast({
                 title: 'Error',
                 description: 'Gagal menghapus jalur evakuasi',
@@ -606,14 +596,14 @@ export default function EvacuationRouteForm() {
         }
 
         setPoints(pointsArray);
-        
+
         // Fix for the icon bug: set manualPoints to include first and last point for proper icon display
         if (pointsArray.length >= 2) {
             // Get first and last point for start/end markers
             const firstPoint = pointsArray[0];
             const lastPoint = pointsArray[pointsArray.length - 1];
             setManualPoints([firstPoint, lastPoint]);
-            
+
             // Set route points to display the full route
             setRoutePoints(pointsArray);
             setIsRouteFound(true);
@@ -625,7 +615,7 @@ export default function EvacuationRouteForm() {
             // No points
             setManualPoints([]);
         }
-        
+
         setEditRouteId(jalur.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -712,7 +702,7 @@ export default function EvacuationRouteForm() {
                                         {allRoutes.map((jalur) => {
                                             // Don't show the current editing route to avoid duplication
                                             if (editRouteId === jalur.id) return null;
-                                            
+
                                             return jalur.koordinat && jalur.koordinat.length > 0 ? (
                                                 <Polyline
                                                     key={jalur.id}

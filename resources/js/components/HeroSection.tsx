@@ -1,13 +1,8 @@
-import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import React from 'react';
 
 const HeroSection: React.FC = () => {
-    // Get authentication status from page props
-    const { auth } = usePage<SharedData>().props;
-    const isAuthenticated = !!auth.user;
-
     // Use relative path for better hosting compatibility
     const reportLink = '/login';
 

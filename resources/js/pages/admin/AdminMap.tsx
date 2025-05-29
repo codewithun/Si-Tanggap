@@ -44,6 +44,15 @@ interface Posko {
     longitude: number;
 }
 
+// Add type definition for coordinate objects with various possible structures
+interface CoordinatePoint {
+    lat?: number;
+    latitude?: number;
+    lng?: number;
+    longitude?: number;
+    [key: number]: number | undefined;
+}
+
 // --- Icons ---
 const shelterIcon = icon({
     iconUrl: '/icons/posko.png',
@@ -98,34 +107,30 @@ function CustomMap({
     }, []);
 
     // More thorough filtering of routes with valid coordinates
-    const validRoutes = jalurEvakuasi.filter(jalur => {
+    const validRoutes = jalurEvakuasi.filter((jalur) => {
         if (!jalur.koordinat || !Array.isArray(jalur.koordinat)) {
             console.warn(`Route ${jalur.id} has invalid coordinates format`);
             return false;
         }
-        
+
         if (jalur.koordinat.length < 2) {
             console.warn(`Route ${jalur.id} has insufficient points (${jalur.koordinat.length})`);
             return false;
         }
-        
-        const validPoints = jalur.koordinat.every(point => 
-            point && 
-            typeof point === 'object' &&
-            'lat' in point && 
-            'lng' in point && 
-            !isNaN(Number(point.lat)) && 
-            !isNaN(Number(point.lng))
+
+        const validPoints = jalur.koordinat.every(
+            (point) =>
+                point && typeof point === 'object' && 'lat' in point && 'lng' in point && !isNaN(Number(point.lat)) && !isNaN(Number(point.lng)),
         );
-        
+
         if (!validPoints) {
             console.warn(`Route ${jalur.id} has invalid point format`);
             return false;
         }
-        
+
         return true;
     });
-    
+
     if (validRoutes.length !== jalurEvakuasi.length) {
         console.warn(`Filtered out ${jalurEvakuasi.length - validRoutes.length} routes with invalid coordinates`);
     }
@@ -193,13 +198,13 @@ export default function AdminMap() {
     // Add timestamp state for cache busting
     const [fetchTimestamp, setFetchTimestamp] = useState(Date.now());
     // Add auto refresh interval (setiap 30 detik)
-    const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+    const [autoRefreshEnabled] = useState(true);
 
     // Function to refresh data by updating the timestamp
     const refreshData = () => {
         setLoading(true);
         setFetchTimestamp(Date.now()); // This will trigger the useEffect and refetch data
-    };    // Function to normalize coordinates to consistent format
+    }; // Function to normalize coordinates to consistent format
     const normalizeCoordinates = useCallback((jalurData: JalurEvakuasi[]) => {
         return jalurData.map((jalur) => {
             // If koordinat is undefined or null, return empty array
@@ -207,18 +212,18 @@ export default function AdminMap() {
                 console.warn('Missing koordinat for jalur:', jalur.id);
                 return { ...jalur, koordinat: [] };
             }
-            
+
             // Log original format for debugging
             console.log(`Normalizing koordinat for jalur ${jalur.id}:`, {
                 type: typeof jalur.koordinat,
                 isArray: Array.isArray(jalur.koordinat),
                 sample: Array.isArray(jalur.koordinat) && jalur.koordinat.length > 0 ? jalur.koordinat[0] : null,
-                raw: jalur.koordinat
+                raw: jalur.koordinat,
             });
-            
+
             // Pastikan koordinat selalu dalam format yang diharapkan oleh Map component: [{lat, lng}, {lat, lng}]
             let normalizedKoordinat = jalur.koordinat;
-            
+
             try {
                 // Handle string format (from JSON)
                 if (typeof jalur.koordinat === 'string') {
@@ -231,7 +236,7 @@ export default function AdminMap() {
                         return { ...jalur, koordinat: [] };
                     }
                 }
-                
+
                 // Jika koordinat adalah array of arrays [[lat, lng], [lat, lng]]
                 if (Array.isArray(jalur.koordinat) && jalur.koordinat.length > 0 && Array.isArray(jalur.koordinat[0])) {
                     console.log('Converting array of arrays to objects');
@@ -258,17 +263,16 @@ export default function AdminMap() {
                 // Jika koordinat sudah berupa array of objects tapi perlu verify properties
                 else if (Array.isArray(jalur.koordinat) && jalur.koordinat.length > 0 && typeof jalur.koordinat[0] === 'object') {
                     console.log('Verifying object properties');
-                    normalizedKoordinat = jalur.koordinat.map(coord => {
+                    normalizedKoordinat = jalur.koordinat.map((coord) => {
                         // Handling different property names that might exist
-                        const coordObj = coord as any; // Type assertion to handle various possible formats
+                        const coordObj = coord as CoordinatePoint; // Use our defined type instead of any
                         const lat = coordObj.lat || coordObj.latitude || coordObj[0] || 0;
                         const lng = coordObj.lng || coordObj.longitude || coordObj[1] || 0;
                         return { lat: parseFloat(String(lat)), lng: parseFloat(String(lng)) };
                     });
                 }
-                
+
                 console.log('Normalized koordinat:', normalizedKoordinat);
-                
             } catch (error) {
                 console.error('Error normalizing coordinates:', error);
                 return { ...jalur, koordinat: [] };
@@ -286,57 +290,58 @@ export default function AdminMap() {
         try {
             // Use a random parameter for more effective cache-busting
             const cacheBuster = `${fetchTimestamp}-${Math.random().toString(36).substring(2, 15)}`;
-            
+
             // Make several attempts with different cache-busting parameters
-            let jalurData: any[] = [];
+            let jalurData: JalurEvakuasi[] = [];
             let attempts = 0;
             const maxAttempts = 2;
-            
+
             while (jalurData.length === 0 && attempts < maxAttempts) {
                 attempts++;
                 console.log(`Fetching evacuation routes attempt ${attempts}/${maxAttempts}`);
-                
+
                 // Try different endpoints and parameters for cache-busting
                 const response = await axios.get(`/jalur-evakuasi?t=${cacheBuster}&attempt=${attempts}`);
-                
+
                 // Handle both array and pagination object formats
                 if (Array.isArray(response.data)) {
                     jalurData = response.data;
                 } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
                     jalurData = response.data.data;
                 }
-                
+
                 // If we got data, log it for debugging
                 if (jalurData.length > 0) {
                     console.log(`Fetched ${jalurData.length} evacuation routes`);
                     console.log('First route:', jalurData[0]);
-                    
+
                     // Log detailed information about coordinates
                     if (jalurData[0] && jalurData[0].koordinat) {
                         console.log('Debug - First route coordinates info:', {
                             type: typeof jalurData[0].koordinat,
                             isArray: Array.isArray(jalurData[0].koordinat),
                             length: Array.isArray(jalurData[0].koordinat) ? jalurData[0].koordinat.length : 0,
-                            sample: Array.isArray(jalurData[0].koordinat) && jalurData[0].koordinat.length > 0 
-                                ? jalurData[0].koordinat[0] : 'no coordinates'
+                            sample:
+                                Array.isArray(jalurData[0].koordinat) && jalurData[0].koordinat.length > 0
+                                    ? jalurData[0].koordinat[0]
+                                    : 'no coordinates',
                         });
                     }
-                    
-                    break;  // Exit the loop if we have data
+
+                    break; // Exit the loop if we have data
                 } else if (attempts < maxAttempts) {
                     // Wait briefly before trying again
-                    await new Promise(resolve => setTimeout(resolve, 300));
+                    await new Promise((resolve) => setTimeout(resolve, 300));
                 }
             }
 
             // Process and normalize the data
             const normalizedData = normalizeCoordinates(jalurData);
-            
+
             // Log count of routes with valid coordinates
-            const validRoutes = normalizedData.filter(route => 
-                Array.isArray(route.koordinat) && route.koordinat.length > 1);
+            const validRoutes = normalizedData.filter((route) => Array.isArray(route.koordinat) && route.koordinat.length > 1);
             console.log(`Processed ${normalizedData.length} routes, ${validRoutes.length} have valid coordinates`);
-            
+
             setJalurEvakuasi(normalizedData);
             return normalizedData;
         } catch (error: unknown) {
@@ -369,19 +374,19 @@ export default function AdminMap() {
             setPosko([]);
             return [];
         }
-    }, [toast, fetchTimestamp]);    // Add listener for custom event from EvacuationRouteForm
+    }, [toast, fetchTimestamp]); // Add listener for custom event from EvacuationRouteForm
     useEffect(() => {
         const handleDataChange = (event: Event) => {
             // Ketika ada perubahan data, segera refresh data
             console.log('Received evac-data-change event, refreshing data immediately...');
-            
+
             // Selalu refresh data segera untuk memastikan perubahan terbaru ditampilkan
             refreshData();
-            
+
             // Force reload setelah delay singkat jika browser cache terlalu agresif
             setTimeout(() => {
                 console.log('Force reload after delay...');
-                setFetchTimestamp(Date.now()); 
+                setFetchTimestamp(Date.now());
             }, 1500);
 
             // Simpan timestamp terakhir update ke localStorage
@@ -397,7 +402,7 @@ export default function AdminMap() {
         // Listen for the custom event
         window.addEventListener('evac-data-change', handleDataChange);
         console.log('Event listener for evac-data-change registered');
-        
+
         // Cleanup
         return () => {
             window.removeEventListener('evac-data-change', handleDataChange);

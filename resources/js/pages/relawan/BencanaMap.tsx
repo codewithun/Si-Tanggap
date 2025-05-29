@@ -155,7 +155,7 @@ const getDisasterIcon = (type: string) => {
                 popupAnchor: [0, -32],
             });
     }
-}
+};
 
 export default function BencanaMap() {
     const [bencanaPoints, setBencanaPoints] = useState<Bencana[]>([]);
@@ -168,19 +168,19 @@ export default function BencanaMap() {
     // Map controls from MapKeseluruhan
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
     const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>([
-        'banjir', 
-        'banjir_bandang', 
-        'cuaca_ekstrim', 
-        'gelombang_ekstrim', 
-        'gempabumi', 
-        'kebakaran_hutan', 
-        'kekeringan', 
-        'letusan_gunung_api', 
-        'tanah_longsor', 
-        'tsunami', 
+        'banjir',
+        'banjir_bandang',
+        'cuaca_ekstrim',
+        'gelombang_ekstrim',
+        'gempabumi',
+        'kebakaran_hutan',
+        'kekeringan',
+        'letusan_gunung_api',
+        'tanah_longsor',
+        'tsunami',
         'multi_bahaya',
         'likuefaksi',
-        'covid19'
+        'covid19',
     ]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -492,18 +492,18 @@ export default function BencanaMap() {
     };
 
     // Define shelter icon
-        const shelterIcon = L.icon({
-            iconUrl: `/icons/posko.png?v=${new Date().getTime()}`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 32],
-            popupAnchor: [0, -32],
-        });
-    
-        // Enhanced marker icon selector with different appearances for shelters by type
-        const getMarkerIcon = (type: string, jenis_bencana?: string) => {
-            if (type === 'shelter') {
-                return shelterIcon;
-            }
+    const shelterIcon = L.icon({
+        iconUrl: `/icons/posko.png?v=${new Date().getTime()}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32],
+    });
+
+    // Enhanced marker icon selector with different appearances for shelters by type
+    const getMarkerIcon = (type: string, jenis_bencana?: string) => {
+        if (type === 'shelter') {
+            return shelterIcon;
+        }
         if (type === 'earthquake') {
             return getDisasterIcon('gempa');
         }

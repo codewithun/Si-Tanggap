@@ -194,19 +194,19 @@ export default function BencanaMaps() {
     // Map controls
     const [mapType, setMapType] = useState<'standard' | 'satellite' | 'terrain'>('standard');
     const [selectedHazardLayers, setSelectedHazardLayers] = useState<HazardLayerType[]>([
-        'banjir', 
-        'banjir_bandang', 
-        'cuaca_ekstrim', 
-        'gelombang_ekstrim', 
-        'gempabumi', 
-        'kebakaran_hutan', 
-        'kekeringan', 
-        'letusan_gunung_api', 
-        'tanah_longsor', 
-        'tsunami', 
+        'banjir',
+        'banjir_bandang',
+        'cuaca_ekstrim',
+        'gelombang_ekstrim',
+        'gempabumi',
+        'kebakaran_hutan',
+        'kekeringan',
+        'letusan_gunung_api',
+        'tanah_longsor',
+        'tsunami',
         'multi_bahaya',
         'likuefaksi',
-        'covid19'
+        'covid19',
     ]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showDisasters, setShowDisasters] = useState(true);
@@ -594,9 +594,7 @@ export default function BencanaMaps() {
                                                     </div>
                                                 </>
                                             )}
-                                            {marker.type !== 'shelter' && (
-                                                <div className="mt-2 text-xs">{formatDescription(marker.description)}</div>
-                                            )}
+                                            {marker.type !== 'shelter' && <div className="mt-2 text-xs">{formatDescription(marker.description)}</div>}
                                         </Popup>
                                     </Marker>
                                 ))}

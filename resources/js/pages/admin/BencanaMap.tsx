@@ -111,15 +111,13 @@ function MarkerCreator({
     setPosition: React.Dispatch<React.SetStateAction<[number, number] | null>>;
     jenisBencana: string;
 }) {
-    const mapEvents = useMapEvents({
+    // Use the useMapEvents hook to add click functionality
+    useMapEvents({
         click: (e) => {
-            // Only allow setting position if a disaster type is selected
-            if (jenisBencana) {
-                setPosition([e.latlng.lat, e.latlng.lng]);
-            }
+            setPosition([e.latlng.lat, e.latlng.lng]);
         },
     });
-    
+
     return position && jenisBencana ? <Marker position={position} icon={getDisasterIcon(jenisBencana)} /> : null;
 }
 
@@ -186,7 +184,7 @@ const getDisasterIcon = (type: string) => {
                 popupAnchor: [0, -32],
             });
     }
-}
+};
 
 export default function BencanaMap() {
     const [bencanaPoints, setBencanaPoints] = useState<Bencana[]>([]);
@@ -220,7 +218,7 @@ export default function BencanaMap() {
         'multi_bahaya',
         'tanah_longsor',
         'tsunami',
-        'covid19'
+        'covid19',
     ]);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -249,11 +247,7 @@ export default function BencanaMap() {
             disaster.jenis_bencana === 'tsunami'
         ) {
             return 'tinggi';
-        } else if (
-            desc.includes('sedang') || 
-            disaster.jenis_bencana === 'banjir' || 
-            disaster.jenis_bencana === 'kebakaran'
-        ) {
+        } else if (desc.includes('sedang') || disaster.jenis_bencana === 'banjir' || disaster.jenis_bencana === 'kebakaran') {
             return 'sedang';
         } else if (disaster.jenis_bencana === 'kekeringan') {
             // Explicitly assign kekeringan a risk level (assuming medium risk)
@@ -474,8 +468,7 @@ export default function BencanaMap() {
         if (!allMarkers.length) return;
 
         // Debug kekeringan filtering
-        console.log('Filtering markers. Is kekeringan layer selected?', 
-            selectedHazardLayers.includes('kekeringan'));
+        console.log('Filtering markers. Is kekeringan layer selected?', selectedHazardLayers.includes('kekeringan'));
 
         const filtered = allMarkers.filter((marker) => {
             // Always include shelter markers when shelters are visible
@@ -601,8 +594,8 @@ export default function BencanaMap() {
         if (!judul || !jenisBencana || !deskripsi || !lokasi || !position) {
             toast({
                 title: 'Peringatan',
-                description: !jenisBencana 
-                    ? 'Pilih jenis bencana terlebih dahulu sebelum menentukan lokasi di peta!' 
+                description: !jenisBencana
+                    ? 'Pilih jenis bencana terlebih dahulu sebelum menentukan lokasi di peta!'
                     : 'Lengkapi semua data bencana dan tentukan lokasi di peta!',
                 variant: 'destructive',
             });
@@ -714,19 +707,15 @@ export default function BencanaMap() {
     // Add console debug to see what's happening with kekeringan icons
     useEffect(() => {
         // Debug logging for kekeringan markers
-        const kekeringanMarkers = allMarkers.filter(marker => 
-            marker.jenis_bencana === 'kekeringan'
-        );
+        const kekeringanMarkers = allMarkers.filter((marker) => marker.jenis_bencana === 'kekeringan');
         if (kekeringanMarkers.length) {
             console.log('Kekeringan markers found:', kekeringanMarkers.length);
         } else {
             console.log('No kekeringan markers found in data');
         }
-        
+
         // Look for kekeringan in the original data
-        const kekeringanPoints = bencanaPoints.filter(point => 
-            point.jenis_bencana === 'kekeringan'
-        );
+        const kekeringanPoints = bencanaPoints.filter((point) => point.jenis_bencana === 'kekeringan');
         console.log('Kekeringan in original data:', kekeringanPoints.length);
     }, [allMarkers, bencanaPoints]);
 
@@ -1234,11 +1223,11 @@ export default function BencanaMap() {
                             )}
                         </div>
                         <div className="mt-2 text-xs text-gray-600">
-                            {!jenisBencana 
+                            {!jenisBencana
                                 ? 'Pilih jenis bencana di atas terlebih dahulu.'
-                                : position 
-                                    ? `Lokasi: ${position[0]}, ${position[1]}` 
-                                    : 'Klik pada peta untuk menentukan lokasi.'}
+                                : position
+                                  ? `Lokasi: ${position[0]}, ${position[1]}`
+                                  : 'Klik pada peta untuk menentukan lokasi.'}
                         </div>
                     </div>
                     <div className="mt-4 flex justify-end space-x-2">

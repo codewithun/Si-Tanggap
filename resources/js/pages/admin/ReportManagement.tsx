@@ -183,7 +183,7 @@ export default function ReportManagement() {
     const getDisasterIconPath = (type: string) => {
         // Add a timestamp to prevent browser caching
         const cacheBuster = `?v=${Date.now()}`;
-        
+
         // Map each disaster type to its specific icon
         switch (type.toLowerCase()) {
             case 'banjir':

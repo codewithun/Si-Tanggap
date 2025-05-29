@@ -9,24 +9,10 @@ import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import L from 'leaflet';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
-
-// Gunakan icon default Leaflet agar marker tidak error 404
-const customIcon = L.icon({
-    iconUrl: markerIcon,
-    iconRetinaUrl: markerIcon2x,
-    shadowUrl: markerShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-});
 
 // Instead of a single disaster icon, get the appropriate icon based on disaster type
 const getDisasterIcon = (type: string) => {
@@ -110,7 +96,8 @@ function MarkerCreator({
     setPosition: (position: [number, number]) => void;
     jenisBencana: string;
 }) {
-    const mapEvents = useMapEvents({
+    // Use the hook directly without assigning to a variable
+    useMapEvents({
         click: (e) => {
             // Only allow setting position if a disaster type is selected
             if (jenisBencana) {
@@ -119,7 +106,7 @@ function MarkerCreator({
             }
         },
     });
-    
+
     return position && jenisBencana ? <Marker position={position} icon={getDisasterIcon(jenisBencana)} /> : null;
 }
 
@@ -153,10 +140,10 @@ export default function BuatLaporan() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setImageError(null);
-        
+
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            
+
             // Validate file type
             const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
             if (!validTypes.includes(file.type)) {
@@ -164,7 +151,7 @@ export default function BuatLaporan() {
                 e.target.value = '';
                 return;
             }
-            
+
             // Validate file size (max 2MB)
             const maxSize = 2 * 1024 * 1024; // 2MB in bytes
             if (file.size > maxSize) {
@@ -172,7 +159,7 @@ export default function BuatLaporan() {
                 e.target.value = '';
                 return;
             }
-            
+
             setFormData((prev) => ({ ...prev, foto: file }));
 
             // Create preview
@@ -192,7 +179,7 @@ export default function BuatLaporan() {
             longitude: position[1],
         }));
     };
-    
+
     // Get tile layer URL based on map type
     const getTileLayerUrl = () => {
         switch (mapType) {
@@ -219,19 +206,21 @@ export default function BuatLaporan() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!formData.judul || !formData.jenis_bencana || !formData.deskripsi || !formData.lokasi || !selectedPosition) {
-            toast.error(!formData.jenis_bencana 
-                ? 'Pilih jenis bencana terlebih dahulu sebelum menentukan lokasi di peta!' 
-                : 'Lengkapi semua data bencana dan tentukan lokasi di peta!');
+            toast.error(
+                !formData.jenis_bencana
+                    ? 'Pilih jenis bencana terlebih dahulu sebelum menentukan lokasi di peta!'
+                    : 'Lengkapi semua data bencana dan tentukan lokasi di peta!',
+            );
             return;
         }
-        
+
         if (!formData.foto) {
             toast.error('Unggah foto kejadian bencana!');
             return;
         }
-        
+
         setIsSubmitting(true);
 
         try {
@@ -257,7 +246,7 @@ export default function BuatLaporan() {
             await axios.post('/laporans', data, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
             });
 
@@ -329,13 +318,13 @@ export default function BuatLaporan() {
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="judul">Judul Laporan</Label>
-                                    <Input 
-                                        id="judul" 
-                                        name="judul" 
-                                        value={formData.judul} 
-                                        onChange={handleInputChange} 
-                                        placeholder="Contoh: Banjir di Kelurahan Sukamaju" 
-                                        required 
+                                    <Input
+                                        id="judul"
+                                        name="judul"
+                                        value={formData.judul}
+                                        onChange={handleInputChange}
+                                        placeholder="Contoh: Banjir di Kelurahan Sukamaju"
+                                        required
                                     />
                                 </div>
 
@@ -385,37 +374,43 @@ export default function BuatLaporan() {
 
                             <div className="grid gap-2">
                                 <Label>Lokasi di Peta</Label>
-                                
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-2">
+
+                                <div className="mb-2 grid grid-cols-1 gap-4 md:grid-cols-3">
                                     <div className="flex items-center space-x-2">
-                                        <input 
-                                            type="radio" 
-                                            id="map-standard" 
-                                            name="map-type" 
-                                            checked={mapType === 'standard'} 
-                                            onChange={() => setMapType('standard')} 
+                                        <input
+                                            type="radio"
+                                            id="map-standard"
+                                            name="map-type"
+                                            checked={mapType === 'standard'}
+                                            onChange={() => setMapType('standard')}
                                         />
-                                        <label htmlFor="map-standard" className="text-sm">Peta Standar</label>
+                                        <label htmlFor="map-standard" className="text-sm">
+                                            Peta Standar
+                                        </label>
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                        <input 
-                                            type="radio" 
-                                            id="map-satellite" 
-                                            name="map-type" 
-                                            checked={mapType === 'satellite'} 
-                                            onChange={() => setMapType('satellite')} 
+                                        <input
+                                            type="radio"
+                                            id="map-satellite"
+                                            name="map-type"
+                                            checked={mapType === 'satellite'}
+                                            onChange={() => setMapType('satellite')}
                                         />
-                                        <label htmlFor="map-satellite" className="text-sm">Peta Satelit</label>
+                                        <label htmlFor="map-satellite" className="text-sm">
+                                            Peta Satelit
+                                        </label>
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                        <input 
-                                            type="radio" 
-                                            id="map-terrain" 
-                                            name="map-type" 
-                                            checked={mapType === 'terrain'} 
-                                            onChange={() => setMapType('terrain')} 
+                                        <input
+                                            type="radio"
+                                            id="map-terrain"
+                                            name="map-type"
+                                            checked={mapType === 'terrain'}
+                                            onChange={() => setMapType('terrain')}
                                         />
-                                        <label htmlFor="map-terrain" className="text-sm">Peta Kontur</label>
+                                        <label htmlFor="map-terrain" className="text-sm">
+                                            Peta Kontur
+                                        </label>
                                     </div>
                                 </div>
 
@@ -443,17 +438,9 @@ export default function BuatLaporan() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <MapContainer
-                                            center={[-6.2, 106.816666]}
-                                            zoom={6}
-                                            scrollWheelZoom={true}
-                                            className="h-full w-full"
-                                        >
-                                            <TileLayer
-                                                attribution={getTileLayerAttribution()}
-                                                url={getTileLayerUrl()}
-                                            />
-                                            <MarkerCreator 
+                                        <MapContainer center={[-6.2, 106.816666]} zoom={6} scrollWheelZoom={true} className="h-full w-full">
+                                            <TileLayer attribution={getTileLayerAttribution()} url={getTileLayerUrl()} />
+                                            <MarkerCreator
                                                 position={selectedPosition}
                                                 setPosition={handlePositionSelect}
                                                 jenisBencana={formData.jenis_bencana}
@@ -461,12 +448,12 @@ export default function BuatLaporan() {
                                         </MapContainer>
                                     )}
                                 </div>
-                                
+
                                 {formData.jenis_bencana ? (
                                     <p className="text-sm text-gray-500">
-                                        {selectedPosition 
-                                            ? `Lokasi yang dipilih: Latitude ${selectedPosition[0].toFixed(6)}, Longitude ${selectedPosition[1].toFixed(6)}` 
-                                            : "Klik pada peta untuk menentukan lokasi bencana"}
+                                        {selectedPosition
+                                            ? `Lokasi yang dipilih: Latitude ${selectedPosition[0].toFixed(6)}, Longitude ${selectedPosition[1].toFixed(6)}`
+                                            : 'Klik pada peta untuk menentukan lokasi bencana'}
                                     </p>
                                 ) : (
                                     <p className="text-sm text-gray-500">Pilih jenis bencana terlebih dahulu untuk mengaktifkan peta</p>
@@ -475,31 +462,29 @@ export default function BuatLaporan() {
 
                             <div className="grid gap-2">
                                 <Label htmlFor="foto">Foto Bencana</Label>
-                                <Input 
-                                    id="foto" 
-                                    name="foto" 
-                                    type="file" 
-                                    accept="image/jpeg,image/png,image/gif" 
+                                <Input
+                                    id="foto"
+                                    name="foto"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif"
                                     onChange={handleFileChange}
                                     required
                                 />
                                 <p className="text-xs text-gray-500">JPG, GIF atau PNG. Ukuran maksimal 2MB.</p>
-                                
-                                {imageError && (
-                                    <p className="text-xs text-red-500 mt-1">{imageError}</p>
-                                )}
+
+                                {imageError && <p className="mt-1 text-xs text-red-500">{imageError}</p>}
 
                                 {previewImage && (
                                     <div className="mt-2 rounded-md border p-2">
-                                        <p className="text-sm font-medium mb-1">Pratinjau Foto:</p>
-                                        <img 
-                                            src={previewImage} 
-                                            alt="Preview" 
-                                            className="max-h-64 w-full object-contain rounded"
+                                        <p className="mb-1 text-sm font-medium">Pratinjau Foto:</p>
+                                        <img
+                                            src={previewImage}
+                                            alt="Preview"
+                                            className="max-h-64 w-full rounded object-contain"
                                             onError={() => {
                                                 setPreviewImage(null);
                                                 setImageError('Gambar tidak valid atau rusak. Silakan pilih gambar lain.');
-                                            }} 
+                                            }}
                                         />
                                     </div>
                                 )}

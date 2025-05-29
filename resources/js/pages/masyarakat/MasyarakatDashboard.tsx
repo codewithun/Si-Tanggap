@@ -293,12 +293,12 @@ export default function MasyarakatDashboard() {
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
-                                                            <TableHead className="whitespace-nowrap font-semibold">Judul</TableHead>
-                                                            <TableHead className="whitespace-nowrap font-semibold">Jenis Bencana</TableHead>
-                                                            <TableHead className="whitespace-nowrap font-semibold">Lokasi</TableHead>
-                                                            <TableHead className="whitespace-nowrap font-semibold">Status</TableHead>
-                                                            <TableHead className="whitespace-nowrap font-semibold">Tanggal & Detail</TableHead>
-                                                            <TableHead className="whitespace-nowrap text-center font-semibold">Aksi</TableHead>
+                                                            <TableHead className="font-semibold whitespace-nowrap">Judul</TableHead>
+                                                            <TableHead className="font-semibold whitespace-nowrap">Jenis Bencana</TableHead>
+                                                            <TableHead className="font-semibold whitespace-nowrap">Lokasi</TableHead>
+                                                            <TableHead className="font-semibold whitespace-nowrap">Status</TableHead>
+                                                            <TableHead className="font-semibold whitespace-nowrap">Tanggal & Detail</TableHead>
+                                                            <TableHead className="text-center font-semibold whitespace-nowrap">Aksi</TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
@@ -314,7 +314,7 @@ export default function MasyarakatDashboard() {
                                                                         {getStatusBadge(laporan.status)}
                                                                     </div>
                                                                 </TableCell>
-                                                                <TableCell className="whitespace-nowrap text-sm">
+                                                                <TableCell className="text-sm whitespace-nowrap">
                                                                     <div>{formatDate(laporan.created_at)}</div>
                                                                     {laporan.deskripsi && (
                                                                         <div className="mt-1 max-w-[150px] truncate text-xs text-gray-500">
@@ -322,7 +322,7 @@ export default function MasyarakatDashboard() {
                                                                         </div>
                                                                     )}
                                                                 </TableCell>
-                                                                <TableCell className="whitespace-nowrap text-center">
+                                                                <TableCell className="text-center whitespace-nowrap">
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"

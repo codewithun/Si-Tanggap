@@ -97,45 +97,41 @@ const MarkerCreator = ({
     // Format posko description for better readability in popup
     const formatPoskoDescription = (posko: Posko) => (
         <div className="posko-popup-content">
-            <div><span className="font-semibold">Jenis:</span> {posko.jenis_posko}</div>
-            <div><span className="font-semibold">Status:</span> {posko.status}</div>
-            <div><span className="font-semibold">Kapasitas:</span> {posko.kapasitas} orang</div>
-            <div><span className="font-semibold">Alamat:</span> {posko.alamat}</div>
-            <div><span className="font-semibold">Kontak:</span> {posko.kontak || '-'}</div>
-            <div><span className="font-semibold">Deskripsi:</span> {posko.deskripsi}</div>
+            <div>
+                <span className="font-semibold">Jenis:</span> {posko.jenis_posko}
+            </div>
+            <div>
+                <span className="font-semibold">Status:</span> {posko.status}
+            </div>
+            <div>
+                <span className="font-semibold">Kapasitas:</span> {posko.kapasitas} orang
+            </div>
+            <div>
+                <span className="font-semibold">Alamat:</span> {posko.alamat}
+            </div>
+            <div>
+                <span className="font-semibold">Kontak:</span> {posko.kontak || '-'}
+            </div>
+            <div>
+                <span className="font-semibold">Deskripsi:</span> {posko.deskripsi}
+            </div>
         </div>
     );
 
     return (
         <>
             {position && <Marker position={position} icon={isEditing ? highlightedShelterIcon : shelterIcon} />}
-            
+
             {allPoskos.map((posko) => (
-                <Marker 
-                    key={posko.id} 
-                    position={[posko.latitude, posko.longitude]} 
-                    icon={shelterIcon}
-                >
+                <Marker key={posko.id} position={[posko.latitude, posko.longitude]} icon={shelterIcon}>
                     <Popup className="wider-popup">
                         <div className="font-bold">{posko.nama}</div>
-                        <div className="mt-2 text-xs">
-                            {formatPoskoDescription(posko)}
-                        </div>
+                        <div className="mt-2 text-xs">{formatPoskoDescription(posko)}</div>
                         <div className="mt-3 flex justify-end space-x-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() => handleEdit(posko)}
-                            >
+                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleEdit(posko)}>
                                 Edit
                             </Button>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() => handleDeleteClick(posko.id)}
-                            >
+                            <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => handleDeleteClick(posko.id)}>
                                 Hapus
                             </Button>
                         </div>
@@ -474,9 +470,9 @@ export default function PoskoForm() {
                                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                         />
-                                        <MarkerCreator 
-                                            position={position} 
-                                            setPosition={setPosition} 
+                                        <MarkerCreator
+                                            position={position}
+                                            setPosition={setPosition}
                                             isEditing={editId !== null}
                                             allPoskos={allPoskos}
                                             handleEdit={handleEdit}

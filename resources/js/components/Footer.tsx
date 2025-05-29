@@ -84,7 +84,7 @@ const Footer: React.FC<FooterProps> = ({ scrollToSection }) => {
                     </div>
 
                     {/* Image column */}
-                    <div className="hidden md:block md:w-1/4 overflow-hidden">
+                    <div className="hidden overflow-hidden md:block md:w-1/4">
                         <div className="flex justify-end pr-2">
                             <img src="/img/image1.png" alt="Person working on laptop" className="h-60 object-contain" />
                         </div>
