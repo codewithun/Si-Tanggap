@@ -67,12 +67,28 @@ class LaporanController extends Controller
                 'updated_at'
             ])
             ->orderBy('created_at', 'desc');
-
-        $laporans = $query->get();
-
-        return response()->json([
-            'data' => $laporans
-        ]);
+            
+        // Filter by status if provided
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        // Filter by search query if provided
+        if ($request->has('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('judul', 'like', '%' . $request->search . '%')
+                  ->orWhere('deskripsi', 'like', '%' . $request->search . '%')
+                  ->orWhere('lokasi', 'like', '%' . $request->search . '%');
+            });
+        }
+        
+        // Get per_page from request or use default
+        $perPage = $request->input('per_page', 10);
+        
+        // Return paginated results
+        $laporans = $query->paginate($perPage);
+        
+        return response()->json($laporans);
     }
 
     /**

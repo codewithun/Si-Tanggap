@@ -44,6 +44,14 @@ interface Laporan {
     };
 }
 
+interface PaginationData {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    data: Laporan[];
+}
+
 const addMapZIndexFix = () => {
     const style = document.createElement('style');
     style.textContent = `
@@ -74,14 +82,40 @@ export default function ReportManagement() {
     const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
     const [verificationStatus, setVerificationStatus] = useState<'diverifikasi' | 'ditolak'>('diverifikasi');
     const [adminNote, setAdminNote] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [paginationData, setPaginationData] = useState<PaginationData | null>(null);
+    const itemsPerPage = 10;
 
     const { toast } = useToast();
 
     const fetchReports = useCallback(async () => {
         try {
-            const response = await axios.get('/laporans');
+            setLoading(true);
+            const response = await axios.get('/laporans', {
+                params: {
+                    page: currentPage,
+                    per_page: itemsPerPage,
+                }
+            });
+            
             if (response.data && response.data.data) {
                 setReports(response.data.data);
+                setPaginationData({
+                    current_page: response.data.current_page ?? 1,
+                    last_page: response.data.last_page ?? 1,
+                    per_page: response.data.per_page ?? itemsPerPage,
+                    total: response.data.total ?? response.data.data.length,
+                    data: response.data.data,
+                });
+            } else {
+                setReports(response.data);
+                setPaginationData({
+                    current_page: 1,
+                    last_page: 1,
+                    per_page: itemsPerPage,
+                    total: response.data.length,
+                    data: response.data,
+                });
             }
             setLoading(false);
         } catch (error) {
@@ -91,9 +125,10 @@ export default function ReportManagement() {
                 description: 'Gagal memuat data laporan bencana',
                 variant: 'destructive',
             });
+            setReports([]);
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, currentPage, itemsPerPage]);
 
     useEffect(() => {
         fetchReports();
@@ -302,6 +337,66 @@ export default function ReportManagement() {
                                             )}
                                         </TableBody>
                                     </Table>
+                                    
+                                    {/* Pagination Controls */}
+                                    {paginationData && paginationData.last_page > 1 && (
+                                        <div className="flex flex-col items-start justify-between gap-3 border-t px-4 py-3 sm:flex-row sm:items-center">
+                                            <div className="text-sm text-gray-500">
+                                                Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
+                                                {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of{' '}
+                                                {paginationData.total} entries
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                                    disabled={paginationData.current_page === 1}
+                                                >
+                                                    Previous
+                                                </Button>
+                                                {[...Array(paginationData.last_page)].map((_, index) => {
+                                                    const pageNumber = index + 1;
+                                                    const showPage =
+                                                        pageNumber === 1 ||
+                                                        pageNumber === paginationData.last_page ||
+                                                        Math.abs(pageNumber - paginationData.current_page) <= 1;
+
+                                                    if (!showPage) {
+                                                        if (pageNumber === 2 || pageNumber === paginationData.last_page - 1) {
+                                                            return (
+                                                                <span key={`dot-${pageNumber}`} className="px-2 py-1">
+                                                                    ...
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }
+
+                                                    return (
+                                                        <Button
+                                                            key={pageNumber}
+                                                            variant={paginationData.current_page === pageNumber ? 'default' : 'outline'}
+                                                            size="sm"
+                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                            className="min-w-[32px]"
+                                                        >
+                                                            {pageNumber}
+                                                        </Button>
+                                                    );
+                                                })}
+
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
+                                                    disabled={paginationData.current_page === paginationData.last_page}
+                                                >
+                                                    Next
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </CardContent>

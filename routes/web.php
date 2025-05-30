@@ -20,6 +20,7 @@ use App\Http\Controllers\Auth\{
     AuthenticatedSessionController,
     RegisteredUserController
 };
+use App\Http\Controllers\Api\MasyarakatDashboardController;
 
 // ------------------------
 // 🌐 Public Web Routes
@@ -142,13 +143,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Notifikasi
         Route::post('notifikasi', [NotifikasiController::class, 'send'])->name('notifikasi.send');
     });
+
+    // Masyarakat Dashboard routes
+    Route::get('/masyarakat/laporan-saya/data', [MasyarakatDashboardController::class, 'getLaporanSaya'])
+        ->name('masyarakat.laporan-saya.data');
 });
 
 // ------------------------
 // 🔐 API Routes - Authenticated
 // ------------------------
 Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
-    Route::get('/laporan-saya', [LaporanController::class, 'getMyReports'])->name('api.laporan-saya');
+    // Change this route to use MasyarakatDashboardController instead of LaporanController
+    Route::get('/laporan-saya', [MasyarakatDashboardController::class, 'getLaporanSaya'])->name('api.laporan-saya');
     Route::put('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
     Route::get('/users', [UserController::class, 'index'])->name('api.users.index');
 

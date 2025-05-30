@@ -43,8 +43,20 @@ interface Laporan {
     deskripsi?: string;
 }
 
+interface PaginationData {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    data: Laporan[];
+}
+
 interface ApiResponse {
     data: Laporan[];
+    current_page?: number;
+    last_page?: number;
+    per_page?: number;
+    total?: number;
     message?: string;
     statistics?: Statistics;
 }
@@ -60,6 +72,8 @@ export default function MasyarakatDashboard() {
     const [laporans, setLaporans] = useState<Laporan[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<TabType>('semua');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [paginationData, setPaginationData] = useState<PaginationData | null>(null);
     const [statistics, setStatistics] = useState<Statistics>({
         totalLaporan: 0,
         menunggu: 0,
@@ -72,19 +86,31 @@ export default function MasyarakatDashboard() {
         },
     });
     const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
+    const itemsPerPage = 10;
 
     const getLaporanSaya = useCallback(async () => {
         try {
             setLoading(true);
             const params: Record<string, string | number> = activeTab !== 'semua' ? { status: activeTab } : {};
             if (userId) params.user_id = userId;
+            params.page = currentPage;
+            params.per_page = itemsPerPage;
+            
             const response = await axios.get<ApiResponse>('/api/laporan-saya', { params });
 
             if (response.data) {
                 if (Array.isArray(response.data.data)) {
                     setLaporans(response.data.data);
+                    setPaginationData({
+                        current_page: response.data.current_page ?? 1,
+                        last_page: response.data.last_page ?? 1,
+                        per_page: response.data.per_page ?? itemsPerPage,
+                        total: response.data.total ?? response.data.data.length,
+                        data: response.data.data,
+                    });
                 } else {
                     setLaporans([]);
+                    setPaginationData(null);
                     console.warn('Unexpected API response format:', response.data);
                 }
 
@@ -100,14 +126,20 @@ export default function MasyarakatDashboard() {
 
             toast.error(`Gagal mengambil data laporan: ${errorMessage}`);
             setLaporans([]);
+            setPaginationData(null);
         } finally {
             setLoading(false);
         }
-    }, [activeTab, userId]);
+    }, [activeTab, userId, currentPage, itemsPerPage]);
 
     useEffect(() => {
         getLaporanSaya();
     }, [getLaporanSaya]);
+
+    useEffect(() => {
+        // Reset to page 1 when changing tabs
+        setCurrentPage(1);
+    }, [activeTab]);
 
     const getStatusBadge = (status: StatusType) => {
         const statusConfig = {
@@ -274,13 +306,19 @@ export default function MasyarakatDashboard() {
                             </CardHeader>
                             <CardContent className="pt-6">
                                 <Tabs value={activeTab} onValueChange={handleTabChange}>
-                                    <TabsList className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
-                                        {(['semua', 'menunggu', 'diverifikasi', 'ditolak'] as TabType[]).map((tab) => (
-                                            <TabsTrigger key={tab} value={tab} className="font-medium">
-                                                {getTabLabel(tab)}
-                                            </TabsTrigger>
-                                        ))}
-                                    </TabsList>
+                                    <div className="relative">
+                                        <TabsList className="w-full grid grid-cols-4 gap-0.5 p-0.5 rounded-md">
+                                            {(['semua', 'menunggu', 'diverifikasi', 'ditolak'] as TabType[]).map((tab) => (
+                                                <TabsTrigger
+                                                    key={tab}
+                                                    value={tab}
+                                                    className="text-xs sm:text-sm whitespace-nowrap py-0 px-1 sm:px-2 rounded-md data-[state=active]:shadow-none"
+                                                >
+                                                    {getTabLabel(tab)}
+                                                </TabsTrigger>
+                                            ))}
+                                        </TabsList>
+                                    </div>
 
                                     <TabsContent value={activeTab} className="mt-4 min-h-[300px]">
                                         {loading ? (
@@ -289,7 +327,7 @@ export default function MasyarakatDashboard() {
                                                 <p className="text-muted-foreground mt-2 text-sm">Memuat data laporan...</p>
                                             </div>
                                         ) : laporans.length > 0 ? (
-                                            <div className="overflow-auto rounded-md border">
+                                            <div className="overflow-x-auto rounded-md border">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
@@ -336,6 +374,70 @@ export default function MasyarakatDashboard() {
                                                         ))}
                                                     </TableBody>
                                                 </Table>
+                                                
+                                                {/* Pagination */}
+                                                {paginationData && paginationData.last_page > 1 && (
+                                                    <div className="flex flex-col items-start justify-between gap-3 border-t px-4 py-3 sm:flex-row sm:items-center">
+                                                        <div className="text-sm text-gray-500">
+                                                            Showing {(paginationData.current_page - 1) * paginationData.per_page + 1} to{' '}
+                                                            {Math.min(paginationData.current_page * paginationData.per_page, paginationData.total)} of{' '}
+                                                            {paginationData.total} entries
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                                                                disabled={paginationData.current_page === 1}
+                                                            >
+                                                                Previous
+                                                            </Button>
+                                                            {Array.from({ length: paginationData.last_page }).map((_, index) => {
+                                                                const pageNumber = index + 1;
+                                                                // Only show pages close to current page to avoid too many buttons
+                                                                if (
+                                                                    pageNumber === 1 ||
+                                                                    pageNumber === paginationData.last_page ||
+                                                                    Math.abs(pageNumber - paginationData.current_page) <= 1
+                                                                ) {
+                                                                    return (
+                                                                        <Button
+                                                                            key={pageNumber}
+                                                                            variant={paginationData.current_page === pageNumber ? 'default' : 'outline'}
+                                                                            size="sm"
+                                                                            onClick={() => setCurrentPage(pageNumber)}
+                                                                            className="min-w-[32px]"
+                                                                        >
+                                                                            {pageNumber}
+                                                                        </Button>
+                                                                    );
+                                                                }
+                                                                
+                                                                // Show ellipsis for gaps in page numbers
+                                                                if (
+                                                                    pageNumber === paginationData.current_page - 2 ||
+                                                                    pageNumber === paginationData.current_page + 2
+                                                                ) {
+                                                                    return (
+                                                                        <span key={`ellipsis-${pageNumber}`} className="flex items-center px-2">
+                                                                            ...
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                
+                                                                return null;
+                                                            })}
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => setCurrentPage((page) => Math.min(paginationData.last_page, page + 1))}
+                                                                disabled={paginationData.current_page === paginationData.last_page}
+                                                            >
+                                                                Next
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
                                             <div className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border-2 border-dashed">
