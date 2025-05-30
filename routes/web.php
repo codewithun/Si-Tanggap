@@ -69,6 +69,11 @@ Route::get('/berita-bnpb', [App\Http\Controllers\BeritaScraperController::class,
 Route::get('/berita-detik', [App\Http\Controllers\DetikScraperController::class, 'index']);
 Route::get('/berita-merged', [App\Http\Controllers\BeritaController::class, 'getBeritaMerged']);
 
+// Add this route in your public routes section
+Route::get('/registration-pending', function () {
+    return Inertia::render('auth/RegistrationPending');
+})->name('registration.pending');
+
 // ------------------------
 // 🔐 Protected Web Routes
 // ------------------------
@@ -90,7 +95,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // 🦺 Relawan
-    Route::middleware(['auth'])->prefix('relawan')->name('relawan.')->group(function () {
+    Route::middleware(['auth', \App\Http\Middleware\EnsureRelawanIsActive::class])->prefix('relawan')->name('relawan.')->group(function () {
         Route::get('/dashboard', fn() => Inertia::render('relawan/RelawanDashboard'))->name('dashboard');
         Route::get('/bencana-map', fn() => Inertia::render('relawan/BencanaMap'))->name('bencana-map');
         Route::get('/evacuation-and-shelter-map', fn() => Inertia::render('relawan/EvacuationAndShelterMap'))->name('evacuation-map');
@@ -129,6 +134,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+
+        // Manajemen relawan
+        Route::get('/relawans', [\App\Http\Controllers\Admin\RelawanController::class, 'index'])->name('relawans.index');
+        Route::get('/relawans/{id}', [\App\Http\Controllers\Admin\RelawanController::class, 'show'])->name('relawans.show');
+        Route::post('/relawans/{id}/verify', [\App\Http\Controllers\Admin\RelawanController::class, 'verify'])->name('relawans.verify');
+        Route::post('/relawans/{id}/reject', [\App\Http\Controllers\Admin\RelawanController::class, 'reject'])->name('relawans.reject');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 

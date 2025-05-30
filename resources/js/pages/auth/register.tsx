@@ -1,8 +1,8 @@
-import { useForm, router } from '@inertiajs/react';
+import { useToast } from '@/hooks/useToast';
+import { useForm } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { ArrowLeft, HeartHandshake, LoaderCircle, Upload, UserRound } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useToast } from '@/hooks/useToast';
 
 import PageTitle from '@/components/PageTitle';
 import InputError from '@/components/input-error';
@@ -27,7 +27,7 @@ type RegisterForm = {
 
 export default function Register() {
     const [idCardFileName, setIdCardFileName] = useState<string>('');
-    const { toast } = useToast();
+    useToast();
 
     const { data, setData, post, processing, errors, reset } = useForm<Required<RegisterForm>>({
         name: '',
@@ -53,26 +53,46 @@ export default function Register() {
             password_confirmation: data.password_confirmation,
             role: data.role, // Always include role
         };
-        
+
         if (data.role === 'relawan') {
             payload.id_card = data.id_card;
             payload.organization = data.organization;
             payload.experience = data.experience;
             payload.motivation = data.motivation;
         }
-        
+
         const isRelawan = data.role === 'relawan';
-        
+
         // @ts-expect-error: Inertia Form post expects data as first argument
         post(route('register'), payload, {
             onSuccess: () => {
                 // Reset form fields
                 reset('password', 'password_confirmation');
-                
+
+                // Tampilkan notifikasi jika user adalah relawan
+                if (data.role === 'relawan') {
+                    // Show toast notification about pending verification
+                    const toast = document.getElementById('toast-container');
+                    if (toast) {
+                        toast.dispatchEvent(
+                            new CustomEvent('toast', {
+                                detail: {
+                                    type: 'info',
+                                    title: 'Registrasi Berhasil',
+                                    message: 'Akun Anda sedang dalam proses verifikasi admin. Anda akan menerima email notifikasi setelah akun diverifikasi.',
+                                },
+                            }),
+                        );
+                    }
+                    // Redirect to a verification pending page instead of logging in
+                    window.location.href = route('registration.pending');
+                    return false;
+                }
+
                 // Backend will handle the redirect to appropriate page based on role
                 return true;
             },
-            forceFormData: isRelawan
+            forceFormData: isRelawan,
         });
     };
 
@@ -124,12 +144,7 @@ export default function Register() {
             </div>
 
             <div className="flex w-full flex-col items-center justify-center px-6 pt-10 pb-10 lg:w-1/2">
-                <motion.div
-                    className="w-full max-w-md space-y-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                >
+                <motion.div className="w-full max-w-md space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
                     <div className="text-center">
                         <motion.h1
                             className="text-3xl font-bold tracking-tight text-blue-900"
@@ -155,13 +170,7 @@ export default function Register() {
                         ></motion.div>
                     </div>
 
-                    <motion.form
-                        className="flex flex-col gap-4"
-                        onSubmit={submit}
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                    >
+                    <motion.form className="flex flex-col gap-4" onSubmit={submit} variants={containerVariants} initial="hidden" animate="visible">
                         <div className="grid gap-4">
                             <motion.div className="space-y-3" variants={itemVariants}>
                                 <Label htmlFor="role" className="text-base font-medium text-gray-700">
@@ -394,7 +403,7 @@ export default function Register() {
                             <motion.div variants={itemVariants} className="flex justify-center">
                                 <Button
                                     type="submit"
-                                    className="w-full rounded-lg bg-blue-600 py-4 text-base font-semibold hover:bg-blue-700 transition-colors"
+                                    className="w-full rounded-lg bg-blue-600 py-4 text-base font-semibold transition-colors hover:bg-blue-700"
                                     tabIndex={6}
                                     disabled={processing}
                                 >
@@ -410,7 +419,7 @@ export default function Register() {
                             </div>
                         </motion.div>
 
-                        <motion.div className="py-2 text-center text-sm text-gray-600 mb-4" variants={itemVariants}>
+                        <motion.div className="mb-4 py-2 text-center text-sm text-gray-600" variants={itemVariants}>
                             Sudah punya akun?{' '}
                             <TextLink href={route('login')} className="font-medium text-blue-600 hover:text-blue-800" tabIndex={7}>
                                 Masuk
@@ -420,25 +429,20 @@ export default function Register() {
                 </motion.div>
             </div>
             <div className="hidden w-1/2 bg-blue-600 lg:flex lg:flex-col">
-                <div className="fixed right-0 top-0 bottom-0 w-1/2 overflow-hidden">
+                <div className="fixed top-0 right-0 bottom-0 w-1/2 overflow-hidden">
                     <motion.div
                         className="absolute inset-0 opacity-20"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 0.2 }}
                         transition={{ duration: 0.8 }}
                     ></motion.div>
-                    <img
-                        src="/img/image2.jpg"
-                        alt="Register Security"
-                        className="h-full w-full object-cover object-center"
-                    />
+                    <img src="/img/image2.jpg" alt="Register Security" className="h-full w-full object-cover object-center" />
                     <motion.div
-                        className="absolute z-10 inset-0 flex items-center justify-center"
+                        className="absolute inset-0 z-10 flex items-center justify-center"
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5, duration: 0.8 }}
-                    >
-                    </motion.div>
+                    ></motion.div>
                 </div>
             </div>
         </div>

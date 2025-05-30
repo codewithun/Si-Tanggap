@@ -49,6 +49,7 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
+            'status' => $isRelawan ? 'pending' : 'active'
         ];
 
         if ($isRelawan) {
@@ -79,8 +80,12 @@ class RegisteredUserController extends Controller
             ], 201);
         }
 
+        // For relawan registration, don't login immediately
+        if ($isRelawan) {
+            return redirect(route('registration.pending'));
+        }
+        
         Auth::login($user);
-
         return redirect(route('masyarakat.dashboard'));
     }
 }

@@ -49,6 +49,23 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Validasi status user untuk relawan
+        $user = Auth::user();
+        if ($user->hasRole('relawan') && $user->status !== 'active') {
+            Auth::logout();
+            
+            RateLimiter::clear($this->throttleKey());
+
+            $message = 'Akun relawan Anda masih dalam proses verifikasi admin. Silahkan tunggu atau hubungi admin.';
+            if ($user->status === 'rejected') {
+                $message = 'Maaf, pendaftaran relawan Anda ditolak oleh admin.';
+            }
+
+            throw ValidationException::withMessages([
+                'email' => $message,
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 
@@ -80,6 +97,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('email')) . '|' . $this->ip());
     }
 }

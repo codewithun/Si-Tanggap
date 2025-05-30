@@ -32,7 +32,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     });
 
     const [apiError, setApiError] = useState('');
-    const [userRole, setUserRole] = useState<string | null>(null);
+    const [, setUserRole] = useState<string | null>(null);
 
     const handleApiLogin = async () => {
         try {
@@ -154,7 +154,11 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                                     placeholder="Email"
                                     className="mt-1 rounded-lg border-gray-300 bg-white px-4 py-4 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
-                                <InputError message={errors.email} />
+                                {errors.email && (
+                                    <div className="mt-2 rounded-md bg-red-50 p-3 text-sm text-red-600">
+                                        {errors.email}
+                                    </div>
+                                )}
                             </div>
 
                             <div>

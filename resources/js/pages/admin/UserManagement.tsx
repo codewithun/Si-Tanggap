@@ -9,7 +9,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { PencilIcon, Trash2Icon, UserPlusIcon } from 'lucide-react';
+import { CheckIcon, EyeIcon, PencilIcon, Trash2Icon, UserPlusIcon, XIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '../../hooks/useToast';
 
@@ -18,7 +18,16 @@ interface User {
     name: string;
     email: string;
     role: string;
-    status: boolean;
+    status: string;
+    phone?: string;
+    profile_photo_path?: string;
+    id_card_path?: string;
+    organization?: string;
+    experience?: string;
+    motivation?: string;
+    email_verified_at?: string;
+    google_id?: string;
+    avatar?: string;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -34,7 +43,10 @@ export default function UserManagement() {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [rejectingUserId, setRejectingUserId] = useState<number | null>(null);
+    const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState<{
@@ -43,14 +55,14 @@ export default function UserManagement() {
         password: string;
         password_confirmation: string;
         role: string;
-        status: boolean;
+        status: string; // Changed from boolean to string
     }>({
         name: '',
         email: '',
         password: '',
         password_confirmation: '',
         role: 'masyarakat',
-        status: true,
+        status: 'active', // Default to active
     });
 
     const { toast } = useToast();
@@ -91,11 +103,7 @@ export default function UserManagement() {
     };
 
     const handleSelectChange = (name: string, value: string) => {
-        if (name === 'status') {
-            setFormData((prev) => ({ ...prev, [name]: value === 'active' }));
-        } else {
-            setFormData((prev) => ({ ...prev, [name]: value }));
-        }
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const resetForm = () => {
@@ -105,11 +113,60 @@ export default function UserManagement() {
             password: '',
             password_confirmation: '',
             role: 'masyarakat',
-            status: true,
+            status: 'active',
         });
         setSelectedUser(null);
     };
 
+    // Prepare to reject a volunteer
+    const prepareRejectVolunteer = (userId: number) => {
+        setRejectingUserId(userId);
+        setIsRejectDialogOpen(true);
+    };
+
+    // Function to verify a volunteer
+    const handleVerifyVolunteer = async (userId: number) => {
+        try {
+            await axios.post(`/admin/relawans/${userId}/verify`);
+            toast({
+                title: 'Berhasil',
+                description: 'Relawan berhasil diverifikasi',
+            });
+            fetchUsers();
+        } catch (error) {
+            console.error('Failed to verify volunteer:', error);
+            toast({
+                title: 'Error',
+                description: 'Gagal memverifikasi relawan',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    // Function to reject a volunteer
+    const handleRejectVolunteer = async () => {
+        if (!rejectingUserId) return;
+        
+        try {
+            await axios.post(`/admin/relawans/${rejectingUserId}/reject`);
+            toast({
+                title: 'Berhasil',
+                description: 'Pendaftaran relawan ditolak dan akun dihapus',
+            });
+            setIsRejectDialogOpen(false);
+            setRejectingUserId(null);
+            fetchUsers();
+        } catch (error) {
+            console.error('Failed to reject volunteer:', error);
+            toast({
+                title: 'Error',
+                description: 'Gagal menolak pendaftaran relawan',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    // Rest of your existing functions
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -194,19 +251,12 @@ export default function UserManagement() {
         }
 
         try {
-            // Using the correct Laravel resource route format with ID
-            console.log('Selected User Object:', selectedUser);
             const userId = selectedUser.id;
-
-            // Create the URL explicitly to avoid any issues
             const updateUrl = `/admin/users/${userId}`;
-            console.log('Updating user with ID:', userId, 'URL:', updateUrl);
-
-            // Use PATCH method which is also supported by Laravel resource controller
-            // Add the _method parameter to ensure Laravel understands this is an update
+            
             const requestData = {
                 ...updateData,
-                _method: 'PATCH', // Laravel form method spoofing
+                _method: 'PATCH', 
             };
 
             await axios.post(updateUrl, requestData);
@@ -220,7 +270,6 @@ export default function UserManagement() {
         } catch (error: unknown) {
             console.error('Failed to update user:', error);
 
-            // Show validation errors if available
             if (axios.isAxiosError(error) && error.response?.data?.errors) {
                 const validationErrors = Object.values(error.response.data.errors as Record<string, string[]>).flat();
                 toast({
@@ -247,13 +296,9 @@ export default function UserManagement() {
         if (!selectedUser) return;
 
         try {
-            // Log the user being deleted
-            console.log('Deleting user with ID:', selectedUser.id);
-
-            // Use method spoofing for DELETE, similar to how we fixed the update
             const deleteUrl = `/admin/users/${selectedUser.id}`;
             await axios.post(deleteUrl, {
-                _method: 'DELETE', // Laravel form method spoofing
+                _method: 'DELETE',
             });
 
             toast({
@@ -273,9 +318,40 @@ export default function UserManagement() {
         }
     };
 
+    const showUserDetail = (user: User) => {
+        setSelectedUser(user);
+        setIsDetailDialogOpen(true);
+    };
+
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
+
+    // Function to get status display class and text
+    const getStatusDisplay = (status: string) => {
+        switch(status) {
+            case 'active':
+                return {
+                    class: 'bg-green-100 text-green-800',
+                    text: 'Aktif'
+                };
+            case 'pending':
+                return {
+                    class: 'bg-yellow-100 text-yellow-800',
+                    text: 'Menunggu Verifikasi'
+                };
+            case 'rejected':
+                return {
+                    class: 'bg-red-100 text-red-800',
+                    text: 'Ditolak'
+                };
+            default:
+                return {
+                    class: 'bg-gray-100 text-gray-800',
+                    text: status
+                };
+        }
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -370,7 +446,7 @@ export default function UserManagement() {
                                         <div className="space-y-2">
                                             <Label htmlFor="status">Status</Label>
                                             <Select
-                                                value={formData.status ? 'active' : 'inactive'}
+                                                value={formData.status}
                                                 onValueChange={(value) => handleSelectChange('status', value)}
                                             >
                                                 <SelectTrigger id="status">
@@ -378,7 +454,8 @@ export default function UserManagement() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="active">Aktif</SelectItem>
-                                                    <SelectItem value="inactive">Tidak Aktif</SelectItem>
+                                                    <SelectItem value="pending">Menunggu Verifikasi</SelectItem>
+                                                    <SelectItem value="rejected">Ditolak</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -423,46 +500,75 @@ export default function UserManagement() {
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            users.map((user) => (
-                                                <TableRow key={user.id}>
-                                                    <TableCell className="font-medium">{user.name}</TableCell>
-                                                    <TableCell>{user.email}</TableCell>
-                                                    <TableCell>
-                                                        <span
-                                                            className={`rounded-full px-2 py-1 text-xs ${
-                                                                user.role === 'admin'
-                                                                    ? 'bg-blue-100 text-blue-800'
-                                                                    : user.role === 'relawan'
-                                                                      ? 'bg-green-100 text-green-800'
-                                                                      : 'bg-gray-100 text-gray-800'
-                                                            }`}
-                                                        >
-                                                            {user.role}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span
-                                                            className={`rounded-full px-2 py-1 text-xs ${
-                                                                user.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                            }`}
-                                                        >
-                                                            {user.status ? 'Aktif' : 'Tidak Aktif'}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        <div className="flex justify-center space-x-2">
-                                                            <Button variant="outline" size="sm" onClick={() => prepareEditUser(user)}>
-                                                                <PencilIcon className="h-4 w-4" />
-                                                                <span className="sr-only">Edit</span>
-                                                            </Button>
-                                                            <Button variant="destructive" size="sm" onClick={() => prepareDeleteUser(user)}>
-                                                                <Trash2Icon className="h-4 w-4" />
-                                                                <span className="sr-only">Delete</span>
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
+                                            users.map((user) => {
+                                                const statusDisplay = getStatusDisplay(user.status);
+                                                const isPendingRelawan = user.role === 'relawan' && user.status === 'pending';
+                                                
+                                                return (
+                                                    <TableRow key={user.id}>
+                                                        <TableCell className="font-medium">{user.name}</TableCell>
+                                                        <TableCell>{user.email}</TableCell>
+                                                        <TableCell>
+                                                            <span
+                                                                className={`rounded-full px-2 py-1 text-xs ${
+                                                                    user.role === 'admin'
+                                                                        ? 'bg-blue-100 text-blue-800'
+                                                                        : user.role === 'relawan'
+                                                                          ? 'bg-green-100 text-green-800'
+                                                                          : 'bg-gray-100 text-gray-800'
+                                                                }`}
+                                                            >
+                                                                {user.role}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <span
+                                                                className={`rounded-full px-2 py-1 text-xs ${statusDisplay.class}`}
+                                                            >
+                                                                {statusDisplay.text}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                            <div className="flex justify-center space-x-2">
+                                                                {isPendingRelawan && (
+                                                                    <>
+                                                                        <Button 
+                                                                            variant="outline" 
+                                                                            size="sm" 
+                                                                            className="bg-green-50 text-green-600 hover:bg-green-100"
+                                                                            onClick={() => handleVerifyVolunteer(user.id)}
+                                                                        >
+                                                                            <CheckIcon className="h-4 w-4" />
+                                                                            <span className="sr-only">Verifikasi</span>
+                                                                        </Button>
+                                                                        <Button 
+                                                                            variant="outline" 
+                                                                            size="sm"
+                                                                            className="bg-red-50 text-red-600 hover:bg-red-100"
+                                                                            onClick={() => prepareRejectVolunteer(user.id)}
+                                                                        >
+                                                                            <XIcon className="h-4 w-4" />
+                                                                            <span className="sr-only">Tolak</span>
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+                                                                <Button variant="outline" size="sm" onClick={() => showUserDetail(user)}>
+                                                                    <EyeIcon className="h-4 w-4" />
+                                                                    <span className="sr-only">Detail</span>
+                                                                </Button>
+                                                                <Button variant="outline" size="sm" onClick={() => prepareEditUser(user)}>
+                                                                    <PencilIcon className="h-4 w-4" />
+                                                                    <span className="sr-only">Edit</span>
+                                                                </Button>
+                                                                <Button variant="destructive" size="sm" onClick={() => prepareDeleteUser(user)}>
+                                                                    <Trash2Icon className="h-4 w-4" />
+                                                                    <span className="sr-only">Delete</span>
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
                                         )}
                                     </TableBody>
                                 </Table>
@@ -546,7 +652,7 @@ export default function UserManagement() {
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-status">Status</Label>
                                     <Select
-                                        value={formData.status ? 'active' : 'inactive'}
+                                        value={formData.status}
                                         onValueChange={(value) => handleSelectChange('status', value)}
                                     >
                                         <SelectTrigger id="edit-status">
@@ -554,7 +660,8 @@ export default function UserManagement() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="active">Aktif</SelectItem>
-                                            <SelectItem value="inactive">Tidak Aktif</SelectItem>
+                                            <SelectItem value="pending">Menunggu Verifikasi</SelectItem>
+                                            <SelectItem value="rejected">Ditolak</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -588,6 +695,179 @@ export default function UserManagement() {
                             </Button>
                             <Button variant="destructive" onClick={handleDeleteUser}>
                                 Hapus
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Reject Volunteer Dialog */}
+                <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Tolak Pendaftaran Relawan</DialogTitle>
+                            <DialogDescription>
+                                Apakah Anda yakin ingin menolak pendaftaran relawan ini? 
+                                <strong className="block mt-2 text-red-600">
+                                    Akun pengguna akan dihapus dan email dapat digunakan kembali untuk pendaftaran.
+                                </strong>
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
+                                Batal
+                            </Button>
+                            <Button variant="destructive" onClick={handleRejectVolunteer}>
+                                Tolak & Hapus Akun
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* User Detail Dialog - Updated to display all available data */}
+                <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+                    <DialogContent className="max-w-md sm:max-w-lg">
+                        <DialogHeader>
+                            <DialogTitle>Detail Pengguna</DialogTitle>
+                            <DialogDescription>
+                                Informasi lengkap tentang pengguna
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 max-h-[70vh] overflow-y-auto">
+                            {selectedUser && (
+                                <div className="space-y-4">
+                                    {/* Basic Information */}
+                                    <h4 className="font-semibold text-sm text-gray-500">Informasi Dasar</h4>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Nama</div>
+                                        <div className="col-span-2">{selectedUser.name || '-'}</div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Email</div>
+                                        <div className="col-span-2">{selectedUser.email || '-'}</div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">No. Telepon</div>
+                                        <div className="col-span-2">{selectedUser.phone || '-'}</div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Role</div>
+                                        <div className="col-span-2">
+                                            <span className={`rounded-full px-2 py-1 text-xs ${
+                                                selectedUser.role === 'admin'
+                                                    ? 'bg-blue-100 text-blue-800'
+                                                    : selectedUser.role === 'relawan'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {selectedUser.role || '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Status</div>
+                                        <div className="col-span-2">
+                                            <span className={`rounded-full px-2 py-1 text-xs ${
+                                                selectedUser.status ? getStatusDisplay(selectedUser.status).class : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {selectedUser.status ? getStatusDisplay(selectedUser.status).text : '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Relawan Information - Show always but mark as N/A if not available */}
+                                    <hr className="my-2" />
+                                    <h4 className="font-semibold text-sm text-gray-500">Informasi Relawan</h4>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Organisasi</div>
+                                        <div className="col-span-2">{selectedUser.organization || '-'}</div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Pengalaman</div>
+                                        <div className="col-span-2">{selectedUser.experience || '-'}</div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Motivasi</div>
+                                        <div className="col-span-2">{selectedUser.motivation || '-'}</div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">KTP</div>
+                                        <div className="col-span-2">
+                                            {selectedUser.id_card_path ? (
+                                                <a 
+                                                    href={selectedUser.id_card_path} 
+                                                    target="_blank"
+                                                    className="text-blue-600 hover:underline"
+                                                    rel="noreferrer"
+                                                >
+                                                    Lihat KTP
+                                                </a>
+                                            ) : '-'}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Additional Information */}
+                                    <hr className="my-2" />
+                                    <h4 className="font-semibold text-sm text-gray-500">Informasi Tambahan</h4>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Foto Profil</div>
+                                        <div className="col-span-2">
+                                            {selectedUser.profile_photo_path ? (
+                                                <a 
+                                                    href={selectedUser.profile_photo_path} 
+                                                    target="_blank"
+                                                    className="text-blue-600 hover:underline"
+                                                    rel="noreferrer"
+                                                >
+                                                    Lihat Foto
+                                                </a>
+                                            ) : selectedUser.avatar ? (
+                                                <a 
+                                                    href={selectedUser.avatar} 
+                                                    target="_blank"
+                                                    className="text-blue-600 hover:underline"
+                                                    rel="noreferrer"
+                                                >
+                                                    Lihat Foto
+                                                </a>
+                                            ) : '-'}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Verifikasi Email</div>
+                                        <div className="col-span-2">
+                                            {selectedUser.email_verified_at ? 
+                                                <span className="text-green-600">Terverifikasi</span> : 
+                                                <span className="text-yellow-600">Belum Diverifikasi</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Login Google</div>
+                                        <div className="col-span-2">
+                                            {selectedUser.google_id ? 
+                                                <span className="text-green-600">Terhubung</span> : 
+                                                <span className="text-gray-600">Tidak Terhubung</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" onClick={() => setIsDetailDialogOpen(false)}>
+                                Tutup
                             </Button>
                         </DialogFooter>
                     </DialogContent>

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Validation\ValidationException;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -27,39 +28,49 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request)
+    public function store(LoginRequest $request): \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
-        $request->authenticate();
-        $request->session()->regenerate();
+        try {
+            $request->authenticate();
+            $request->session()->regenerate();
 
-        $user = $request->user();
-
-        if ($request->wantsJson()) {
-            $token = $user->createToken('api-token');
-            return response()->json([
-                'user' => $user,
-                'token' => $token->plainTextToken,
-                'message' => 'Login successful'
-            ]);
-        }
-
-        // Validasi role opsional jika menggunakan Spatie
-        if (method_exists($user, 'hasAnyRole')) {
-            $allowedRoles = ['admin', 'relawan', 'masyarakat'];
-            if (!$user->hasAnyRole($allowedRoles)) {
-                Auth::logout();
-                return redirect('/')
-                    ->with('error', 'Role tidak diizinkan.');
+            /** @var \App\Models\User */
+            $user = Auth::user();
+            
+            // For API requests
+            if ($request->wantsJson()) {
+                // Double-check status for API requests too
+                if ($user->hasRole('relawan') && $user->status !== 'active') {
+                    Auth::logout();
+                    return response()->json([
+                        'message' => 'Akun relawan belum diverifikasi oleh admin'
+                    ], 403);
+                }
+                
+                $token = $user->createToken('auth-token');
+                return response()->json([
+                    'token' => $token->plainTextToken,
+                    'user' => $user,
+                    'message' => 'Login berhasil'
+                ]);
             }
-        }
-
-        if ($user->isAdmin()) {
-            return redirect()->intended(route('admin.dashboard'));
-        } elseif ($user->isRelawan()) {
-            return redirect()->intended(route('relawan.dashboard'));
-        } else {
-            // Default to masyarakat dashboard
-            return redirect()->intended(route('masyarakat.dashboard'));
+            
+            // Check where to redirect based on role
+            if ($user->hasRole('admin')) {
+                return redirect()->intended(route('admin.dashboard'));
+            } elseif ($user->hasRole('relawan')) {
+                return redirect()->intended(route('relawan.dashboard'));
+            } else {
+                return redirect()->intended(route('masyarakat.dashboard'));
+            }
+        } catch (ValidationException $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage()
+                ], 422);
+            }
+            
+            throw $e;
         }
     }
 

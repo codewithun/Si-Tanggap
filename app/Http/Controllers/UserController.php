@@ -214,24 +214,19 @@ class UserController extends Controller
      */
     public function getUsers()
     {
-        $this->authorize('viewAny', User::class);
-        
-        $users = User::select('id', 'name', 'email', 'email_verified_at', 'created_at')
-            ->get()
-            ->map(function ($user) {
-                $role = $user->getRoleNames()->first() ?? 'masyarakat';
-                
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'email_verified_at' => $user->email_verified_at ? $user->email_verified_at->format('d M Y H:i') : null,
-                    'role' => $role,
-                    'status' => true, // Atau tambahkan kolom status di tabel users
-                    'created_at' => $user->created_at->format('d M Y'),
-                ];
-            });
-        
-        return response()->json($users);
-    }
+        $users = User::select('id', 'name', 'email', 'status', 'created_at')
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'role' => $user->getRoleNames()->first() ?? 'masyarakat',
+                        'status' => $user->status,
+                        'created_at' => $user->created_at
+                    ];
+                });
+
+    return response()->json($users);
+}
 }
