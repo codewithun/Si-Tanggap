@@ -11,6 +11,7 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated = false, userRole = nul
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [activeSection, setActiveSection] = useState('hero');
+    const [currentPath, setCurrentPath] = useState('');
 
     useEffect(() => {
         const handleScroll = () => {
@@ -36,6 +37,11 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated = false, userRole = nul
             window.removeEventListener('scroll', handleScroll);
         };
     }, [isLandingPage]);
+
+    useEffect(() => {
+        // Set current path saat komponen dimount
+        setCurrentPath(window.location.pathname);
+    }, []);
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
@@ -70,13 +76,14 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated = false, userRole = nul
         }
     };
 
+    // Perbaiki navigasi navbar
     const navItems = [
-        { name: 'Beranda', href: '/', sectionId: 'hero' },
-        { name: 'Fitur', href: '/features', sectionId: 'features' },
-        { name: 'Pengguna', href: '/users', sectionId: 'users' },
-        { name: 'Statistik', href: '/statistics', sectionId: 'statistics' },
-        { name: 'Berita', href: '/news', sectionId: 'news' },
-        { name: 'Tentang', href: '/about', sectionId: 'about' },
+        { name: 'Beranda', path: '/', sectionId: 'hero' },
+        { name: 'Fitur', path: '/features', sectionId: 'features' },
+        { name: 'Pengguna', path: '/users', sectionId: 'users' },
+        { name: 'Statistik', path: '/statistics', sectionId: 'statistics' },
+        { name: 'Berita', path: '/berita', sectionId: 'news' },
+        { name: 'Tentang', path: '/about', sectionId: 'about' },
     ];
 
     return (
@@ -97,36 +104,61 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated = false, userRole = nul
                     {/* Desktop Navigation */}
                     <div className="hidden md:block">
                         <div className="ml-10 flex items-baseline space-x-4">
-                            {navItems.map((item) => (
-                                <a
-                                    key={item.name}
-                                    href={isLandingPage ? `#${item.sectionId}` : item.href}
-                                    onClick={(e) => isLandingPage && scrollToSection(item.sectionId, e)}
-                                    className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                                        isLandingPage && activeSection === item.sectionId
-                                            ? 'bg-blue-50 font-semibold text-blue-600'
-                                            : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-                                    }`}
-                                >
-                                    {item.name}
-                                </a>
-                            ))}
+                            <ul className="hidden items-center gap-6 md:flex" style={{ listStyleType: 'none' }}>
+                                {navItems.map((item) => (
+                                    <li key={item.name}>
+                                        <Link
+                                            href={
+                                                isLandingPage
+                                                    ? `#${item.sectionId}`
+                                                    : item.name === 'Berita'
+                                                      ? '/berita' // Arahkan ke halaman berita
+                                                      : `/?section=${item.sectionId}`
+                                            }
+                                            className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                                                // Perbaikan kondisi untuk highlight active
+                                                (isLandingPage && activeSection === item.sectionId) ||
+                                                (!isLandingPage && item.name === 'Berita' && currentPath === '/berita')
+                                                    ? 'bg-blue-50 font-semibold text-blue-600'
+                                                    : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                                            }`}
+                                            onClick={(e) => {
+                                                if (isLandingPage) {
+                                                    e.preventDefault();
+                                                    scrollToSection(item.sectionId, e);
+                                                }
+                                            }}
+                                        >
+                                            {item.name}
+                                        </Link>
+                                    </li>
+                                ))}
 
-                            {isAuthenticated ? (
-                                <Link
-                                    href={getDashboardLink()}
-                                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                                >
-                                    Dashboard
-                                </Link>
-                            ) : (
-                                <Link
-                                    href="/login"
-                                    className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                                >
-                                    Masuk
-                                </Link>
-                            )}
+                                {isAuthenticated ? (
+                                    <Link
+                                        href={getDashboardLink()}
+                                        className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                                    >
+                                        Dashboard
+                                    </Link>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <Link
+                                            href="/login"
+                                            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                                        >
+                                            Masuk
+                                        </Link>
+                                        <Link
+                                            href="/auth/google"
+                                            className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                                        >
+                                            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" className="h-4 w-4" />
+                                            <span>Google</span>
+                                        </Link>
+                                    </div>
+                                )}
+                            </ul>
                         </div>
                     </div>
 
@@ -174,15 +206,33 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated = false, userRole = nul
                 >
                     <div className="space-y-1 px-2 pt-2 pb-3">
                         {navItems.map((item) => (
+                            // Untuk menu mobile
                             <a
                                 key={item.name}
-                                href={isLandingPage ? `#${item.sectionId}` : item.href}
-                                onClick={(e) => isLandingPage && scrollToSection(item.sectionId, e)}
+                                href={
+                                    isLandingPage
+                                        ? `#${item.sectionId}`
+                                        : item.name === 'Berita'
+                                          ? '/berita'
+                                          : item.sectionId === 'hero'
+                                            ? '/'
+                                            : `/?section=${item.sectionId}`
+                                }
                                 className={`block rounded-md px-3 py-2 text-base font-medium ${
-                                    isLandingPage && activeSection === item.sectionId
+                                    (isLandingPage && activeSection === item.sectionId) ||
+                                    (!isLandingPage && item.name === 'Berita' && currentPath === '/berita')
                                         ? 'bg-blue-50 font-semibold text-blue-600'
                                         : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
                                 }`}
+                                onClick={(e) => {
+                                    if (isLandingPage) {
+                                        scrollToSection(item.sectionId, e);
+                                    } else if (item.sectionId !== 'hero' && item.name !== 'Berita') {
+                                        e.preventDefault();
+                                        window.location.href = `/?section=${item.sectionId}`;
+                                    }
+                                    setIsMenuOpen(false); // Tutup menu setelah klik
+                                }}
                             >
                                 {item.name}
                             </a>

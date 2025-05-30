@@ -94,68 +94,79 @@ interface Posko {
 
 // Replace the single disasterIcon with a function to get appropriate icon by type
 const getDisasterIcon = (type: string) => {
-    const cacheBuster = `?v=${new Date().getTime()}`;
+    // Hapus cache buster untuk menghindari masalah loading
+    const iconSize: [number, number] = [32, 32];
+    const iconAnchor: [number, number] = [16, 32];
+    const popupAnchor: [number, number] = [0, -32];
 
     switch (type.toLowerCase()) {
         case 'banjir':
             return L.icon({
-                iconUrl: `/icons/icon-banjir.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: `/icons/icon-banjir.png`,
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'kebakaran':
             return L.icon({
-                iconUrl: `/icons/icon-kebakaran.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: `/icons/icon-kebakaran.png`,
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'gempa':
             return L.icon({
-                iconUrl: `/icons/gempa.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: `/icons/icon-gempa.png`, // Perbaiki nama file, sebelumnya gempa.png
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'longsor':
             return L.icon({
-                iconUrl: `/icons/icon-tanahlongsor.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: `/icons/icon-tanahlongsor.png`,
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'angin-topan':
         case 'angin_topan':
             return L.icon({
-                iconUrl: `/icons/default-marker.svg${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: `/icons/icon-angin-topan.svg`, // Use correct icon name
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'tsunami':
             return L.icon({
-                iconUrl: `/icons/icon-tsunami.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: `/icons/icon-tsunami.png`,
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'kekeringan':
             return L.icon({
-                iconUrl: `/icons/icon-kekeringan.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: `/icons/icon-kekeringan.png`,
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         default:
             return L.icon({
-                iconUrl: `/icons/disaster.svg${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: `/icons/disaster-marker.svg`,
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
     }
 };
+
+// Define shelter icon (posko)
+const shelterIcon = L.icon({
+    iconUrl: `/icons/posko.png`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+});
 
 export default function BencanaMap() {
     const [bencanaPoints, setBencanaPoints] = useState<Bencana[]>([]);
@@ -490,14 +501,6 @@ export default function BencanaMap() {
                 return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
         }
     };
-
-    // Define shelter icon
-    const shelterIcon = L.icon({
-        iconUrl: `/icons/posko.png?v=${new Date().getTime()}`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-    });
 
     // Enhanced marker icon selector with different appearances for shelters by type
     const getMarkerIcon = (type: string, jenis_bencana?: string) => {

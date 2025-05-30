@@ -142,7 +142,7 @@ const getDisasterIcon = (type: string) => {
             });
         case 'gempa':
             return L.icon({
-                iconUrl: `/icons/gempa.png${cacheBuster}`,
+                iconUrl: `/icons/icon-gempa.png${cacheBuster}`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -32],
@@ -157,7 +157,7 @@ const getDisasterIcon = (type: string) => {
         case 'angin-topan':
         case 'angin_topan':
             return L.icon({
-                iconUrl: `/icons/default-marker.svg${cacheBuster}`,
+                iconUrl: `/icons/icon-angin-topan.svg${cacheBuster}`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -32],
@@ -178,7 +178,7 @@ const getDisasterIcon = (type: string) => {
             });
         default:
             return L.icon({
-                iconUrl: `/icons/disaster.svg${cacheBuster}`,
+                iconUrl: `/icons/disaster-marker.svg${cacheBuster}`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -32],

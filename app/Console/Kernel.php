@@ -15,7 +15,7 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         \App\Console\Commands\VerifyEmailSystem::class,
     ];
-    
+
     /**
      * Define the application's command schedule.
      */
@@ -23,6 +23,11 @@ class Kernel extends ConsoleKernel
     {
         // Jalankan perintah scrape:berita-bnpb setiap 30 menit
         $schedule->command('scrape:berita-bnpb')->everyThirtyMinutes();
+
+        // Jalankan scraping setiap 3 jam dengan 2 halaman dan clear cache
+        $schedule->command('scrape:news all --pages=2 --clear-cache')
+                ->everyThreeHours()
+                ->appendOutputTo(storage_path('logs/scraper.log'));
     }
 
     /**
@@ -30,7 +35,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

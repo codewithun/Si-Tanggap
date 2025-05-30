@@ -10,70 +10,73 @@ import { Head, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 
 // Instead of a single disaster icon, get the appropriate icon based on disaster type
 const getDisasterIcon = (type: string) => {
-    const cacheBuster = `?v=${new Date().getTime()}`;
+    // Hapus cache buster untuk menghindari masalah loading dan konsistensi
+    const iconSize: [number, number] = [32, 32];
+    const iconAnchor: [number, number] = [16, 32];
+    const popupAnchor: [number, number] = [0, -32];
 
     switch (type.toLowerCase()) {
         case 'banjir':
             return L.icon({
-                iconUrl: `/icons/icon-banjir.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: '/icons/icon-banjir.png',
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'kebakaran':
             return L.icon({
-                iconUrl: `/icons/icon-kebakaran.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: '/icons/icon-kebakaran.png',
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'gempa':
             return L.icon({
-                iconUrl: `/icons/gempa.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: '/icons/icon-gempa.png',
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'longsor':
             return L.icon({
-                iconUrl: `/icons/icon-tanahlongsor.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: '/icons/icon-tanahlongsor.png',
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'angin_topan':
             return L.icon({
-                iconUrl: `/icons/default-marker.svg${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: '/icons/icon-angin-topan.svg', // Menggunakan icon-angin.png yang lebih konsisten
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'tsunami':
             return L.icon({
-                iconUrl: `/icons/icon-tsunami.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: '/icons/icon-tsunami.png',
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         case 'kekeringan':
             return L.icon({
-                iconUrl: `/icons/icon-kekeringan.png${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: '/icons/icon-kekeringan.png',
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
         default:
             return L.icon({
-                iconUrl: `/icons/disaster.svg${cacheBuster}`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32],
+                iconUrl: '/icons/disaster.svg',
+                iconSize,
+                iconAnchor,
+                popupAnchor,
             });
     }
 };
@@ -283,6 +286,37 @@ export default function BuatLaporan() {
             setIsSubmitting(false);
         }
     };
+
+    useEffect(() => {
+        // Fungsi untuk memeriksa ketersediaan icon
+        const checkIconAvailability = (iconUrl: string) => {
+            return new Promise<boolean>((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(true);
+                img.onerror = () => resolve(false);
+                img.src = iconUrl;
+            });
+        };
+
+        const iconPaths = [
+            '/icons/icon-banjir.png',
+            '/icons/icon-kebakaran.png',
+            '/icons/icon-gempa.png',
+            '/icons/icon-tanahlongsor.png',
+            '/icons/icon-angin.png',
+            '/icons/icon-tsunami.png',
+            '/icons/icon-kekeringan.png',
+            '/icons/disaster.svg',
+            '/icons/posko.png',
+        ];
+
+        Promise.all(iconPaths.map((path) => checkIconAvailability(path))).then((results) => {
+            const missingIcons = iconPaths.filter((_, index) => !results[index]);
+            if (missingIcons.length > 0) {
+                console.warn('Warning: Missing icon files:', missingIcons);
+            }
+        });
+    }, []);
 
     if (!auth.user) {
         return (

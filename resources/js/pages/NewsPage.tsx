@@ -18,7 +18,9 @@ interface BnpbNews {
     description: string;
     link: string;
     image: string;
-    date?: string; // Add date as optional, since you fallback to new Date().toISOString()
+    date?: string;
+    published_date?: string;
+    source?: string;
 }
 
 interface NewsItem {
@@ -31,6 +33,7 @@ interface NewsItem {
     date: string;
     slug: string;
     link?: string; // Add the link property as optional
+    source?: string; // Add the source property as optional
 }
 
 export default function NewsPage() {
@@ -77,25 +80,53 @@ export default function NewsPage() {
         try {
             setLoading(true);
 
-            // Fetch news from the BNPB API endpoint with pages parameter
-            const response = await axios.get('/berita-bnpb?pages=10');
+            // Use the merged news endpoint which combines BNPB and Detik news
+            const response = await axios.get('/berita-merged');
 
             // Check if we have berita data and it's an array
-            if (response.data.berita && Array.isArray(response.data.berita)) {
+            if (response.data && response.data.berita && Array.isArray(response.data.berita)) {
                 console.log(`Fetched ${response.data.berita.length} news items from API`);
 
                 // Transform the data to match our NewsItem format
-                const transformedNews = response.data.berita.map((item: BnpbNews, index: number) => ({
-                    id: index + 1,
-                    title: item.title,
-                    content: item.description,
-                    image: item.image || 'https://via.placeholder.com/800x400?text=No+Image',
-                    category: determineCategory(item.title),
-                    author: 'BNPB',
-                    date: item.date || new Date().toISOString(),
-                    slug: generateSlug(item.title),
-                    link: item.link || '',
-                }));
+                const transformedNews = response.data.berita.map((item: BnpbNews, index: number) => {
+                    // Check if image URL is valid (has proper http/https prefix)
+                    let imageUrl = item.image || '';
+
+                    // Handle different source formats correctly
+                    if (imageUrl && !imageUrl.startsWith('http')) {
+                        // If image URL doesn't start with http/https, assume it's relative and convert to absolute
+                        if (item.source === 'bnpb') {
+                            imageUrl = `https://bnpb.go.id${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                        } else if (item.source === 'detik-bencana') {
+                            // For Detik images that often start with //
+                            if (imageUrl.startsWith('//')) {
+                                imageUrl = `https:${imageUrl}`;
+                            } else {
+                                imageUrl = `https://akcdn.detik.net.id${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                            }
+                        } else {
+                            // Default prefix for other sources
+                            imageUrl = `https:${imageUrl.startsWith('//') ? '' : '//'}${imageUrl}`;
+                        }
+                    }
+
+                    // If still no valid image, use fallback
+                    if (!imageUrl) {
+                        imageUrl = 'https://via.placeholder.com/800x400?text=Berita+Bencana';
+                    }
+
+                    return {
+                        id: index + 1,
+                        title: item.title,
+                        content: item.description,
+                        image: imageUrl,
+                        category: determineCategory(item.title),
+                        author: item.source === 'detik-bencana' ? 'Detik.com' : 'BNPB',
+                        date: item.published_date || item.date || new Date().toISOString(),
+                        slug: generateSlug(item.title),
+                        link: item.link || '',
+                    };
+                });
 
                 setNews(transformedNews);
                 setFilteredNews(transformedNews);
@@ -117,7 +148,7 @@ export default function NewsPage() {
             console.error('Error fetching news:', error);
             toast({
                 title: 'Error',
-                description: 'Gagal memuat data berita dari BNPB.',
+                description: 'Gagal memuat data berita.',
                 variant: 'destructive',
             });
             setLoading(false);
@@ -375,7 +406,7 @@ export default function NewsPage() {
             <Head title="Berita & Informasi Bencana - GeoSiaga" />
 
             <div className="flex min-h-screen flex-col">
-                <Navbar isAuthenticated={isAuthenticated} userRole={userRole} />
+                <Navbar isAuthenticated={isAuthenticated} userRole={userRole} isLandingPage={false} />
 
                 <main className="flex-1 bg-gray-50">
                     {/* Hero Section with Animation */}
@@ -436,12 +467,12 @@ export default function NewsPage() {
 
                                 <motion.div className="flex flex-col justify-center gap-4 sm:flex-row" variants={fadeInUp}>
                                     <motion.a
-                                        href="#berita-terbaru"
+                                        href="/?section=news" // Ubah ke landing page section news
                                         className="rounded-lg bg-white px-6 py-3 font-medium text-blue-700 shadow-lg transition-all hover:shadow-xl"
                                         whileHover={{ scale: 1.03 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
-                                        Lihat Berita Terbaru
+                                        Lihat Semua Berita
                                     </motion.a>
 
                                     <motion.a
@@ -516,7 +547,7 @@ export default function NewsPage() {
                     </section>
 
                     {/* News Grid Section with Swipe Support */}
-                    <section className="py-12">
+                    <section className="py-12" id="news-list">
                         <div className="container mx-auto px-4">
                             {loading ? (
                                 // Loading animation
@@ -889,7 +920,9 @@ export default function NewsPage() {
                                                     rel="noopener noreferrer"
                                                     className="inline-flex items-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
                                                 >
-                                                    Baca artikel lengkap di situs BNPB
+                                                    {selectedNews.source === 'detik-bencana' || selectedNews.author === 'Detik.com'
+                                                        ? 'Baca artikel lengkap di Detik.com'
+                                                        : 'Baca artikel lengkap di situs BNPB'}
                                                 </a>
                                             </motion.div>
                                         )}

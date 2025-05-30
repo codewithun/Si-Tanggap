@@ -1,17 +1,18 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Link } from '@inertiajs/react';
-import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CalendarIcon, ChevronLeft } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
-// Interface for raw data from BNPB API
-interface BnpbNewsItem {
+// Interface for raw data from news APIs
+interface RawNewsItem {
     title: string;
     description: string;
     link: string;
     image: string;
+    date?: string;
+    source?: string;
 }
 
 // Interface for transformed news items used in component
@@ -24,6 +25,7 @@ interface NewsItem {
     author: string;
     slug: string;
     link: string;
+    source: string;
 }
 
 // Helper function to generate a slug from a title
@@ -34,8 +36,6 @@ const generateSlug = (title: string): string => {
         .replace(/\s+/g, '-')
         .substring(0, 50);
 };
-
-// Helper function to determine category based on title keywords
 
 const NewsSection: React.FC = () => {
     const [news, setNews] = useState<NewsItem[]>([]);
@@ -50,50 +50,95 @@ const NewsSection: React.FC = () => {
             try {
                 setLoading(true);
 
-                // Use the BNPB news endpoint
-                const response = await axios.get('/berita-bnpb');
+                // Add timestamp to URL to prevent caching
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/berita-merged?_=${timestamp}`, {
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        Pragma: 'no-cache',
+                        Expires: '0',
+                    },
+                });
 
-                if (response.data && response.data.berita && response.data.berita.length > 0) {
-                    // Log raw data for debugging image URLs
-                    console.log('Raw news data first item:', response.data.berita[0]);
+                // Check if response is OK
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-                    // Transform BNPB news format to our NewsItem format
-                    const transformedNews = response.data.berita.slice(0, 3).map((item: BnpbNewsItem, index: number) => {
+                const data = await response.json();
+                console.log('Raw API response:', data);
+
+                // More detailed logging to see exactly what we're getting
+                if (data && data.berita) {
+                    console.log('Number of news items received:', data.berita.length);
+                    console.log('First news item:', data.berita[0]);
+                } else {
+                    console.error('Missing berita array in response:', data);
+                }
+
+                if (data && data.berita && data.berita.length > 0) {
+                    // Transform news format to our NewsItem format
+                    const transformedNews = data.berita.slice(0, 3).map((item: RawNewsItem, index: number) => {
+                        // Log each item during processing
+                        console.log(`Processing item ${index}:`, item.title);
+
                         // Check if image URL is valid (has proper http/https prefix)
                         let imageUrl = item.image || '';
+
+                        // For debugging image URLs
+                        console.log(`Original image URL for ${item.title}:`, imageUrl);
+
+                        // Handle different source formats correctly
                         if (imageUrl && !imageUrl.startsWith('http')) {
                             // If image URL doesn't start with http/https, assume it's relative and convert to absolute
-                            imageUrl = `https://bnpb.go.id${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                            if (item.source === 'bnpb') {
+                                imageUrl = `https://bnpb.go.id${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                            } else if (item.source === 'detik-bencana' || item.source === 'detik') {
+                                // For Detik images that often start with //
+                                if (imageUrl.startsWith('//')) {
+                                    imageUrl = `https:${imageUrl}`;
+                                } else {
+                                    imageUrl = `https://akcdn.detik.net.id${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                                }
+                            } else {
+                                // Default prefix for other sources
+                                imageUrl = `https:${imageUrl.startsWith('//') ? '' : '//'}${imageUrl}`;
+                            }
                         }
+
+                        console.log(`Final processed image URL:`, imageUrl);
 
                         // If still no valid image, use fallback
                         if (!imageUrl) {
-                            imageUrl = 'https://via.placeholder.com/300x200?text=BNPB+News';
+                            imageUrl = 'https://via.placeholder.com/300x200?text=Berita+Bencana';
+                        }
+
+                        // Determine the author based on source
+                        const author = item.source === 'detik-bencana' || item.source === 'detik' ? 'Detik.com' : 'BNPB';
+
+                        // Handle date formats more flexibly
+                        let publishDate = new Date().toISOString();
+                        if (item.date) {
+                            publishDate = item.date;
                         }
 
                         return {
                             id: index + 1,
                             title: item.title,
-                            excerpt: item.description.length > 140 ? `${item.description.substring(0, 140)}...` : item.description,
+                            excerpt: item.description?.length > 140 ? `${item.description.substring(0, 140)}...` : item.description || '',
                             image_url: imageUrl,
-                            published_at: new Date().toISOString(), // Using current date since BNPB data doesn't have dates
-                            author: 'BNPB',
+                            published_at: publishDate,
+                            author: author,
                             slug: generateSlug(item.title),
-                            link: item.link,
+                            link: item.link || '#',
+                            source: item.source || 'bnpb',
                         };
                     });
 
-                    console.log(
-                        'Transformed news with image URLs:',
-                        transformedNews.map((item: NewsItem) => ({
-                            title: item.title.substring(0, 30),
-                            image_url: item.image_url,
-                        })),
-                    );
+                    console.log('Transformed news items:', transformedNews);
 
-                    // First set error to null, then set the news data after a small delay
+                    // First set error to null, then set the news data
                     setError(null);
-                    // Set news immediately without delay for faster UI update
                     setNews(transformedNews);
                 } else {
                     throw new Error('No news data available');
@@ -101,40 +146,7 @@ const NewsSection: React.FC = () => {
             } catch (err) {
                 console.error('Failed to fetch news:', err);
                 setError('Gagal memuat berita terbaru');
-
-                // Fallback data for development/preview
-                setNews([
-                    {
-                        id: 1,
-                        title: 'BMKG: Peringatan Dini Potensi Banjir di Wilayah Jakarta',
-                        excerpt: 'Badan Meteorologi Klimatologi dan Geofisika (BMKG) mengeluarkan peringatan dini terkait potensi banjir...',
-                        image_url: 'https://source.unsplash.com/random/300x200?weather',
-                        published_at: '2023-06-15T09:30:00Z',
-                        author: 'Tim Redaksi',
-                        slug: 'bmkg-peringatan-dini-banjir-jakarta',
-                        link: 'https://bnpb.go.id/berita/bmkg-peringatan-dini-banjir-jakarta',
-                    },
-                    {
-                        id: 2,
-                        title: 'Latihan Evakuasi Bencana di 5 Provinsi Rawan Gempa',
-                        excerpt: 'BNPB dan Pemerintah Daerah menggelar simulasi evakuasi bencana gempa bumi di lima provinsi...',
-                        image_url: 'https://source.unsplash.com/random/300x200?earthquake',
-                        published_at: '2023-06-12T14:45:00Z',
-                        author: 'Ardiansyah',
-                        slug: 'latihan-evakuasi-bencana-5-provinsi',
-                        link: 'https://bnpb.go.id/berita/latihan-evakuasi-bencana-5-provinsi',
-                    },
-                    {
-                        id: 3,
-                        title: 'Pembaruan Sistem Peringatan Dini Tsunami Pantai Selatan',
-                        excerpt: 'Sistem peringatan dini tsunami di wilayah pantai selatan Jawa kini telah diperbarui dengan teknologi...',
-                        image_url: 'https://source.unsplash.com/random/300x200?tsunami',
-                        published_at: '2023-06-10T08:15:00Z',
-                        author: 'Bambang Suryo',
-                        slug: 'pembaruan-sistem-peringatan-tsunami',
-                        link: 'https://bnpb.go.id/berita/pembaruan-sistem-peringatan-tsunami',
-                    },
-                ]);
+                setNews([]);
             } finally {
                 setLoading(false);
             }
@@ -142,6 +154,11 @@ const NewsSection: React.FC = () => {
 
         fetchNews();
     }, []);
+
+    // Add this useEffect to log detailed news data whenever it changes
+    useEffect(() => {
+        console.log('Detailed news data:', news);
+    }, [news]);
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('id-ID', {
@@ -157,6 +174,8 @@ const NewsSection: React.FC = () => {
         setIsModalOpen(true);
     };
 
+    // (Removed unused getSourceName function)
+
     return (
         <section className="bg-white py-20">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -167,7 +186,7 @@ const NewsSection: React.FC = () => {
                     viewport={{ once: true }}
                     transition={{ duration: 0.5 }}
                 >
-                    <h2 className="text-4xl font-bold tracking-tight text-gray-900">Berita BNPB Terbaru</h2>
+                    <h2 className="text-4xl font-bold tracking-tight text-gray-900">Berita Bencana Terbaru</h2>
                     <motion.div
                         className="mx-auto mt-2 h-1 w-24 rounded-full bg-blue-600"
                         initial={{ width: 0 }}
@@ -175,7 +194,7 @@ const NewsSection: React.FC = () => {
                         viewport={{ once: true }}
                         transition={{ delay: 0.2, duration: 0.6 }}
                     ></motion.div>
-                    <p className="mt-4 text-lg text-gray-600">Informasi terkini dari Badan Nasional Penanggulangan Bencana</p>
+                    <p className="mt-4 text-lg text-gray-600">Informasi terkini dari BNPB dan berbagai sumber berita</p>
                 </motion.div>
 
                 {loading && (
@@ -404,7 +423,9 @@ const NewsSection: React.FC = () => {
                                                         rel="noopener noreferrer"
                                                         className="inline-flex items-center rounded-md bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
                                                     >
-                                                        Baca artikel lengkap di situs BNPB
+                                                        {selectedNews.source === 'detik-bencana' || selectedNews.author === 'Detik.com'
+                                                            ? 'Baca artikel lengkap di Detik.com'
+                                                            : 'Baca artikel lengkap di situs BNPB'}
                                                     </a>
                                                 </p>
                                             )}

@@ -5,7 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import axios from '@/lib/axios';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { icon } from 'leaflet';
+import L, { icon, Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useCallback, useEffect, useState } from 'react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
@@ -44,6 +44,16 @@ interface Posko {
     longitude: number;
 }
 
+interface Disaster {
+    id: number;
+    nama: string;
+    deskripsi: string;
+    jenis_bencana: string;
+    status: string;
+    latitude: number;
+    longitude: number;
+}
+
 // Add type definition for coordinate objects with various possible structures
 interface CoordinatePoint {
     lat?: number;
@@ -61,12 +71,116 @@ const shelterIcon = icon({
     popupAnchor: [0, -32],
 });
 
+// Replace your disasterIcons definition with this:
+const cacheBuster = new Date().getTime();
+// Map icon keys to match exactly the disaster types from the database
+const disasterIcons = {
+    gempa: icon({
+        iconUrl: `/icons/icon-gempa.png?v=${cacheBuster}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    }),
+    'gempa bumi': icon({
+        iconUrl: `/icons/icon-gempa.png?v=${cacheBuster}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    }),
+    banjir: icon({
+        iconUrl: `/icons/icon-banjir.png?v=${cacheBuster}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    }),
+    'tanah longsor': icon({
+        iconUrl: `/icons/icon-tanahlongsor.png?v=${cacheBuster}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    }),
+    tsunami: icon({
+        iconUrl: `/icons/icon-tsunami.png?v=${cacheBuster}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    }),
+    kebakaran: icon({
+        iconUrl: `/icons/icon-kebakaran.png?v=${cacheBuster}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    }),
+    kekeringan: icon({
+        iconUrl: `/icons/icon-kekeringan.png?v=${cacheBuster}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    }),
+    default: icon({
+        iconUrl: `/icons/disaster-marker.svg?v=${cacheBuster}`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    }),
+};
+
+// Helper function to get the right icon based on disaster type
+const getDisasterIcon = (disasterType: string) => {
+    if (!disasterType) {
+        console.warn('Disaster has no type, using default icon');
+        return disasterIcons.default;
+    }
+
+    const type = disasterType.toLowerCase().trim();
+    console.log(`Looking for icon for disaster type: "${type}"`);
+
+    // Check if there's a direct match
+    if (type in disasterIcons) {
+        console.log(`Found direct icon match for "${type}"`);
+        return disasterIcons[type as keyof typeof disasterIcons];
+    }
+
+    // Common mappings for disaster types
+    const typeMapping: Record<string, string> = {
+        gempa: 'gempa',
+        'gempa bumi': 'gempa',
+        banjir: 'banjir',
+        longsor: 'tanah longsor',
+        'tanah longsor': 'tanah longsor',
+        tsunami: 'tsunami',
+        kebakaran: 'kebakaran',
+        kekeringan: 'kekeringan',
+    };
+
+    // Try to match based on known mappings
+    for (const [key, mappedType] of Object.entries(typeMapping)) {
+        if (type.includes(key)) {
+            console.log(`Found mapping match: "${type}" -> "${mappedType}"`);
+            return disasterIcons[mappedType as keyof typeof disasterIcons];
+        }
+    }
+
+    // If no direct match or mapping, try to find a partial match
+    const keys = Object.keys(disasterIcons);
+    const partialMatch = keys.find((key) => type.includes(key.toLowerCase()) || key.toLowerCase().includes(type));
+
+    if (partialMatch) {
+        console.log(`Found partial icon match: "${type}" -> "${partialMatch}"`);
+        return disasterIcons[partialMatch as keyof typeof disasterIcons];
+    }
+
+    console.warn(`No icon match for "${type}", using default`);
+    return disasterIcons.default;
+};
+
 // --- CustomMap Component with all overlays ---
 function CustomMap({
     height,
     className,
     poskos = [],
     jalurEvakuasi = [],
+    disasters = [],
     zoom = 13,
     center = [-7.797068, 110.370529],
 }: {
@@ -74,6 +188,7 @@ function CustomMap({
     className?: string;
     poskos?: Posko[];
     jalurEvakuasi?: JalurEvakuasi[];
+    disasters?: Disaster[];
     zoom?: number;
     center?: [number, number];
 }) {
@@ -106,6 +221,49 @@ function CustomMap({
         };
     }, []);
 
+    // Fix Leaflet default icon issues
+    useEffect(() => {
+        // Use the imported Icon and set default marker options
+        Icon.Default.mergeOptions({
+            iconUrl: '/icons/default-marker.png',
+            iconRetinaUrl: '/icons/default-marker-2x.png',
+            shadowUrl: '/icons/marker-shadow.png',
+        });
+
+        // Log icon loading status for debugging
+        const iconFiles = [
+            '/icons/posko.png',
+            '/icons/icon-gempa.png',
+            '/icons/icon-banjir.png',
+            '/icons/icon-tanahlongsor.png',
+            '/icons/icon-tsunami.png',
+            '/icons/icon-kebakaran.png',
+            '/icons/icon-kekeringan.png',
+            '/icons/icon-angin-topan.svg',
+            '/icons/icon-lainnya.svg',
+            '/icons/disaster-marker.svg',
+        ];
+
+        console.log('Checking icon availability:');
+        iconFiles.forEach((path) => {
+            const img = new Image();
+            img.src = path;
+            img.onload = () => console.log(`✅ Icon loaded successfully: ${path}`);
+            img.onerror = () => console.error(`❌ Failed to load icon: ${path}`);
+
+            // Also log a fetch attempt for additional diagnostics
+            fetch(path)
+                .then((response) => {
+                    if (response.ok) {
+                        console.log(`📁 Icon file exists (HTTP ${response.status}): ${path}`);
+                    } else {
+                        console.error(`📁 Icon file missing (HTTP ${response.status}): ${path}`);
+                    }
+                })
+                .catch((error) => console.error(`📁 Error checking icon file: ${path}`, error));
+        });
+    }, []);
+
     // More thorough filtering of routes with valid coordinates
     const validRoutes = jalurEvakuasi.filter((jalur) => {
         if (!jalur.koordinat || !Array.isArray(jalur.koordinat)) {
@@ -135,10 +293,83 @@ function CustomMap({
         console.warn(`Filtered out ${jalurEvakuasi.length - validRoutes.length} routes with invalid coordinates`);
     }
 
+    // Add this inside your CustomMap component
+    useEffect(() => {
+        console.log('🔍 DISASTER DATA DEBUGGING:');
+        console.log(
+            '📋 Disaster icons defined:',
+            Object.keys(disasterIcons).map((key) => {
+                const iconPath = (disasterIcons as Record<string, L.Icon>)[key].options?.iconUrl;
+                const iconFilename = iconPath?.split('/').pop()?.split('?')[0];
+                return {
+                    type: key,
+                    path: iconPath,
+                    filename: iconFilename,
+                };
+            }),
+        );
+
+        // Log unique disaster types for easier debugging
+        const uniqueTypes = [...new Set(disasters.map((d) => d.jenis_bencana))];
+        console.log('📊 Unique disaster types in data:', uniqueTypes);
+
+        // Check what would getDisasterIcon return for each disaster
+        console.log('🗺️ DISASTER ICONS MAPPING:');
+        disasters.forEach((disaster) => {
+            const icon = getDisasterIcon(disaster.jenis_bencana);
+            // Extract just the filename from the URL for cleaner logs
+            const iconPath = icon?.options?.iconUrl || 'unknown';
+            const iconFilename = iconPath.split('/').pop()?.split('?')[0];
+            console.log(`Disaster ${disaster.id} (${disaster.jenis_bencana}) using icon: ${iconFilename} (${iconPath})`);
+        });
+
+        // Test the lookup for each unique type we found
+        if (uniqueTypes.length > 0) {
+            console.log('\n🧪 TESTING ICON MAPPING FOR UNIQUE DISASTER TYPES:');
+            uniqueTypes.forEach((type) => {
+                const icon = getDisasterIcon(type);
+                const iconPath = icon?.options?.iconUrl || 'unknown';
+                const iconFilename = iconPath.split('/').pop()?.split('?')[0];
+                console.log(`Type "${type}" maps to icon: ${iconFilename} (${iconPath})`);
+
+                // Also test if the icon file actually exists
+                const img = new Image();
+                img.src = iconPath;
+                img.onload = () => console.log(`✅ Icon for "${type}" exists`);
+                img.onerror = () => console.error(`❌ Icon for "${type}" does not exist`);
+            });
+        }
+    }, [disasters]);
+
     return (
         <div style={{ height }} className={className}>
             <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+
+                {/* Disaster Markers */}
+                {disasters.map((disaster) => (
+                    <Marker
+                        key={`disaster-${disaster.id}`}
+                        position={[disaster.latitude, disaster.longitude]}
+                        icon={getDisasterIcon(disaster.jenis_bencana)}
+                    >
+                        <Popup>
+                            <div>
+                                <div className="mb-1 text-base font-bold">{disaster.nama}</div>
+                                <div className="mb-1 text-sm">{disaster.deskripsi}</div>
+                                <div className="mt-1 text-xs text-gray-600">
+                                    <div>
+                                        <span className="font-semibold">Jenis:</span> {disaster.jenis_bencana}
+                                    </div>
+                                    <div>
+                                        <span className="font-semibold">Status:</span> {disaster.status}
+                                    </div>
+                                </div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
+
                 {/* Posko Markers */}
                 {poskos.map((marker) => (
                     <Marker key={`posko-${marker.id}`} position={[marker.latitude, marker.longitude]} icon={shelterIcon}>
@@ -193,6 +424,7 @@ function CustomMap({
 export default function AdminMap() {
     const [jalurEvakuasi, setJalurEvakuasi] = useState<JalurEvakuasi[]>([]);
     const [posko, setPosko] = useState<Posko[]>([]);
+    const [disasters, setDisasters] = useState<Disaster[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
     // Add timestamp state for cache busting
@@ -374,47 +606,34 @@ export default function AdminMap() {
             setPosko([]);
             return [];
         }
-    }, [toast, fetchTimestamp]); // Add listener for custom event from EvacuationRouteForm
+    }, [toast, fetchTimestamp]);
+
+    const fetchDisasters = useCallback(async () => {
+        try {
+            // Add cache-busting parameter
+            const response = await axios.get(`/disasters?t=${fetchTimestamp}`);
+            const disasterData = Array.isArray(response.data) ? response.data : response.data.data;
+            setDisasters(disasterData || []);
+            return disasterData || [];
+        } catch (error: unknown) {
+            console.error('Failed to fetch disasters:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Gagal memuat data bencana';
+            toast({
+                title: 'Error',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+            setDisasters([]);
+            return [];
+        }
+    }, [toast, fetchTimestamp]);
+
+    // Update your Promise.all in useEffect to include fetchDisasters
     useEffect(() => {
-        const handleDataChange = (event: Event) => {
-            // Ketika ada perubahan data, segera refresh data
-            console.log('Received evac-data-change event, refreshing data immediately...');
-
-            // Selalu refresh data segera untuk memastikan perubahan terbaru ditampilkan
-            refreshData();
-
-            // Force reload setelah delay singkat jika browser cache terlalu agresif
-            setTimeout(() => {
-                console.log('Force reload after delay...');
-                setFetchTimestamp(Date.now());
-            }, 1500);
-
-            // Simpan timestamp terakhir update ke localStorage
-            const customEvent = event as CustomEvent;
-            if (customEvent.detail && customEvent.detail.timestamp) {
-                localStorage.setItem('lastEvacuationDataUpdate', customEvent.detail.timestamp.toString());
-                console.log('Event details:', customEvent.detail);
-            } else {
-                localStorage.setItem('lastEvacuationDataUpdate', Date.now().toString());
-            }
-        };
-
-        // Listen for the custom event
-        window.addEventListener('evac-data-change', handleDataChange);
-        console.log('Event listener for evac-data-change registered');
-
-        // Cleanup
-        return () => {
-            window.removeEventListener('evac-data-change', handleDataChange);
-        };
-    }, []);
-
-    // --- Data Loader ---
-    useEffect(() => {
-        Promise.all([fetchJalurEvakuasi(), fetchPosko()])
+        Promise.all([fetchJalurEvakuasi(), fetchPosko(), fetchDisasters()])
             .then(() => setLoading(false))
             .catch(() => setLoading(false));
-    }, [fetchJalurEvakuasi, fetchPosko, fetchTimestamp]);
+    }, [fetchJalurEvakuasi, fetchPosko, fetchDisasters, fetchTimestamp]);
 
     // Cek perubahan terakhir saat awal load halaman
     useEffect(() => {
@@ -489,6 +708,7 @@ export default function AdminMap() {
                                 className="h-full w-full"
                                 poskos={posko}
                                 jalurEvakuasi={jalurEvakuasi}
+                                disasters={disasters} // Add this line
                                 zoom={6}
                                 center={[-7.150975, 110.140259]}
                             />

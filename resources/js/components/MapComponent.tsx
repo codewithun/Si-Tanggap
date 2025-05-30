@@ -32,13 +32,31 @@ interface MapComponentProps {
     mapType?: 'standard' | 'satellite' | 'terrain';
 }
 
-// Custom marker icons
-const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [25, 41], status?: 'diverifikasi' | 'menunggu' | 'ditolak') => {
+// Improved custom marker icon function
+const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [30, 30], status?: 'diverifikasi' | 'menunggu' | 'ditolak') => {
     const color = status === 'diverifikasi' ? '#22c55e' : status === 'menunggu' ? '#eab308' : status === 'ditolak' ? '#ef4444' : undefined;
 
+    // Enhance the HTML for better icon display
     const html = `
-        <div style="position: relative; filter: drop-shadow(0 0 4px ${color || 'transparent'})">
-            <img src="${iconUrl}" width="${iconSize[0]}" height="${iconSize[1]}" style="display: block;" />
+        <div style="
+            position: relative;
+            width: ${iconSize[0]}px;
+            height: ${iconSize[1]}px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            filter: ${color ? `drop-shadow(0 0 4px ${color})` : 'none'};
+        ">
+            <img 
+                src="${iconUrl}" 
+                style="
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                    display: block;
+                "
+                alt="disaster icon"
+            />
         </div>
     `;
 
@@ -46,21 +64,21 @@ const createCustomIcon = (iconUrl: string, iconSize: [number, number] = [25, 41]
         html,
         className: 'custom-marker-icon',
         iconSize,
-        iconAnchor: [iconSize[0] / 2, iconSize[1]],
-        popupAnchor: [0, -iconSize[1]],
+        iconAnchor: [iconSize[0] / 2, iconSize[1] / 2], // Center the icon anchor
+        popupAnchor: [0, -iconSize[1] / 2], // Position popup above the icon
     });
 };
 
 // Specific disaster type icons
 const disasterIcons: Record<string, (status?: 'diverifikasi' | 'menunggu' | 'ditolak') => L.DivIcon> = {
-    banjir: (status) => createCustomIcon('/icons/banjir.svg', [30, 30], status),
-    gempa: (status) => createCustomIcon('/icons/gempa.svg', [30, 30], status),
-    tsunami: (status) => createCustomIcon('/icons/tsunami.svg', [30, 30], status),
-    longsor: (status) => createCustomIcon('/icons/longsor.svg', [30, 30], status),
-    kebakaran: (status) => createCustomIcon('/icons/kebakaran.svg', [30, 30], status),
-    kekeringan: (status) => createCustomIcon('/icons/kekeringan.svg', [30, 30], status),
-    angin_topan: (status) => createCustomIcon('/icons/angin-topan.svg', [30, 30], status),
-    lainnya: (status) => createCustomIcon('/icons/lainnya.svg', [30, 30], status),
+    banjir: (status) => createCustomIcon('/icons/icon-banjir.png', [30, 30], status),
+    gempa: (status) => createCustomIcon('/icons/icon-gempa.png', [30, 30], status),
+    tsunami: (status) => createCustomIcon('/icons/icon-tsunami.png', [30, 30], status),
+    longsor: (status) => createCustomIcon('/icons/icon-tanahlongsor.png', [30, 30], status),
+    kebakaran: (status) => createCustomIcon('/icons/icon-kebakaran.png', [30, 30], status),
+    kekeringan: (status) => createCustomIcon('/icons/icon-kekeringan.png', [30, 30], status),
+    angin_topan: (status) => createCustomIcon('/icons/icon-angin-topan.svg', [30, 30], status),
+    lainnya: (status) => createCustomIcon('/icons/icon-lainnya.svg', [30, 30], status),
 };
 
 // Map click handler component
@@ -146,12 +164,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
     };
 
     const icons = [
-        { icon: 'banjir', label: 'Banjir' },
+        { icon: 'icon-banjir', label: 'Banjir' },
         { icon: 'gempa', label: 'Gempa Bumi' },
-        { icon: 'tsunami', label: 'Tsunami' },
-        { icon: 'longsor', label: 'Tanah Longsor' },
-        { icon: 'kebakaran', label: 'Kebakaran' },
-        { icon: 'kekeringan', label: 'Kekeringan' },
+        { icon: 'icon-tsunami', label: 'Tsunami' },
+        { icon: 'icon-tanahlongsor', label: 'Tanah Longsor' },
+        { icon: 'icon-kebakaran', label: 'Kebakaran' },
+        { icon: 'icon-kekeringan', label: 'Kekeringan' },
         { icon: 'angin-topan', label: 'Angin Topan' },
         { icon: 'lainnya', label: 'Bencana Lainnya' },
     ];
