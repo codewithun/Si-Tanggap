@@ -9,7 +9,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import axios, { AxiosError } from 'axios';
 import L from 'leaflet';
-import { CheckCircleIcon, ExternalLinkIcon, XCircleIcon } from 'lucide-react';
+import { CheckCircleIcon, ExternalLinkIcon, ImageIcon, XCircleIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import { useToast } from '../../hooks/useToast';
@@ -86,6 +86,14 @@ export default function ReportManagement() {
     const [paginationData, setPaginationData] = useState<PaginationData | null>(null);
     const itemsPerPage = 10;
 
+    // Add state for image preview dialog
+    const [showImageDialog, setShowImageDialog] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    // Add state for image loading status
+    const [imageLoadError, setImageLoadError] = useState<{ [key: number]: boolean }>({});
+    const [loadingImages, setLoadingImages] = useState<{ [key: number]: boolean }>({});
+
     const { toast } = useToast();
 
     const fetchReports = useCallback(async () => {
@@ -142,6 +150,91 @@ export default function ReportManagement() {
             document.head.removeChild(styleElement);
         };
     }, []);
+
+    // Function to format image URL properly
+    const getFormattedImageUrl = (imageUrl: string): string => {
+        if (!imageUrl) return '/images/placeholder-image.png';
+
+        // If it's already a full URL, return it
+        if (imageUrl.startsWith('http')) return imageUrl;
+
+        // Ensure the path starts with a slash
+        if (!imageUrl.startsWith('/')) {
+            imageUrl = '/' + imageUrl;
+        }
+
+        // Add a cache buster
+        return `${imageUrl}?v=${new Date().getTime()}`;
+    };
+
+    // Image error handling
+    const handleImageError = (reportId: number, imgElement: HTMLImageElement) => {
+        // Get the current URL that failed
+        const currentUrl = imgElement.src;
+        console.log(`Image load failed for report ${reportId}:`, currentUrl);
+
+        // Count retry attempts
+        const retryCount = parseInt(imgElement.dataset.retryCount || '0');
+
+        // If we've tried too many times, show placeholder
+        if (retryCount >= 3) {
+            console.log(`Giving up after ${retryCount} retries for report ${reportId}`);
+            setImageLoadError((prev) => ({ ...prev, [reportId]: true }));
+            toast({
+                title: 'Peringatan',
+                description: 'Gambar tidak dapat dimuat. Menggunakan gambar placeholder.',
+                variant: 'default',
+            });
+            imgElement.src = '/images/placeholder-image.png';
+            return;
+        }
+
+        // Increment retry counter
+        imgElement.dataset.retryCount = (retryCount + 1).toString();
+
+        // Get the report data
+        const report = reports.find((r) => r.id === reportId);
+        if (!report || !report.foto) return;
+
+        console.log(`Retrying image load (attempt ${retryCount + 1}) for report ${reportId}`);
+
+        // Try different fallback strategies based on retry count
+        let newSrc = '';
+
+        if (retryCount === 0) {
+            // First retry: try direct path with storage
+            const cleanPath = report.foto.replace(/^public\/|^storage\/|^\//g, '');
+            newSrc = `/storage/${cleanPath}?v=${new Date().getTime()}`;
+        } else if (retryCount === 1) {
+            // Second retry: try with just the filename
+            const filename = report.foto.split('/').pop() || report.foto;
+            newSrc = `/storage/laporans/${filename}?v=${new Date().getTime()}`;
+        } else {
+            // Last retry: try without /storage prefix
+            const cleanPath = report.foto.replace(/^public\/|^storage\/|^\//g, '');
+            newSrc = `/${cleanPath}?v=${new Date().getTime()}`;
+        }
+
+        console.log(`Trying alternate URL: ${newSrc}`);
+        imgElement.src = newSrc;
+    };
+
+    const openImagePreview = (report: Laporan) => {
+        setSelectedReport(report);
+
+        // Get image URL with fallback strategies
+        const imageUrl = getFormattedImageUrl(report.foto);
+        console.log(`Opening image preview for report ${report.id} with URL: ${imageUrl}`);
+        setSelectedImage(imageUrl);
+        setShowImageDialog(true);
+
+        // Reset any previous error state for this image in the preview
+        setImageLoadError((prev) => {
+            const newState = { ...prev };
+            delete newState[report.id];
+            return newState;
+        });
+    };
 
     const openViewDialog = (report: Laporan) => {
         setSelectedReport(report);
@@ -404,75 +497,137 @@ export default function ReportManagement() {
 
                     {/* View Report Dialog */}
                     <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                        <DialogContent className="dialog-content max-w-3xl">
-                            <DialogHeader>
-                                <DialogTitle>Detail Laporan Bencana</DialogTitle>
+                        <DialogContent className="dialog-content max-w-3xl overflow-y-auto sm:max-h-[90vh] md:max-h-[85vh] p-2 sm:p-6">
+                            <DialogHeader className="pb-1 sm:pb-3">
+                                <DialogTitle className="text-sm sm:text-lg">Detail Laporan Bencana</DialogTitle>
                             </DialogHeader>
                             {selectedReport && (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                        <div>
-                                            <h3 className="text-lg font-semibold">{selectedReport.judul}</h3>
-                                            <div className="mt-1 flex items-center">
+                                <div className="space-y-2 sm:space-y-4 -mt-1 sm:-mt-2">
+                                    <div className="grid grid-cols-1 gap-2 sm:gap-4 md:grid-cols-2">
+                                        {/* Report Info Section - Full width on mobile, left column on desktop */}
+                                        <div className="space-y-1.5 sm:space-y-3">
+                                            <h3 className="text-sm sm:text-lg font-semibold line-clamp-2" title={selectedReport.judul}>{selectedReport.judul}</h3>
+                                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                                 <img
                                                     src={getDisasterIconPath(selectedReport.jenis_bencana)}
                                                     alt={selectedReport.jenis_bencana}
-                                                    className="mr-2 h-5 w-5"
+                                                    className="h-3.5 w-3.5 sm:h-5 sm:w-5"
                                                 />
-                                                <span className="text-sm">{selectedReport.jenis_bencana}</span>
+                                                <span className="text-xs sm:text-sm">{selectedReport.jenis_bencana}</span>
                                                 <span
-                                                    className={`ml-2 rounded-full px-2 py-0.5 text-xs ${getStatusBadgeClass(selectedReport.status)}`}
+                                                    className={`rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs ${getStatusBadgeClass(selectedReport.status)}`}
                                                 >
                                                     {selectedReport.status}
                                                 </span>
                                             </div>
 
-                                            <div className="mt-4">
-                                                <h4 className="text-sm font-medium text-gray-500">Deskripsi</h4>
-                                                <p className="mt-1">{selectedReport.deskripsi}</p>
+                                            <div>
+                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Deskripsi</h4>
+                                                <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-sm max-h-[60px] sm:max-h-[120px] overflow-y-auto">{selectedReport.deskripsi}</p>
                                             </div>
 
-                                            <div className="mt-4">
-                                                <h4 className="text-sm font-medium text-gray-500">Lokasi</h4>
-                                                <p className="mt-1">{selectedReport.lokasi}</p>
-                                                <div className="mt-1 text-xs text-gray-400">
+                                            <div>
+                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Lokasi</h4>
+                                                <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-sm line-clamp-2" title={selectedReport.lokasi}>{selectedReport.lokasi}</p>
+                                                <div className="mt-0.5 text-[10px] sm:text-xs text-gray-400">
                                                     Koordinat: {selectedReport.latitude}, {selectedReport.longitude}
                                                 </div>
                                             </div>
 
-                                            <div className="mt-4">
-                                                <h4 className="text-sm font-medium text-gray-500">Dilaporkan oleh</h4>
-                                                <p className="mt-1">{selectedReport.user.name}</p>
-                                                <p className="text-xs text-gray-400">{selectedReport.user.email}</p>
+                                            <div>
+                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Dilaporkan oleh</h4>
+                                                <p className="mt-0.5 text-[11px] sm:text-sm">{selectedReport.user.name}</p>
+                                                <p className="text-[10px] sm:text-xs text-gray-400 truncate" title={selectedReport.user.email}>{selectedReport.user.email}</p>
                                             </div>
 
-                                            <div className="mt-4">
-                                                <h4 className="text-sm font-medium text-gray-500">Tanggal Laporan</h4>
-                                                <p className="mt-1">{formatDate(selectedReport.created_at)}</p>
+                                            <div>
+                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Tanggal Laporan</h4>
+                                                <p className="mt-0.5 text-[11px] sm:text-sm">{formatDate(selectedReport.created_at)}</p>
                                             </div>
 
                                             {selectedReport.catatan_admin && (
-                                                <div className="mt-4">
-                                                    <h4 className="text-sm font-medium text-gray-500">Catatan Admin</h4>
-                                                    <p className="mt-1">{selectedReport.catatan_admin}</p>
+                                                <div>
+                                                    <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Catatan Admin</h4>
+                                                    <p className="mt-0.5 text-[11px] sm:text-sm">{selectedReport.catatan_admin}</p>
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div>
-                                            {selectedReport.foto && (
-                                                <div className="overflow-hidden rounded-md border">
-                                                    <img src={selectedReport.foto} alt="Foto Laporan" className="h-auto w-full object-cover" />
+                                        {/* Media Section - Full width on mobile, right column on desktop */}
+                                        <div className="space-y-2 sm:space-y-4">
+                                            {/* Photo section with responsive sizing */}
+                                            {selectedReport.foto ? (
+                                                <div>
+                                                    <h4 className="text-[11px] sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-2">Foto Kejadian</h4>
+                                                    <div className="relative overflow-hidden rounded-md border">
+                                                        {imageLoadError[selectedReport.id] ? (
+                                                            <div className="flex h-24 sm:h-40 w-full items-center justify-center rounded-md border bg-gray-100">
+                                                                <div className="p-2 sm:p-4 text-center">
+                                                                    <ImageIcon className="mx-auto mb-1 sm:mb-2 h-5 w-5 sm:h-8 sm:w-8 text-gray-400" />
+                                                                    <p className="text-[10px] sm:text-sm text-gray-500">Gambar tidak dapat dimuat</p>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2"
+                                                                        onClick={() => {
+                                                                            // Reset error state and try again
+                                                                            setImageLoadError((prev) => {
+                                                                                const newState = { ...prev };
+                                                                                delete newState[selectedReport.id];
+                                                                                return newState;
+                                                                            });
+                                                                            // Set loading state
+                                                                            setLoadingImages((prev) => ({ ...prev, [selectedReport.id]: true }));
+                                                                        }}
+                                                                    >
+                                                                        Coba Lagi
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div 
+                                                                className="cursor-pointer touch-manipulation"
+                                                                onClick={() => openImagePreview(selectedReport)}
+                                                            >
+                                                                {loadingImages[selectedReport.id] && (
+                                                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100">
+                                                                        <div className="border-primary h-5 w-5 sm:h-8 sm:w-8 animate-spin rounded-full border-t-2 border-b-2"></div>
+                                                                    </div>
+                                                                )}
+                                                                <img 
+                                                                    src={getFormattedImageUrl(selectedReport.foto)} 
+                                                                    alt="Foto Laporan" 
+                                                                    className="h-auto max-h-[100px] sm:max-h-[180px] w-full object-contain object-center"
+                                                                    data-retry-count="0"
+                                                                    onLoad={() => {
+                                                                        // Remove loading state when image loads successfully
+                                                                        setLoadingImages((prev) => {
+                                                                            const newState = { ...prev };
+                                                                            delete newState[selectedReport.id];
+                                                                            return newState;
+                                                                        });
+                                                                    }}
+                                                                    onError={(e) => handleImageError(selectedReport.id, e.target as HTMLImageElement)}
+                                                                />
+                                                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-0.5 sm:p-1 text-white text-[9px] sm:text-xs text-center">
+                                                                    Klik untuk memperbesar
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            )}
+                                            ) : null}
 
-                                            <div className="mt-4">
-                                                <h4 className="text-sm font-medium text-gray-500">Lokasi di Peta</h4>
-                                                <div className="mt-2 h-[250px] w-full overflow-hidden rounded-md border">
+                                            {/* Map with responsive height */}
+                                            <div>
+                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Lokasi di Peta</h4>
+                                                <div className="mt-0.5 sm:mt-2 h-[120px] sm:h-[200px] w-full overflow-hidden rounded-md border">
                                                     <MapContainer
                                                         center={[selectedReport.latitude, selectedReport.longitude]}
                                                         zoom={13}
                                                         style={{ height: '100%', width: '100%' }}
+                                                        attributionControl={false}
+                                                        zoomControl={false}
                                                     >
                                                         <TileLayer
                                                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -483,8 +638,8 @@ export default function ReportManagement() {
                                                             icon={getDisasterMapIcon(selectedReport.jenis_bencana)}
                                                         >
                                                             <Popup>
-                                                                <div className="font-semibold">{selectedReport.judul}</div>
-                                                                <div>{selectedReport.lokasi}</div>
+                                                                <div className="font-semibold text-[10px] sm:text-sm">{selectedReport.judul}</div>
+                                                                <div className="text-[9px] sm:text-xs">{selectedReport.lokasi}</div>
                                                             </Popup>
                                                         </Marker>
                                                     </MapContainer>
@@ -493,8 +648,12 @@ export default function ReportManagement() {
                                         </div>
                                     </div>
 
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+                                    <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-1.5 sm:gap-2 pt-2 sm:pt-4 border-t">
+                                        <Button 
+                                            variant="outline" 
+                                            onClick={() => setIsViewDialogOpen(false)} 
+                                            className="w-full sm:w-auto h-7 sm:h-9 text-xs sm:text-sm"
+                                        >
                                             Tutup
                                         </Button>
                                         {selectedReport.status === 'menunggu' && (
@@ -503,6 +662,7 @@ export default function ReportManagement() {
                                                     setIsViewDialogOpen(false);
                                                     openVerifyDialog(selectedReport);
                                                 }}
+                                                className="w-full sm:w-auto h-7 sm:h-9 text-xs sm:text-sm"
                                             >
                                                 Verifikasi Laporan
                                             </Button>
@@ -588,6 +748,128 @@ export default function ReportManagement() {
                                 >
                                     {verificationStatus === 'diverifikasi' ? 'Verifikasi' : 'Tolak'} Laporan
                                 </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Image Preview Dialog */}
+                    <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+                        <DialogContent className="dialog-content sm:max-w-2xl">
+                            <DialogHeader>
+                                <DialogTitle>Foto Kejadian</DialogTitle>
+                                <DialogDescription>{selectedReport?.judul || 'Detail foto kejadian'}</DialogDescription>
+                            </DialogHeader>
+                            <div className="flex flex-col items-center justify-center overflow-hidden rounded-md p-2">
+                                <div className="mb-2 text-xs text-gray-500">{selectedReport && <span>Lokasi: {selectedReport.lokasi}</span>}</div>
+                                {selectedImage ? (
+                                    <div className="relative">
+                                        <div className="relative flex min-h-[300px] items-center justify-center">
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="border-primary h-12 w-12 animate-spin rounded-full border-t-2 border-b-2"></div>
+                                            </div>
+                                            <img
+                                                src={selectedImage}
+                                                alt="Foto kejadian"
+                                                className="relative z-10 max-h-[600px] w-auto object-contain opacity-0 transition-opacity duration-300"
+                                                data-retry-count="0"
+                                                onLoad={(e) => {
+                                                    // Hide spinner when image loads
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.classList.remove('opacity-0');
+                                                    target.classList.add('opacity-100');
+                                                    // Hide spinner element (assuming it's the parent's first child)
+                                                    const spinnerEl = target.parentElement?.querySelector('div:first-of-type');
+                                                    if (spinnerEl) {
+                                                        spinnerEl.classList.add('hidden');
+                                                    }
+                                                }}
+                                                onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+
+                                                    // Count retry attempts
+                                                    const retryCount = parseInt(target.dataset.retryCount || '0');
+
+                                                    // If we've tried too many times, show placeholder
+                                                    if (retryCount >= 2) {
+                                                        console.log(`Preview image load failed after ${retryCount} retries`);
+                                                        target.src = '/images/placeholder-image.png';
+                                                        target.onerror = null; // Prevent further error handling
+                                                        toast({
+                                                            title: 'Peringatan',
+                                                            description: 'Gambar tidak dapat dimuat dengan benar.',
+                                                            variant: 'default',
+                                                        });
+                                                        // Show the image anyway with the placeholder
+                                                        target.classList.remove('opacity-0');
+                                                        target.classList.add('opacity-100');
+                                                        // Hide spinner element
+                                                        const spinnerEl = target.parentElement?.querySelector('div:first-of-type');
+                                                        if (spinnerEl) {
+                                                            spinnerEl.classList.add('hidden');
+                                                        }
+                                                        return;
+                                                    }
+
+                                                    // Increment retry counter
+                                                    target.dataset.retryCount = (retryCount + 1).toString();
+
+                                                    if (selectedReport && selectedReport.foto) {
+                                                        let newSrc = '';
+
+                                                        if (retryCount === 0) {
+                                                            // First retry: try with direct filename approach
+                                                            const filename = selectedReport.foto.split('/').pop() || selectedReport.foto;
+                                                            newSrc = `/storage/laporans/${filename}?v=${new Date().getTime()}`;
+                                                        } else {
+                                                            // Last retry: try with raw path
+                                                            newSrc = `/${selectedReport.foto}?v=${new Date().getTime()}`;
+                                                        }
+
+                                                        console.log(`Preview retry with: ${newSrc}`);
+                                                        target.src = newSrc;
+                                                    } else {
+                                                        target.src = '/images/placeholder-image.png';
+                                                        target.onerror = null;
+                                                        // Show the image anyway with the placeholder
+                                                        target.classList.remove('opacity-0');
+                                                        target.classList.add('opacity-100');
+                                                        // Hide spinner element
+                                                        const spinnerEl = target.parentElement?.querySelector('div:first-of-type');
+                                                        if (spinnerEl) {
+                                                            spinnerEl.classList.add('hidden');
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex h-[300px] w-full items-center justify-center rounded-md bg-gray-100">
+                                        <div className="p-4 text-center">
+                                            <ImageIcon className="mx-auto mb-3 h-16 w-16 text-gray-400" />
+                                            <p className="text-gray-500">Tidak ada gambar yang tersedia</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <div className="flex space-x-2">
+                                    {selectedReport?.foto && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                // Open image in new tab if available
+                                                const imgUrl = selectedImage || getFormattedImageUrl(selectedReport?.foto || '');
+                                                window.open(imgUrl, '_blank');
+                                            }}
+                                        >
+                                            Lihat Gambar Asli
+                                        </Button>
+                                    )}
+                                    <Button variant="outline" onClick={() => setShowImageDialog(false)}>
+                                        Tutup
+                                    </Button>
+                                </div>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>

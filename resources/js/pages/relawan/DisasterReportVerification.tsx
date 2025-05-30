@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/useToast';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import L from 'leaflet';
 import { CheckCircleIcon, ImageIcon, MapPinIcon, XCircleIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -135,8 +135,17 @@ export default function DisasterReportVerification() {
     const fetchReports = useCallback(async () => {
         try {
             setLoading(true);
-            // Use the correct endpoint - adjust it based on your API setup
-            const response = await axios.get('/api/relawan/laporans');
+            // Try both API endpoint options - first try the web endpoint, then fall back to the API endpoint
+            let response;
+            
+            try {
+                // First try the normal web route
+                response = await axios.get('/relawan/laporans');
+            } catch (error) {
+                console.log('Web route failed, trying API route instead:', error);
+                // If that fails, try the API route as fallback
+                response = await axios.get('/api/relawan/laporans');
+            }
 
             // Filter reports that are not verified
             const data = response.data.data || response.data;
@@ -183,10 +192,11 @@ export default function DisasterReportVerification() {
         setProcessingIds((prev) => [...prev, selectedReport.id]);
 
         try {
+            // Modify the endpoints to match the web routes instead of API routes
             const endpoint =
                 verificationStatus === 'diverifikasi'
-                    ? `/api/relawan/laporans/${selectedReport.id}/verify`
-                    : `/api/relawan/laporans/${selectedReport.id}/reject`;
+                    ? `/relawan/laporans/${selectedReport.id}/verify`
+                    : `/relawan/laporans/${selectedReport.id}/reject`;
 
             await axios.put(endpoint, {
                 catatan_admin: adminNote.trim() || null,
@@ -198,11 +208,15 @@ export default function DisasterReportVerification() {
             });
 
             setIsVerifyDialogOpen(false);
-            // Update local state
-            setReports((prevReports) => prevReports.filter((report) => report.id !== selectedReport.id));
+            
+            // Improve state management by fetching fresh data
+            fetchReports();
         } catch (error: unknown) {
             console.error('Error verifying report:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Gagal memproses verifikasi laporan';
+            const axiosError = error as AxiosError<{ message: string }>;
+            const errorMessage = axiosError.response?.data?.message || 
+                                (error instanceof Error ? error.message : 'Gagal memproses verifikasi laporan');
+            
             toast({
                 title: 'Error',
                 description: errorMessage,
