@@ -21,6 +21,7 @@ use App\Http\Controllers\Auth\{
     AuthenticatedSessionController,
     RegisteredUserController
 };
+use App\Http\Controllers\Auth\GoogleController; // ← Tambahkan di sini
 
 // ------------------------
 // 🌐 Public Web Routes
@@ -175,6 +176,9 @@ Route::prefix('api')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('api.logout');
     Route::get('/regions', [RegionController::class, 'index'])->name('api.regions');
 });
+
+Route::get('auth/google', [GoogleController::class, 'redirectToGoogle'])->name('google.login');
+Route::get('auth/google/callback', [GoogleController::class, 'handleGoogleCallback']);
 
 // ------------------------
 // 🔗 Include Additional Routes
