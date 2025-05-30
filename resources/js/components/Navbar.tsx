@@ -246,13 +246,6 @@ const Navbar: React.FC<NavbarProps> = ({ isAuthenticated = false, userRole = nul
                                 >
                                     Masuk
                                 </Link>
-                                <Link
-                                    href="/auth/google"
-                                    className="mt-2 flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50"
-                                >
-                                    <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" className="h-4 w-4" />
-                                    <span>Login dengan Google</span>
-                                </Link>
                             </>
                         )}
                     </div>

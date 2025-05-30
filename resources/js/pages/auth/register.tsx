@@ -1,6 +1,8 @@
-import { useForm } from '@inertiajs/react';
+import { useForm, router } from '@inertiajs/react';
 import { ArrowLeft, HeartHandshake, LoaderCircle, Upload, UserRound } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
+import { motion } from 'framer-motion';
+import { useToast } from '@/hooks/useToast';
 
 import PageTitle from '@/components/PageTitle';
 import InputError from '@/components/input-error';
@@ -25,6 +27,7 @@ type RegisterForm = {
 
 export default function Register() {
     const [idCardFileName, setIdCardFileName] = useState<string>('');
+    const { toast } = useToast();
 
     const { data, setData, post, processing, errors, reset } = useForm<Required<RegisterForm>>({
         name: '',
@@ -48,18 +51,28 @@ export default function Register() {
             phone: data.phone,
             password: data.password,
             password_confirmation: data.password_confirmation,
+            role: data.role, // Always include role
         };
+        
         if (data.role === 'relawan') {
-            payload.role = data.role;
             payload.id_card = data.id_card;
             payload.organization = data.organization;
             payload.experience = data.experience;
             payload.motivation = data.motivation;
         }
+        
+        const isRelawan = data.role === 'relawan';
+        
         // @ts-expect-error: Inertia Form post expects data as first argument
         post(route('register'), payload, {
-            onFinish: () => reset('password', 'password_confirmation'),
-            forceFormData: data.role === 'relawan',
+            onSuccess: () => {
+                // Reset form fields
+                reset('password', 'password_confirmation');
+                
+                // Backend will handle the redirect to appropriate page based on role
+                return true;
+            },
+            forceFormData: isRelawan
         });
     };
 
@@ -70,8 +83,31 @@ export default function Register() {
         }
     };
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1,
+                delayChildren: 0.3,
+            },
+        },
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 10 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                type: 'spring',
+                stiffness: 100,
+            },
+        },
+    };
+
     return (
-        <div className="relative flex min-h-screen w-full">
+        <div className="relative flex min-h-screen w-full bg-gradient-to-br from-blue-50 to-white">
             <PageTitle title="Register" />
 
             {/* Back button */}
@@ -87,19 +123,48 @@ export default function Register() {
                 </Button>
             </div>
 
-            <div className="flex w-full flex-col items-center justify-center px-6 pt-16 lg:w-1/2">
-                <div className="w-full max-w-md space-y-8">
+            <div className="flex w-full flex-col items-center justify-center px-6 pt-10 pb-10 lg:w-1/2">
+                <motion.div
+                    className="w-full max-w-md space-y-6"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                >
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold tracking-tight">Buat Akun GeoSiaga</h1>
-                        <p className="mt-3 text-sm text-gray-500">
+                        <motion.h1
+                            className="text-3xl font-bold tracking-tight text-blue-900"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2, duration: 0.5 }}
+                        >
+                            Buat Akun GeoSiaga
+                        </motion.h1>
+                        <motion.p
+                            className="mt-3 text-sm text-gray-600"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.3, duration: 0.5 }}
+                        >
                             Masukkan detail Anda di bawah ini untuk membuat akun Anda dan mulai menggunakan GeoSiaga
-                        </p>
+                        </motion.p>
+                        <motion.div
+                            className="mx-auto mt-2 h-1 w-16 rounded-full bg-blue-600"
+                            initial={{ width: 0 }}
+                            animate={{ width: '4rem' }}
+                            transition={{ delay: 0.4, duration: 0.8 }}
+                        ></motion.div>
                     </div>
 
-                    <form className="flex flex-col gap-4" onSubmit={submit}>
+                    <motion.form
+                        className="flex flex-col gap-4"
+                        onSubmit={submit}
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                    >
                         <div className="grid gap-4">
-                            <div className="space-y-3">
-                                <Label htmlFor="role" className="text-base font-medium">
+                            <motion.div className="space-y-3" variants={itemVariants}>
+                                <Label htmlFor="role" className="text-base font-medium text-gray-700">
                                     Pilih Peran Anda
                                 </Label>
                                 <div className="grid grid-cols-2 gap-4">
@@ -152,9 +217,12 @@ export default function Register() {
                                     </div>
                                 </div>
                                 <InputError message={errors.role} />
-                            </div>
+                            </motion.div>
 
-                            <div>
+                            <motion.div variants={itemVariants}>
+                                <Label htmlFor="name" className="text-sm text-gray-700">
+                                    Nama Lengkap
+                                </Label>
                                 <Input
                                     id="name"
                                     type="text"
@@ -166,12 +234,15 @@ export default function Register() {
                                     onChange={(e) => setData('name', e.target.value)}
                                     disabled={processing}
                                     placeholder="Full name"
-                                    className="rounded-lg bg-white px-4 py-4"
+                                    className="mt-1 rounded-lg border-gray-300 bg-white px-4 py-4 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
                                 <InputError message={errors.name} />
-                            </div>
+                            </motion.div>
 
-                            <div>
+                            <motion.div variants={itemVariants}>
+                                <Label htmlFor="email" className="text-sm text-gray-700">
+                                    Email
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -182,12 +253,15 @@ export default function Register() {
                                     onChange={(e) => setData('email', e.target.value)}
                                     disabled={processing}
                                     placeholder="Email address"
-                                    className="rounded-lg bg-white px-4 py-4"
+                                    className="mt-1 rounded-lg border-gray-300 bg-white px-4 py-4 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
                                 <InputError message={errors.email} />
-                            </div>
+                            </motion.div>
 
-                            <div>
+                            <motion.div variants={itemVariants}>
+                                <Label htmlFor="phone" className="text-sm text-gray-700">
+                                    Nomor Telepon
+                                </Label>
                                 <Input
                                     id="phone"
                                     type="tel"
@@ -197,12 +271,15 @@ export default function Register() {
                                     onChange={(e) => setData('phone', e.target.value)}
                                     disabled={processing}
                                     placeholder="Phone number"
-                                    className="rounded-lg bg-white px-4 py-4"
+                                    className="mt-1 rounded-lg border-gray-300 bg-white px-4 py-4 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
                                 <InputError message={errors.phone} />
-                            </div>
+                            </motion.div>
 
-                            <div>
+                            <motion.div variants={itemVariants}>
+                                <Label htmlFor="password" className="text-sm text-gray-700">
+                                    Password
+                                </Label>
                                 <Input
                                     id="password"
                                     type="password"
@@ -213,12 +290,15 @@ export default function Register() {
                                     onChange={(e) => setData('password', e.target.value)}
                                     disabled={processing}
                                     placeholder="Password"
-                                    className="rounded-lg bg-white px-4 py-4"
+                                    className="mt-1 rounded-lg border-gray-300 bg-white px-4 py-4 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
                                 <InputError message={errors.password} />
-                            </div>
+                            </motion.div>
 
-                            <div>
+                            <motion.div variants={itemVariants}>
+                                <Label htmlFor="password_confirmation" className="text-sm text-gray-700">
+                                    Konfirmasi Password
+                                </Label>
                                 <Input
                                     id="password_confirmation"
                                     type="password"
@@ -229,15 +309,15 @@ export default function Register() {
                                     onChange={(e) => setData('password_confirmation', e.target.value)}
                                     disabled={processing}
                                     placeholder="Confirm password"
-                                    className="rounded-lg bg-white px-4 py-4"
+                                    className="mt-1 rounded-lg border-gray-300 bg-white px-4 py-4 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
                                 <InputError message={errors.password_confirmation} />
-                            </div>
+                            </motion.div>
 
                             {data.role === 'relawan' && (
                                 <>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="id_card" className="text-sm">
+                                    <motion.div className="space-y-1" variants={itemVariants}>
+                                        <Label htmlFor="id_card" className="text-sm text-gray-700">
                                             Unggah Kartu Identitas (KTP/SIM/Kartu Pelajar)
                                         </Label>
                                         <div className="flex items-center gap-2">
@@ -250,7 +330,7 @@ export default function Register() {
                                                 <Input
                                                     id="id_card"
                                                     type="file"
-                                                    accept=".jpg,.jpeg,.png,.pdf"
+                                                    accept=".jpg,.jpeg,.png"
                                                     onChange={handleFileChange}
                                                     className="hidden"
                                                     disabled={processing}
@@ -258,12 +338,12 @@ export default function Register() {
                                                 />
                                             </Label>
                                         </div>
-                                        <p className="text-xs text-gray-500">Format: JPG, PNG, atau PDF (max: 2MB)</p>
+                                        <p className="text-xs text-gray-500">Format: JPG, PNG (max: 2MB)</p>
                                         <InputError message={errors.id_card as string} />
-                                    </div>
+                                    </motion.div>
 
-                                    <div>
-                                        <Label htmlFor="organization" className="text-sm">
+                                    <motion.div variants={itemVariants}>
+                                        <Label htmlFor="organization" className="text-sm text-gray-700">
                                             Organisasi (opsional)
                                         </Label>
                                         <Input
@@ -275,10 +355,10 @@ export default function Register() {
                                             disabled={processing}
                                         />
                                         <InputError message={errors.organization} />
-                                    </div>
+                                    </motion.div>
 
-                                    <div>
-                                        <Label htmlFor="experience" className="text-sm">
+                                    <motion.div variants={itemVariants}>
+                                        <Label htmlFor="experience" className="text-sm text-gray-700">
                                             Pengalaman
                                         </Label>
                                         <Textarea
@@ -291,10 +371,10 @@ export default function Register() {
                                             required
                                         />
                                         <InputError message={errors.experience} />
-                                    </div>
+                                    </motion.div>
 
-                                    <div>
-                                        <Label htmlFor="motivation" className="text-sm">
+                                    <motion.div variants={itemVariants}>
+                                        <Label htmlFor="motivation" className="text-sm text-gray-700">
                                             Alasan
                                         </Label>
                                         <Textarea
@@ -307,61 +387,58 @@ export default function Register() {
                                             required
                                         />
                                         <InputError message={errors.motivation} />
-                                    </div>
+                                    </motion.div>
                                 </>
                             )}
 
-                            <Button
-                                type="submit"
-                                className="rounded-lg bg-black py-4 text-base font-semibold hover:bg-gray-800"
-                                tabIndex={6}
-                                disabled={processing}
-                            >
-                                {processing && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                                Create account
-                            </Button>
+                            <motion.div variants={itemVariants} className="flex justify-center">
+                                <Button
+                                    type="submit"
+                                    className="w-full rounded-lg bg-blue-600 py-4 text-base font-semibold hover:bg-blue-700 transition-colors"
+                                    tabIndex={6}
+                                    disabled={processing}
+                                >
+                                    {processing && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                                    Create account
+                                </Button>
+                            </motion.div>
                         </div>
 
-                        <div className="relative py-2">
+                        <motion.div className="relative py-2" variants={itemVariants}>
                             <div className="absolute inset-0 flex items-center">
                                 <div className="w-full border-t border-gray-200"></div>
                             </div>
-                            <div className="relative flex justify-center text-xs text-gray-500">
-                                <span className="bg-white px-2">OR SIGN UP WITH</span>
-                            </div>
-                        </div>
+                        </motion.div>
 
-                        <div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="w-full rounded-lg border-gray-300 py-4"
-                                onClick={() => (window.location.href = route('auth.google'))}
-                            >
-                                <svg width="20" height="20" fill="currentColor" className="mr-2">
-                                    <path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z" />
-                                    <path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z" />
-                                </svg>
-                                Google
-                            </Button>
-                        </div>
-                    </form>
-                    <div className="pt-2 text-center text-sm text-gray-500">
-                        Sudah punya akun?{' '}
-                        <TextLink href={route('login')} className="font-medium" tabIndex={7}>
-                            Masuk
-                        </TextLink>
-                    </div>
-                </div>
+                        <motion.div className="py-2 text-center text-sm text-gray-600 mb-4" variants={itemVariants}>
+                            Sudah punya akun?{' '}
+                            <TextLink href={route('login')} className="font-medium text-blue-600 hover:text-blue-800" tabIndex={7}>
+                                Masuk
+                            </TextLink>
+                        </motion.div>
+                    </motion.form>
+                </motion.div>
             </div>
-            <div className="hidden w-1/2 bg-slate-50 lg:flex lg:flex-col">
-                <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+            <div className="hidden w-1/2 bg-blue-600 lg:flex lg:flex-col">
+                <div className="fixed right-0 top-0 bottom-0 w-1/2 overflow-hidden">
+                    <motion.div
+                        className="absolute inset-0 opacity-20"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.2 }}
+                        transition={{ duration: 0.8 }}
+                    ></motion.div>
                     <img
                         src="/img/image2.jpg"
                         alt="Register Security"
                         className="h-full w-full object-cover object-center"
-                        style={{ position: 'absolute', inset: 0 }}
                     />
+                    <motion.div
+                        className="absolute z-10 inset-0 flex items-center justify-center"
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, duration: 0.8 }}
+                    >
+                    </motion.div>
                 </div>
             </div>
         </div>
