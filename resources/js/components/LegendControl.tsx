@@ -105,7 +105,22 @@ const LegendControl = ({ position = 'topleft', icons }: LegendProps) => {
           }
         `;
                 const img = document.createElement('img');
-                img.src = `/icons/${icon}.svg`;
+
+                // If icon already starts with 'icon-', don't add the prefix again
+                const iconName = icon.startsWith('icon-') ? icon : `icon-${icon}`;
+
+                // Set a one-time error handler (prevents infinite loop)
+                let hasTriedPNG = false;
+                img.onerror = () => {
+                    if (!hasTriedPNG) {
+                        hasTriedPNG = true;
+                        img.src = `/icons/${iconName}.png`;
+                    }
+                    // No further fallback after PNG to prevent loops
+                };
+
+                // Try SVG first
+                img.src = `/icons/${iconName}.svg`;
                 img.alt = label;
                 img.style.cssText = `
           width: 20px;

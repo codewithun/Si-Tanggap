@@ -107,9 +107,8 @@ class LaporanController extends Controller
         ]);
 
         if ($request->hasFile('foto')) {
-            $path = $request->file('foto')->store('public/laporans');
-            // Store the path without the '/storage/' prefix for consistency
-            $validated['foto'] = str_replace('public/', '', $path);
+            $path = $request->file('foto')->store('laporans', 'public');
+            $validated['foto'] = 'storage/' . $path;
         }
 
         $validated['user_id'] = $request->user()->id;
@@ -163,18 +162,12 @@ class LaporanController extends Controller
         if ($request->hasFile('foto')) {
             // Hapus foto lama jika ada
             if ($laporan->foto) {
-                // Handle different path formats
-                if (strpos($laporan->foto, 'public/') === 0) {
-                    Storage::delete($laporan->foto);
-                } else {
-                    // If it doesn't start with public/, add it
-                    Storage::delete('public/' . $laporan->foto);
-                }
+                $oldPath = str_replace('storage/', '', $laporan->foto);
+                Storage::disk('public')->delete($oldPath);
             }
 
-            $path = $request->file('foto')->store('public/laporans');
-            // Store the path without the 'public/' prefix for consistency
-            $validated['foto'] = str_replace('public/', '', $path);
+            $path = Storage::disk('public')->putFile('laporans', $request->file('foto'));
+            $validated['foto'] = 'storage/' . $path;
         }
 
         $laporan->update($validated);
@@ -192,8 +185,8 @@ class LaporanController extends Controller
     {
         // Hapus foto jika ada
         if ($laporan->foto) {
-            $path = str_replace('/storage', 'public', $laporan->foto);
-            Storage::delete($path);
+            $path = str_replace('storage/', '', $laporan->foto);
+            Storage::disk('public')->delete($path);
         }
 
         $laporan->delete();
@@ -285,10 +278,10 @@ class LaporanController extends Controller
     {
         // Get all laporans with status 'menunggu'
         $laporans = Laporan::with('user')
-                          ->where('status', 'menunggu')
-                          ->latest()
-                          ->get();
-        
+            ->where('status', 'menunggu')
+            ->latest()
+            ->get();
+
         return response()->json(['data' => $laporans]);
     }
 }

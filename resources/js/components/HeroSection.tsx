@@ -123,7 +123,7 @@ const HeroSection: React.FC = () => {
                                     href="/map"
                                     className="block w-full rounded-lg bg-blue-500 px-5 py-2.5 text-center font-medium text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-blue-500/25 sm:px-6 sm:py-3"
                                 >
-                                    Lihat Peta Risiko
+                                    Lihat Peta Bencana
                                 </Link>
                             </motion.div>
 

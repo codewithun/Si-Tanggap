@@ -226,7 +226,7 @@ export default function ReportManagement() {
             case 'kebakaran':
                 return `/icons/icon-kebakaran.png${cacheBuster}`;
             case 'gempa':
-                return `/icons/gempa.png${cacheBuster}`;
+                return `/icons/icon-gempa.png${cacheBuster}`;
             case 'longsor':
                 return `/icons/icon-tanahlongsor.png${cacheBuster}`;
             case 'angin_topan':

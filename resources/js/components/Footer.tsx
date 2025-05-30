@@ -84,9 +84,19 @@ const Footer: React.FC<FooterProps> = ({ scrollToSection }) => {
                     </div>
 
                     {/* Image column */}
-                    <div className="hidden overflow-hidden md:block md:w-1/4">
+                    <div className="hidden overflow-hidden md:block md:w-1/3">
+                        {' '}
+                        {/* Changed from w-1/4 to w-1/3 for more space */}
                         <div className="flex justify-end pr-2">
-                            <img src="/img/image1.png" alt="Person working on laptop" className="h-60 object-contain" />
+                            <img
+                                src="/img/image1.png"
+                                alt="Person working on laptop"
+                                className="h-auto max-h-[300px] w-full scale-125 transform" // Better scaling approach
+                                style={{
+                                    objectFit: 'contain',
+                                    transformOrigin: 'center right', // Scale from the right side
+                                }}
+                            />
                         </div>
                     </div>
                 </div>

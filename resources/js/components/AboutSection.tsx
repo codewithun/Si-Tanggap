@@ -305,7 +305,7 @@ const AboutSection: React.FC = () => {
                                     </div>
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-900">Kontak Kami</h3>
-                                        <p className="mt-1 text-gray-600">info@sitanggap.id</p>
+                                        <p className="mt-1 text-gray-600">geosiaga@gmail.com</p>
                                         <p className="text-gray-600">+62 21 1234 5678</p>
                                     </div>
                                 </div>
@@ -368,7 +368,7 @@ const AboutSection: React.FC = () => {
                                     </div>
                                     <div>
                                         <h3 className="text-lg font-semibold text-gray-900">Bantuan 24/7</h3>
-                                        <p className="mt-1 text-gray-600">Support: support@sitanggap.id</p>
+                                        <p className="mt-1 text-gray-600">Support: support@geosiaga.id</p>
                                         <p className="text-gray-600">Darurat: 119</p>
                                     </div>
                                 </div>

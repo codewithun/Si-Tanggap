@@ -13,7 +13,8 @@ use App\Http\Controllers\{
     RegionController,
     TestEmailController,
     EmailDebugController,
-    BeritaScraperController
+    BeritaScraperController,
+    DetikScraperController
 };
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Auth\{
@@ -35,7 +36,7 @@ Route::get('/send-test-email', [TestEmailController::class, 'sendToAddress'])->n
 Route::get('/test-email-by-role', [\App\Http\Controllers\RoleEmailTestController::class, 'testByRole'])->name('test.email.role');
 Route::get('/debug-email', [EmailDebugController::class, 'debug'])->name('debug.email');
 Route::get('/check-smtp', [EmailDebugController::class, 'checkSmtp'])->name('check.smtp');
-Route::get('/email-tester', function() {
+Route::get('/email-tester', function () {
     return view('email-tester');
 })->name('email.tester');
 
@@ -62,8 +63,10 @@ Route::get('/news', function () {
     return Inertia::render('NewsPage');
 })->name('news');
 
-// API endpoint for BNPB news data
-Route::get('/berita-bnpb', [BeritaScraperController::class, 'index'])->name('berita.bnpb');
+// Berita routes
+Route::get('/berita-bnpb', [App\Http\Controllers\BeritaScraperController::class, 'index']);
+Route::get('/berita-detik', [App\Http\Controllers\DetikScraperController::class, 'index']);
+Route::get('/berita-merged', [App\Http\Controllers\BeritaController::class, 'getBeritaMerged']);
 
 // ------------------------
 // 🔐 Protected Web Routes
@@ -92,7 +95,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/evacuation-and-shelter-map', fn() => Inertia::render('relawan/EvacuationAndShelterMap'))->name('evacuation-map');
         Route::get('/add-evacuation-and-shelter', fn() => Inertia::render('relawan/AddEvacuationAndShelter'))->name('add-evacuation');
         Route::get('/disaster-report-verification', fn() => Inertia::render('relawan/DisasterReportVerification'))->name('report-verification');
-        
+
         // Add these routes for laporan verification in relawan section
         Route::get('/laporans', [LaporanController::class, 'getUnverifiedReports'])->name('laporans.index');
         Route::put('/laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
@@ -135,7 +138,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('laporans/{laporan}/verify', [LaporanController::class, 'verify'])->name('laporans.verify');
         Route::put('laporans/{laporan}/reject', [LaporanController::class, 'reject'])->name('laporans.reject');
         Route::delete('laporans/{laporan}', [LaporanController::class, 'destroy'])->name('laporans.destroy');
-        
+
         // Add these new routes for update functionality
         Route::put('laporans/{laporan}', [LaporanController::class, 'update'])->name('laporans.update');
         Route::patch('laporans/{laporan}', [LaporanController::class, 'update'])->name('laporans.update');

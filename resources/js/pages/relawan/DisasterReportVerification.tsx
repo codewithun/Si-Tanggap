@@ -65,7 +65,7 @@ const getDisasterMapIcon = (type: string) => {
             });
         case 'gempa':
             return L.icon({
-                iconUrl: `/icons/gempa.png${cacheBuster}`,
+                iconUrl: `/icons/icon-gempa.png${cacheBuster}`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -32],
@@ -80,7 +80,7 @@ const getDisasterMapIcon = (type: string) => {
         case 'angin-topan':
         case 'angin_topan':
             return L.icon({
-                iconUrl: `/icons/default-marker.svg${cacheBuster}`,
+                iconUrl: `/icons/icon-angin-topan.svg${cacheBuster}`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -32],
@@ -101,7 +101,7 @@ const getDisasterMapIcon = (type: string) => {
             });
         default:
             return L.icon({
-                iconUrl: `/icons/disaster.svg${cacheBuster}`,
+                iconUrl: `/icons/disaster-marker.svg${cacheBuster}`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 32],
                 popupAnchor: [0, -32],
@@ -217,34 +217,16 @@ export default function DisasterReportVerification() {
     const getFormattedImageUrl = (imageUrl: string): string => {
         if (!imageUrl) return '/images/placeholder-image.png';
 
-        // Check if the URL is already absolute (starts with http or https)
-        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-            return imageUrl;
+        // If it's already a full URL, return it
+        if (imageUrl.startsWith('http')) return imageUrl;
+
+        // Ensure the path starts with a slash
+        if (!imageUrl.startsWith('/')) {
+            imageUrl = '/' + imageUrl;
         }
 
-        // Add a cache buster to prevent caching issues
-        const cacheBuster = `?v=${new Date().getTime()}`;
-
-        // Try to standardize the path format
-        let standardPath = imageUrl;
-
-        // Remove any 'public/' prefix as it's not accessible in the browser
-        if (standardPath.startsWith('public/')) {
-            standardPath = standardPath.substring(7); // Remove 'public/'
-        }
-
-        // Make sure paths are properly formatted with leading slash if needed
-        if (standardPath.startsWith('storage/')) {
-            standardPath = `/${standardPath}`;
-        }
-
-        // Handle case where URL already has /storage/ prefix
-        if (standardPath.startsWith('/storage/')) {
-            return standardPath + cacheBuster;
-        }
-
-        // Default: add storage prefix to the path
-        return `/storage/${standardPath}${cacheBuster}`;
+        // Add a cache buster
+        return `${imageUrl}?v=${new Date().getTime()}`;
     };
 
     // Better image error handling

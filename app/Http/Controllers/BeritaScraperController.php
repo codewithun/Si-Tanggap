@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Berita;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -16,34 +17,66 @@ class BeritaScraperController extends Controller
             // Get pagination parameter (default to 5 pages)
             $pagesToScrape = request()->get('pages', 5);
             $pagesToScrape = min(max((int)$pagesToScrape, 1), 10); // Limit between 1 and 10 pages
-            
+
+            // Check if we want merged news from database or just BNPB news
+            $getMerged = request()->get('merged', false);
+
+            // If requesting merged news, get from database
+            if ($getMerged) {
+                // Get latest news, combining both sources
+                $berita = Berita::orderBy('published_date', 'desc')
+                    ->orWhere('published_date', null)
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->get(['title', 'description', 'link', 'image', 'source', 'published_date', 'created_at'])
+                    ->map(function ($item) {
+                        return [
+                            'title' => $item->title,
+                            'description' => $item->description,
+                            'link' => $item->link,
+                            'image' => $item->image,
+                            'source' => $item->source,
+                            'date' => $item->published_date ?? $item->created_at->format('Y-m-d H:i:s')
+                        ];
+                    })->toArray();
+
+                return response()->json([
+                    'berita' => $berita,
+                    'total' => count($berita),
+                    'source' => 'merged'
+                ]);
+            }
+
             // Caching selama 30 menit dengan key yang menyertakan jumlah halaman
             $cacheKey = 'berita_bnpb_' . $pagesToScrape;
-            
+
             // Uncomment for testing
             // Cache::forget($cacheKey);
-            
+
             $berita = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($pagesToScrape) {
                 // Log the scraping attempt
                 Log::info("Attempting to scrape BNPB news - {$pagesToScrape} pages");
-                
+
                 $allBerita = [];
-                
+
                 for ($page = 1; $page <= $pagesToScrape; $page++) {
                     $pageBerita = $this->scrapePage($page);
                     if (empty($pageBerita)) {
                         Log::info("No more news found on page {$page}, stopping pagination");
                         break;
                     }
-                    
+
                     $allBerita = array_merge($allBerita, $pageBerita);
                     Log::info("Scraped page {$page}, got " . count($pageBerita) . " items");
-                    
+
                     // Add small delay between pages
                     if ($page < $pagesToScrape) {
                         sleep(1);
                     }
                 }
+
+                // Save to database
+                $this->saveToDatabase($allBerita);
 
                 Log::info('BNPB scraping complete, found ' . count($allBerita) . ' items across ' . ($page - 1) . ' pages');
                 return $allBerita;
@@ -53,7 +86,8 @@ class BeritaScraperController extends Controller
             return response()->json([
                 'berita' => $berita,
                 'total' => count($berita),
-                'pages_scraped' => $pagesToScrape
+                'pages_scraped' => $pagesToScrape,
+                'source' => 'bnpb'
             ], 200, [
                 'Content-Type' => 'application/json',
                 'Cache-Control' => 'public, max-age=1800' // 30 minutes
@@ -61,6 +95,27 @@ class BeritaScraperController extends Controller
         } catch (\Exception $e) {
             Log::error('BeritaScraperController exception: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to fetch news data', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function saveToDatabase($articles)
+    {
+        foreach ($articles as $article) {
+            // Check if article with this title already exists
+            $exists = Berita::where('title', $article['title'])->exists();
+
+            if (!$exists) {
+                Berita::create([
+                    'title' => $article['title'],
+                    'description' => $article['description'],
+                    'link' => $article['link'],
+                    'image' => $article['image'],
+                    'source' => 'bnpb',
+                    'published_date' => $article['date']
+                ]);
+
+                Log::info("Saved to database: {$article['title']}");
+            }
         }
     }
 
@@ -124,18 +179,18 @@ class BeritaScraperController extends Controller
                 if ($node->filter('.title a')->count() == 0) {
                     return;
                 }
-                
+
                 // Skip duplicates (prevent duplicates from different selectors)
                 $title = $node->filter('.title a')->text('');
                 $isDuplicate = false;
-                
+
                 foreach ($beritaList as $existingItem) {
                     if ($existingItem['title'] === trim($title)) {
                         $isDuplicate = true;
                         break;
                     }
                 }
-                
+
                 if (!$isDuplicate) {
                     $this->extractArticle($node, $beritaList, 'fallback selector');
                 }
