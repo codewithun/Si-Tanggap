@@ -18,7 +18,29 @@ class EnsureRelawanIsActive
     {
         $user = Auth::user();
 
-        if ($user->hasRole('relawan') && $user->status !== 'active') {
+        // First check if user has relawan role
+        if (!$user->hasRole('relawan')) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Akses ditolak. Anda bukan relawan.'
+                ], 403);
+            }
+            return redirect()->route('dashboard')->with('error', 'Akses ditolak. Anda bukan relawan.');
+        }
+
+        // Then check if relawan is active
+        if ($user->status !== 'active') {
+            // If the user is rejected, redirect to the rejected page
+            if ($user->status === 'rejected') {
+                return redirect()->route('registration.rejected');
+            }
+
+            // If the user is pending, redirect to the pending page
+            if ($user->status === 'pending') {
+                return redirect()->route('registration.pending');
+            }
+
+            // Otherwise logout and redirect to login page
             Auth::logout();
 
             if ($request->wantsJson()) {

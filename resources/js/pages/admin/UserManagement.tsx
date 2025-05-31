@@ -146,7 +146,7 @@ export default function UserManagement() {
     // Function to reject a volunteer
     const handleRejectVolunteer = async () => {
         if (!rejectingUserId) return;
-        
+
         try {
             await axios.post(`/admin/relawans/${rejectingUserId}/reject`);
             toast({
@@ -253,10 +253,10 @@ export default function UserManagement() {
         try {
             const userId = selectedUser.id;
             const updateUrl = `/admin/users/${userId}`;
-            
+
             const requestData = {
                 ...updateData,
-                _method: 'PATCH', 
+                _method: 'PATCH',
             };
 
             await axios.post(updateUrl, requestData);
@@ -329,26 +329,26 @@ export default function UserManagement() {
 
     // Function to get status display class and text
     const getStatusDisplay = (status: string) => {
-        switch(status) {
+        switch (status) {
             case 'active':
                 return {
                     class: 'bg-green-100 text-green-800',
-                    text: 'Aktif'
+                    text: 'Aktif',
                 };
             case 'pending':
                 return {
                     class: 'bg-yellow-100 text-yellow-800',
-                    text: 'Menunggu Verifikasi'
+                    text: 'Menunggu Verifikasi',
                 };
             case 'rejected':
                 return {
                     class: 'bg-red-100 text-red-800',
-                    text: 'Ditolak'
+                    text: 'Ditolak',
                 };
             default:
                 return {
                     class: 'bg-gray-100 text-gray-800',
-                    text: status
+                    text: status,
                 };
         }
     };
@@ -445,10 +445,7 @@ export default function UserManagement() {
 
                                         <div className="space-y-2">
                                             <Label htmlFor="status">Status</Label>
-                                            <Select
-                                                value={formData.status}
-                                                onValueChange={(value) => handleSelectChange('status', value)}
-                                            >
+                                            <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
                                                 <SelectTrigger id="status">
                                                     <SelectValue placeholder="Pilih status pengguna" />
                                                 </SelectTrigger>
@@ -503,7 +500,8 @@ export default function UserManagement() {
                                             users.map((user) => {
                                                 const statusDisplay = getStatusDisplay(user.status);
                                                 const isPendingRelawan = user.role === 'relawan' && user.status === 'pending';
-                                                
+                                                const isRejectedRelawan = user.role === 'relawan' && user.status === 'rejected';
+
                                                 return (
                                                     <TableRow key={user.id}>
                                                         <TableCell className="font-medium">{user.name}</TableCell>
@@ -522,9 +520,7 @@ export default function UserManagement() {
                                                             </span>
                                                         </TableCell>
                                                         <TableCell>
-                                                            <span
-                                                                className={`rounded-full px-2 py-1 text-xs ${statusDisplay.class}`}
-                                                            >
+                                                            <span className={`rounded-full px-2 py-1 text-xs ${statusDisplay.class}`}>
                                                                 {statusDisplay.text}
                                                             </span>
                                                         </TableCell>
@@ -532,17 +528,17 @@ export default function UserManagement() {
                                                             <div className="flex justify-center space-x-2">
                                                                 {isPendingRelawan && (
                                                                     <>
-                                                                        <Button 
-                                                                            variant="outline" 
-                                                                            size="sm" 
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
                                                                             className="bg-green-50 text-green-600 hover:bg-green-100"
                                                                             onClick={() => handleVerifyVolunteer(user.id)}
                                                                         >
                                                                             <CheckIcon className="h-4 w-4" />
                                                                             <span className="sr-only">Verifikasi</span>
                                                                         </Button>
-                                                                        <Button 
-                                                                            variant="outline" 
+                                                                        <Button
+                                                                            variant="outline"
                                                                             size="sm"
                                                                             className="bg-red-50 text-red-600 hover:bg-red-100"
                                                                             onClick={() => prepareRejectVolunteer(user.id)}
@@ -551,6 +547,18 @@ export default function UserManagement() {
                                                                             <span className="sr-only">Tolak</span>
                                                                         </Button>
                                                                     </>
+                                                                )}
+
+                                                                {isRejectedRelawan && (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="bg-orange-50 text-orange-600 hover:bg-orange-100"
+                                                                        onClick={() => showUserDetail(user)}
+                                                                        title="Lihat detail pengajuan yang ditolak"
+                                                                    >
+                                                                        <span className="text-xs">Ditolak</span>
+                                                                    </Button>
                                                                 )}
                                                                 <Button variant="outline" size="sm" onClick={() => showUserDetail(user)}>
                                                                     <EyeIcon className="h-4 w-4" />
@@ -651,10 +659,7 @@ export default function UserManagement() {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-status">Status</Label>
-                                    <Select
-                                        value={formData.status}
-                                        onValueChange={(value) => handleSelectChange('status', value)}
-                                    >
+                                    <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
                                         <SelectTrigger id="edit-status">
                                             <SelectValue placeholder="Pilih status pengguna" />
                                         </SelectTrigger>
@@ -706,8 +711,8 @@ export default function UserManagement() {
                         <DialogHeader>
                             <DialogTitle>Tolak Pendaftaran Relawan</DialogTitle>
                             <DialogDescription>
-                                Apakah Anda yakin ingin menolak pendaftaran relawan ini? 
-                                <strong className="block mt-2 text-red-600">
+                                Apakah Anda yakin ingin menolak pendaftaran relawan ini?
+                                <strong className="mt-2 block text-red-600">
                                     Akun pengguna akan dihapus dan email dapat digunakan kembali untuk pendaftaran.
                                 </strong>
                             </DialogDescription>
@@ -728,52 +733,54 @@ export default function UserManagement() {
                     <DialogContent className="max-w-md sm:max-w-lg">
                         <DialogHeader>
                             <DialogTitle>Detail Pengguna</DialogTitle>
-                            <DialogDescription>
-                                Informasi lengkap tentang pengguna
-                            </DialogDescription>
+                            <DialogDescription>Informasi lengkap tentang pengguna</DialogDescription>
                         </DialogHeader>
-                        <div className="py-4 max-h-[70vh] overflow-y-auto">
+                        <div className="max-h-[70vh] overflow-y-auto py-4">
                             {selectedUser && (
                                 <div className="space-y-4">
                                     {/* Basic Information */}
-                                    <h4 className="font-semibold text-sm text-gray-500">Informasi Dasar</h4>
-                                    
+                                    <h4 className="text-sm font-semibold text-gray-500">Informasi Dasar</h4>
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Nama</div>
                                         <div className="col-span-2">{selectedUser.name || '-'}</div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Email</div>
                                         <div className="col-span-2">{selectedUser.email || '-'}</div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">No. Telepon</div>
                                         <div className="col-span-2">{selectedUser.phone || '-'}</div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Role</div>
                                         <div className="col-span-2">
-                                            <span className={`rounded-full px-2 py-1 text-xs ${
-                                                selectedUser.role === 'admin'
-                                                    ? 'bg-blue-100 text-blue-800'
-                                                    : selectedUser.role === 'relawan'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-gray-100 text-gray-800'
-                                            }`}>
+                                            <span
+                                                className={`rounded-full px-2 py-1 text-xs ${
+                                                    selectedUser.role === 'admin'
+                                                        ? 'bg-blue-100 text-blue-800'
+                                                        : selectedUser.role === 'relawan'
+                                                          ? 'bg-green-100 text-green-800'
+                                                          : 'bg-gray-100 text-gray-800'
+                                                }`}
+                                            >
                                                 {selectedUser.role || '-'}
                                             </span>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Status</div>
                                         <div className="col-span-2">
-                                            <span className={`rounded-full px-2 py-1 text-xs ${
-                                                selectedUser.status ? getStatusDisplay(selectedUser.status).class : 'bg-gray-100 text-gray-800'
-                                            }`}>
+                                            <span
+                                                className={`rounded-full px-2 py-1 text-xs ${
+                                                    selectedUser.status ? getStatusDisplay(selectedUser.status).class : 'bg-gray-100 text-gray-800'
+                                                }`}
+                                            >
                                                 {selectedUser.status ? getStatusDisplay(selectedUser.status).text : '-'}
                                             </span>
                                         </div>
@@ -781,49 +788,51 @@ export default function UserManagement() {
 
                                     {/* Relawan Information - Show always but mark as N/A if not available */}
                                     <hr className="my-2" />
-                                    <h4 className="font-semibold text-sm text-gray-500">Informasi Relawan</h4>
-                                    
+                                    <h4 className="text-sm font-semibold text-gray-500">Informasi Relawan</h4>
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Organisasi</div>
                                         <div className="col-span-2">{selectedUser.organization || '-'}</div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Pengalaman</div>
                                         <div className="col-span-2">{selectedUser.experience || '-'}</div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Motivasi</div>
                                         <div className="col-span-2">{selectedUser.motivation || '-'}</div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">KTP</div>
                                         <div className="col-span-2">
                                             {selectedUser.id_card_path ? (
-                                                <a 
-                                                    href={selectedUser.id_card_path} 
+                                                <a
+                                                    href={selectedUser.id_card_path}
                                                     target="_blank"
                                                     className="text-blue-600 hover:underline"
                                                     rel="noreferrer"
                                                 >
                                                     Lihat KTP
                                                 </a>
-                                            ) : '-'}
+                                            ) : (
+                                                '-'
+                                            )}
                                         </div>
                                     </div>
-                                    
+
                                     {/* Additional Information */}
                                     <hr className="my-2" />
-                                    <h4 className="font-semibold text-sm text-gray-500">Informasi Tambahan</h4>
-                                    
+                                    <h4 className="text-sm font-semibold text-gray-500">Informasi Tambahan</h4>
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Foto Profil</div>
                                         <div className="col-span-2">
                                             {selectedUser.profile_photo_path ? (
-                                                <a 
-                                                    href={selectedUser.profile_photo_path} 
+                                                <a
+                                                    href={selectedUser.profile_photo_path}
                                                     target="_blank"
                                                     className="text-blue-600 hover:underline"
                                                     rel="noreferrer"
@@ -831,35 +840,39 @@ export default function UserManagement() {
                                                     Lihat Foto
                                                 </a>
                                             ) : selectedUser.avatar ? (
-                                                <a 
-                                                    href={selectedUser.avatar} 
+                                                <a
+                                                    href={selectedUser.avatar}
                                                     target="_blank"
                                                     className="text-blue-600 hover:underline"
                                                     rel="noreferrer"
                                                 >
                                                     Lihat Foto
                                                 </a>
-                                            ) : '-'}
+                                            ) : (
+                                                '-'
+                                            )}
                                         </div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Verifikasi Email</div>
                                         <div className="col-span-2">
-                                            {selectedUser.email_verified_at ? 
-                                                <span className="text-green-600">Terverifikasi</span> : 
+                                            {selectedUser.email_verified_at ? (
+                                                <span className="text-green-600">Terverifikasi</span>
+                                            ) : (
                                                 <span className="text-yellow-600">Belum Diverifikasi</span>
-                                            }
+                                            )}
                                         </div>
                                     </div>
-                                    
+
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Login Google</div>
                                         <div className="col-span-2">
-                                            {selectedUser.google_id ? 
-                                                <span className="text-green-600">Terhubung</span> : 
+                                            {selectedUser.google_id ? (
+                                                <span className="text-green-600">Terhubung</span>
+                                            ) : (
                                                 <span className="text-gray-600">Tidak Terhubung</span>
-                                            }
+                                            )}
                                         </div>
                                     </div>
                                 </div>

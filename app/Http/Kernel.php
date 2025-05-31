@@ -72,5 +72,7 @@ class Kernel extends HttpKernel
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
 
         'active.relawan' => \App\Http\Middleware\EnsureRelawanIsActive::class,
+        'redirect.rejected.relawan' => \App\Http\Middleware\RedirectRejectedRelawan::class,
+        'rejected.relawan' => \App\Http\Middleware\RedirectRejectedRelawan::class,
     ];
 }

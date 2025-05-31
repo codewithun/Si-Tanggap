@@ -12,12 +12,12 @@ use Illuminate\Queue\SerializesModels;
 class RelawanRejected extends Mailable
 {
     use Queueable, SerializesModels;
-
     /**
      * Create a new message instance.
      */
     public function __construct(
-        public string $userName
+        public string $userName,
+        public string $userEmail
     ) {}
 
     /**
@@ -29,7 +29,6 @@ class RelawanRejected extends Mailable
             subject: 'Permohonan Relawan Tidak Disetujui',
         );
     }
-
     /**
      * Get the message content definition.
      */
@@ -38,7 +37,8 @@ class RelawanRejected extends Mailable
         return new Content(
             markdown: 'emails.relawan.rejected',
             with: [
-                'name' => $this->userName
+                'name' => $this->userName,
+                'email' => $this->userEmail
             ],
         );
     }
