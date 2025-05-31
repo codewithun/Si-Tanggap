@@ -56,7 +56,7 @@ class LoginRequest extends FormRequest
             
             RateLimiter::clear($this->throttleKey());
 
-            $message = 'Akun relawan Anda masih dalam proses verifikasi admin. Silahkan tunggu atau hubungi admin.';
+            $message = 'Akun relawan anda masih dalam proses verifikasi admin. Silahkan cek email atau hubungi admin.';
             if ($user->status === 'rejected') {
                 $message = 'Maaf, pendaftaran relawan Anda ditolak oleh admin.';
             }

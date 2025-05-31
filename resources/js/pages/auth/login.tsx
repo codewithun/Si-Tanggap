@@ -274,15 +274,6 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                         className="h-full w-full object-cover object-center"
                         style={{ position: 'absolute', inset: 0 }}
                     />
-                    <motion.div
-                        className="z-10 max-w-lg p-8 text-center text-white"
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
-                    >
-                        <h2 className="text-2xl font-bold">Secure Login</h2>
-                        <p className="mt-2">Access your dashboard safely and securely</p>
-                    </motion.div>
                 </div>
             </div>
         </div>

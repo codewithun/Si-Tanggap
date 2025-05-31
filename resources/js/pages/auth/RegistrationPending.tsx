@@ -27,7 +27,7 @@ export default function RegistrationPending() {
                     <div className="text-gray-600 space-y-4 mb-8">
                         <p>
                             Terima kasih telah mendaftar sebagai relawan GeoSiaga. Akun Anda saat ini sedang 
-                            dalam proses verifikasi oleh administrator.
+                            dalam proses verifikasi oleh admin.
                         </p>
                         <p>
                             Anda akan menerima email notifikasi setelah akun Anda diverifikasi dan dapat login 
