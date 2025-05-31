@@ -214,16 +214,25 @@ class UserController extends Controller
      */
     public function getUsers()
     {
-        $users = User::select('id', 'name', 'email', 'status', 'created_at')
+        $users = User::select('id', 'name', 'email', 'phone', 'status', 'created_at', 'organization', 'experience', 'motivation', 'id_card_path', 'profile_photo_path', 'email_verified_at', 'google_id', 'avatar')
                 ->get()
                 ->map(function ($user) {
                     return [
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
+                        'phone' => $user->phone,
                         'role' => $user->getRoleNames()->first() ?? 'masyarakat',
                         'status' => $user->status,
-                        'created_at' => $user->created_at
+                        'created_at' => $user->created_at,
+                        'organization' => $user->organization,
+                        'experience' => $user->experience,
+                        'motivation' => $user->motivation, 
+                        'id_card_path' => $user->id_card_path,
+                        'profile_photo_path' => $user->profile_photo_path,
+                        'email_verified_at' => $user->email_verified_at,
+                        'google_id' => $user->google_id,
+                        'avatar' => $user->avatar
                     ];
                 });
 
