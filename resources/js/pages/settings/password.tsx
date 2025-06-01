@@ -4,7 +4,7 @@ import SettingsLayout from '@/layouts/settings/layout';
 import { type BreadcrumbItem } from '@/types';
 import { Transition } from '@headlessui/react';
 import { Head, useForm } from '@inertiajs/react';
-import { FormEventHandler, useRef } from 'react';
+import { FormEventHandler, useEffect, useRef } from 'react';
 
 import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,16 @@ export default function Password() {
         password_confirmation: '',
     });
 
+    useEffect(() => {
+        // Clear form after successful submission
+        if (recentlySuccessful) {
+            const timeout = setTimeout(() => {
+                reset('current_password', 'password', 'password_confirmation');
+            }, 2000);
+            return () => clearTimeout(timeout);
+        }
+    }, [recentlySuccessful, reset]);
+
     const updatePassword: FormEventHandler = (e) => {
         e.preventDefault();
 
@@ -50,7 +60,7 @@ export default function Password() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Profile settings" />
+            <Head title="Password settings" />
 
             <SettingsLayout>
                 <div className="space-y-6">
@@ -69,6 +79,7 @@ export default function Password() {
                                 className="mt-1 block w-full"
                                 autoComplete="current-password"
                                 placeholder="Current password"
+                                required
                             />
 
                             <InputError message={errors.current_password} />
@@ -86,6 +97,7 @@ export default function Password() {
                                 className="mt-1 block w-full"
                                 autoComplete="new-password"
                                 placeholder="New password"
+                                required
                             />
 
                             <InputError message={errors.password} />
@@ -102,6 +114,7 @@ export default function Password() {
                                 className="mt-1 block w-full"
                                 autoComplete="new-password"
                                 placeholder="Confirm password"
+                                required
                             />
 
                             <InputError message={errors.password_confirmation} />

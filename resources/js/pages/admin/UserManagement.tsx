@@ -763,7 +763,7 @@ export default function UserManagement() {
                                                     ? 'bg-green-100 text-green-800'
                                                     : 'bg-gray-100 text-gray-800'
                                             }`}>
-                                                {selectedUser.role || '-'}
+                                                {selectedUser.role}
                                             </span>
                                         </div>
                                     </div>
@@ -771,31 +771,65 @@ export default function UserManagement() {
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Status</div>
                                         <div className="col-span-2">
-                                            <span className={`rounded-full px-2 py-1 text-xs ${
-                                                selectedUser.status ? getStatusDisplay(selectedUser.status).class : 'bg-gray-100 text-gray-800'
-                                            }`}>
-                                                {selectedUser.status ? getStatusDisplay(selectedUser.status).text : '-'}
+                                            <span className={`rounded-full px-2 py-1 text-xs ${getStatusDisplay(selectedUser.status).class}`}>
+                                                {getStatusDisplay(selectedUser.status).text}
                                             </span>
                                         </div>
                                     </div>
 
+                                    {/* Profile Photo */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="font-semibold">Foto Profil</div>
+                                        <div className="col-span-2">
+                                            {selectedUser.profile_photo_path ? (
+                                                <div className="relative h-24 w-24 overflow-hidden rounded-full">
+                                                    <img 
+                                                        src={`/storage/${selectedUser.profile_photo_path}`} 
+                                                        alt="Foto profil" 
+                                                        className="h-full w-full object-cover"
+                                                        onError={(e) => {
+                                                            // Fallback if image doesn't load
+                                                            (e.target as HTMLImageElement).src = selectedUser.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(selectedUser.name);
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : selectedUser.avatar ? (
+                                                <div className="relative h-24 w-24 overflow-hidden rounded-full">
+                                                    <img 
+                                                        src={selectedUser.avatar} 
+                                                        alt="Avatar" 
+                                                        className="h-full w-full object-cover"
+                                                        onError={(e) => {
+                                                            // Fallback if image doesn't load
+                                                            (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(selectedUser.name);
+                                                        }}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-200 text-gray-500">
+                                                    Tidak ada foto
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
                                     {/* Relawan Information - Show always but mark as N/A if not available */}
                                     <hr className="my-2" />
                                     <h4 className="font-semibold text-sm text-gray-500">Informasi Relawan</h4>
                                     
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Organisasi</div>
-                                        <div className="col-span-2">{selectedUser.organization || '-'}</div>
+                                        <div className="col-span-2">{selectedUser.organization || 'Tidak ada'}</div>
                                     </div>
                                     
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Pengalaman</div>
-                                        <div className="col-span-2">{selectedUser.experience || '-'}</div>
+                                        <div className="col-span-2">{selectedUser.experience || 'Tidak ada'}</div>
                                     </div>
                                     
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Motivasi</div>
-                                        <div className="col-span-2">{selectedUser.motivation || '-'}</div>
+                                        <div className="col-span-2">{selectedUser.motivation || 'Tidak ada'}</div>
                                     </div>
                                     
                                     <div className="grid grid-cols-3 gap-4">
@@ -803,45 +837,22 @@ export default function UserManagement() {
                                         <div className="col-span-2">
                                             {selectedUser.id_card_path ? (
                                                 <a 
-                                                    href={selectedUser.id_card_path} 
-                                                    target="_blank"
+                                                    href={`/storage/${selectedUser.id_card_path}`} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
                                                     className="text-blue-600 hover:underline"
-                                                    rel="noreferrer"
                                                 >
                                                     Lihat KTP
                                                 </a>
-                                            ) : '-'}
+                                            ) : (
+                                                'Tidak ada'
+                                            )}
                                         </div>
                                     </div>
                                     
                                     {/* Additional Information */}
                                     <hr className="my-2" />
                                     <h4 className="font-semibold text-sm text-gray-500">Informasi Tambahan</h4>
-                                    
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="font-semibold">Foto Profil</div>
-                                        <div className="col-span-2">
-                                            {selectedUser.profile_photo_path ? (
-                                                <a 
-                                                    href={selectedUser.profile_photo_path} 
-                                                    target="_blank"
-                                                    className="text-blue-600 hover:underline"
-                                                    rel="noreferrer"
-                                                >
-                                                    Lihat Foto
-                                                </a>
-                                            ) : selectedUser.avatar ? (
-                                                <a 
-                                                    href={selectedUser.avatar} 
-                                                    target="_blank"
-                                                    className="text-blue-600 hover:underline"
-                                                    rel="noreferrer"
-                                                >
-                                                    Lihat Foto
-                                                </a>
-                                            ) : '-'}
-                                        </div>
-                                    </div>
                                     
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Verifikasi Email</div>

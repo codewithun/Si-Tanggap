@@ -50,6 +50,10 @@ class HandleInertiaRequests extends Middleware
                         'name' => $request->user()->name,
                         'email' => $request->user()->email,
                         'role' => $request->user()->getRoleNames()->first(),
+                        'avatar' => $request->user()->profile_photo_path 
+                            ? '/storage/' . $request->user()->profile_photo_path 
+                            : 'https://ui-avatars.com/api/?name=' . urlencode($request->user()->name),
+                        'profile_photo_path' => $request->user()->profile_photo_path,
                     ]
                     : null,
             ],

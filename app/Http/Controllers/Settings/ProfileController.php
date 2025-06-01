@@ -37,8 +37,8 @@ class ProfileController extends Controller
 
         // Handle profile photo upload
         if ($request->hasFile('profile_photo')) {
-            $path = $request->file('profile_photo')->store('public/profile-photos');
-            $request->user()->profile_photo_path = \Illuminate\Support\Facades\Storage::url($path);
+            $path = $request->file('profile_photo')->store('profile-photos', 'public');
+            $request->user()->profile_photo_path = $path;
         }
 
         $request->user()->save();
