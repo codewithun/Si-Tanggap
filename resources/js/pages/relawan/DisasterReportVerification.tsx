@@ -137,7 +137,7 @@ export default function DisasterReportVerification() {
             setLoading(true);
             // Try both API endpoint options - first try the web endpoint, then fall back to the API endpoint
             let response;
-            
+
             try {
                 // First try the normal web route
                 response = await axios.get('/relawan/laporans');
@@ -208,15 +208,15 @@ export default function DisasterReportVerification() {
             });
 
             setIsVerifyDialogOpen(false);
-            
+
             // Improve state management by fetching fresh data
             fetchReports();
         } catch (error: unknown) {
             console.error('Error verifying report:', error);
             const axiosError = error as AxiosError<{ message: string }>;
-            const errorMessage = axiosError.response?.data?.message || 
-                                (error instanceof Error ? error.message : 'Gagal memproses verifikasi laporan');
-            
+            const errorMessage =
+                axiosError.response?.data?.message || (error instanceof Error ? error.message : 'Gagal memproses verifikasi laporan');
+
             toast({
                 title: 'Error',
                 description: errorMessage,

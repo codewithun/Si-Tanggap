@@ -9,9 +9,9 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAvatarManager } from '@/hooks/use-avatar-manager';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
-import { useAvatarManager } from '@/hooks/use-avatar-manager';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -31,19 +31,17 @@ type ProfileForm = {
 export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: boolean; status?: string }) {
     const { auth } = usePage<SharedData>().props;
     const photoInput = useRef<HTMLInputElement>(null);
-    
+
     // Get initial avatar URL from server path if available
-    const initialAvatar = auth.user?.profile_photo_path 
-        ? `/storage/${auth.user.profile_photo_path}` 
-        : null;
-    
+    const initialAvatar = auth.user?.profile_photo_path ? `/storage/${auth.user.profile_photo_path}` : null;
+
     // Initialize avatar manager with the current user
-    const { 
-        avatarUrl: previewUrl, 
-        updateGlobalAvatar, 
-        saveToSessionStorage, 
+    const {
+        avatarUrl: previewUrl,
+        updateGlobalAvatar,
+        saveToSessionStorage,
         loadFromSessionStorage,
-        cleanupSessionStorage
+        cleanupSessionStorage,
     } = useAvatarManager({
         userId: auth.user?.id,
         initialAvatar: initialAvatar,
@@ -57,9 +55,9 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                     auth.user.avatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(auth.user.name || '');
                 }
             }
-        }
+        },
     });
-    
+
     // Initialize avatar on first render by checking session storage first
     useEffect(() => {
         const storedAvatar = loadFromSessionStorage();
@@ -95,36 +93,36 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                 if (photoInput.current) {
                     photoInput.current.value = '';
                 }
-                
+
                 // Initial handling - maintain the preview URL we already have
-                // This ensures the UI stays consistent and the avatar doesn't disappear 
+                // This ensures the UI stays consistent and the avatar doesn't disappear
                 if (auth.user && currentPreviewUrl) {
                     // Update the avatar immediately to prevent flickering
                     updateGlobalAvatar(currentPreviewUrl);
                 }
-                
+
                 // Process server response for more permanent storage
                 if (response && typeof response === 'object' && 'props' in response) {
                     const typedResponse = response as { props: { auth?: { user?: { avatar?: string; profile_photo_path?: string } } } };
-                    
+
                     // Update from server response if available
                     if (typedResponse.props?.auth?.user && auth.user) {
                         let newAvatarUrl = currentPreviewUrl;
-                        
+
                         // If server returned profile_photo_path, this is the most authoritative
                         if (typedResponse.props.auth.user.profile_photo_path) {
                             auth.user.profile_photo_path = typedResponse.props.auth.user.profile_photo_path;
                             newAvatarUrl = `/storage/${typedResponse.props.auth.user.profile_photo_path}`;
-                            
+
                             // Save to session storage as permanent path
                             saveToSessionStorage(newAvatarUrl, true);
                         }
-                        
+
                         // If server specifically returned an avatar URL, use it
                         if (typedResponse.props.auth.user.avatar) {
                             newAvatarUrl = typedResponse.props.auth.user.avatar;
                         }
-                        
+
                         // Update global avatar state with the most appropriate URL
                         updateGlobalAvatar(newAvatarUrl);
                     }
@@ -135,7 +133,7 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                 if (auth.user && currentPreviewUrl) {
                     updateGlobalAvatar(currentPreviewUrl);
                 }
-            }
+            },
         });
     };
 
@@ -147,22 +145,24 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                 if (photoInput.current) {
                     photoInput.current.value = '';
                 }
-                
+
                 // Clear all stored avatar data
                 cleanupSessionStorage();
-                
+
                 // Reset avatar to default fallback immediately for UI consistency
                 if (auth.user) {
                     // Clear profile photo path
                     auth.user.profile_photo_path = undefined;
-                    
+
                     // Set to null to trigger the default UI fallback
                     updateGlobalAvatar(null);
                 }
-                
+
                 // Process server response for more authoritative state
                 if (response && typeof response === 'object' && 'props' in response) {
-                    const typedResponse = response as { props: { auth?: { user?: { avatar?: string; profile_photo_path?: string; name?: string } } } };
+                    const typedResponse = response as {
+                        props: { auth?: { user?: { avatar?: string; profile_photo_path?: string; name?: string } } };
+                    };
                     if (typedResponse.props?.auth?.user && auth.user) {
                         // If server returned an avatar (perhaps a default), use it
                         if (typedResponse.props.auth.user.avatar) {
@@ -172,7 +172,7 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                             const userName = typedResponse.props.auth.user.name || auth.user.name || '';
                             updateGlobalAvatar('https://ui-avatars.com/api/?name=' + encodeURIComponent(userName));
                         }
-                        
+
                         // Clear profile photo path from the user object
                         auth.user.profile_photo_path = undefined;
                     }
@@ -183,7 +183,7 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                 if (auth.user) {
                     updateGlobalAvatar(null); // This will use the UI avatar fallback
                 }
-            }
+            },
         });
     };
 
@@ -195,12 +195,12 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
             const reader = new FileReader();
             reader.onload = (e) => {
                 const dataUrl = e.target?.result as string;
-                
+
                 // Update all instances of the avatar in the application
                 if (auth.user) {
                     // Update global avatar to immediately update all components
                     updateGlobalAvatar(dataUrl);
-                    
+
                     // Store in session storage as temporary preview
                     saveToSessionStorage(dataUrl, false);
                 }
@@ -283,19 +283,14 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                                             // Fallback if image doesn't load
                                             const fallbackUrl = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(auth.user?.name || '');
                                             (e.target as HTMLImageElement).src = fallbackUrl;
-                                            
+
                                             // Also update global avatar state if this is the current avatar
                                             if (auth.user && auth.user.avatar === previewUrl) {
                                                 updateGlobalAvatar(fallbackUrl);
                                             }
                                         }}
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        onClick={removePhoto}
-                                        size="sm"
-                                    >
+                                    <Button type="button" variant="destructive" onClick={removePhoto} size="sm">
                                         Remove Photo
                                     </Button>
                                 </div>
@@ -310,9 +305,7 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                                 onChange={handlePhotoChange}
                             />
 
-                            <p className="text-sm text-gray-500">
-                                Upload a new profile photo (max 2MB)
-                            </p>
+                            <p className="text-sm text-gray-500">Upload a new profile photo (max 2MB)</p>
 
                             <InputError className="mt-2" message={errors.profile_photo} />
                         </div>

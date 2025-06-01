@@ -79,7 +79,8 @@ export default function Register() {
                                 detail: {
                                     type: 'info',
                                     title: 'Registrasi Berhasil',
-                                    message: 'Akun Anda sedang dalam proses verifikasi admin. Anda akan menerima email notifikasi setelah akun diverifikasi.',
+                                    message:
+                                        'Akun Anda sedang dalam proses verifikasi admin. Anda akan menerima email notifikasi setelah akun diverifikasi.',
                                 },
                             }),
                         );

@@ -95,7 +95,7 @@ export default function MasyarakatDashboard() {
             if (userId) params.user_id = userId;
             params.page = currentPage;
             params.per_page = itemsPerPage;
-            
+
             const response = await axios.get<ApiResponse>('/api/laporan-saya', { params });
 
             if (response.data) {
@@ -307,12 +307,12 @@ export default function MasyarakatDashboard() {
                             <CardContent className="pt-6">
                                 <Tabs value={activeTab} onValueChange={handleTabChange}>
                                     <div className="relative">
-                                        <TabsList className="w-full grid grid-cols-4 gap-0.5 p-0.5 rounded-md">
+                                        <TabsList className="grid w-full grid-cols-4 gap-0.5 rounded-md p-0.5">
                                             {(['semua', 'menunggu', 'diverifikasi', 'ditolak'] as TabType[]).map((tab) => (
                                                 <TabsTrigger
                                                     key={tab}
                                                     value={tab}
-                                                    className="text-xs sm:text-sm whitespace-nowrap py-0 px-1 sm:px-2 rounded-md data-[state=active]:shadow-none"
+                                                    className="rounded-md px-1 py-0 text-xs whitespace-nowrap data-[state=active]:shadow-none sm:px-2 sm:text-sm"
                                                 >
                                                     {getTabLabel(tab)}
                                                 </TabsTrigger>
@@ -374,7 +374,7 @@ export default function MasyarakatDashboard() {
                                                         ))}
                                                     </TableBody>
                                                 </Table>
-                                                
+
                                                 {/* Pagination */}
                                                 {paginationData && paginationData.last_page > 1 && (
                                                     <div className="flex flex-col items-start justify-between gap-3 border-t px-4 py-3 sm:flex-row sm:items-center">
@@ -403,7 +403,9 @@ export default function MasyarakatDashboard() {
                                                                     return (
                                                                         <Button
                                                                             key={pageNumber}
-                                                                            variant={paginationData.current_page === pageNumber ? 'default' : 'outline'}
+                                                                            variant={
+                                                                                paginationData.current_page === pageNumber ? 'default' : 'outline'
+                                                                            }
                                                                             size="sm"
                                                                             onClick={() => setCurrentPage(pageNumber)}
                                                                             className="min-w-[32px]"
@@ -412,7 +414,7 @@ export default function MasyarakatDashboard() {
                                                                         </Button>
                                                                     );
                                                                 }
-                                                                
+
                                                                 // Show ellipsis for gaps in page numbers
                                                                 if (
                                                                     pageNumber === paginationData.current_page - 2 ||
@@ -424,7 +426,7 @@ export default function MasyarakatDashboard() {
                                                                         </span>
                                                                     );
                                                                 }
-                                                                
+
                                                                 return null;
                                                             })}
                                                             <Button

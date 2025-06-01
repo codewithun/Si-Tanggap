@@ -103,9 +103,9 @@ export default function ReportManagement() {
                 params: {
                     page: currentPage,
                     per_page: itemsPerPage,
-                }
+                },
             });
-            
+
             if (response.data && response.data.data) {
                 setReports(response.data.data);
                 setPaginationData({
@@ -430,7 +430,7 @@ export default function ReportManagement() {
                                             )}
                                         </TableBody>
                                     </Table>
-                                    
+
                                     {/* Pagination Controls */}
                                     {paginationData && paginationData.last_page > 1 && (
                                         <div className="flex flex-col items-start justify-between gap-3 border-t px-4 py-3 sm:flex-row sm:items-center">
@@ -497,16 +497,18 @@ export default function ReportManagement() {
 
                     {/* View Report Dialog */}
                     <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                        <DialogContent className="dialog-content max-w-3xl overflow-y-auto sm:max-h-[90vh] md:max-h-[85vh] p-2 sm:p-6">
+                        <DialogContent className="dialog-content max-w-3xl overflow-y-auto p-2 sm:max-h-[90vh] sm:p-6 md:max-h-[85vh]">
                             <DialogHeader className="pb-1 sm:pb-3">
                                 <DialogTitle className="text-sm sm:text-lg">Detail Laporan Bencana</DialogTitle>
                             </DialogHeader>
                             {selectedReport && (
-                                <div className="space-y-2 sm:space-y-4 -mt-1 sm:-mt-2">
+                                <div className="-mt-1 space-y-2 sm:-mt-2 sm:space-y-4">
                                     <div className="grid grid-cols-1 gap-2 sm:gap-4 md:grid-cols-2">
                                         {/* Report Info Section - Full width on mobile, left column on desktop */}
                                         <div className="space-y-1.5 sm:space-y-3">
-                                            <h3 className="text-sm sm:text-lg font-semibold line-clamp-2" title={selectedReport.judul}>{selectedReport.judul}</h3>
+                                            <h3 className="line-clamp-2 text-sm font-semibold sm:text-lg" title={selectedReport.judul}>
+                                                {selectedReport.judul}
+                                            </h3>
                                             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                                                 <img
                                                     src={getDisasterIconPath(selectedReport.jenis_bencana)}
@@ -515,39 +517,45 @@ export default function ReportManagement() {
                                                 />
                                                 <span className="text-xs sm:text-sm">{selectedReport.jenis_bencana}</span>
                                                 <span
-                                                    className={`rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs ${getStatusBadgeClass(selectedReport.status)}`}
+                                                    className={`rounded-full px-1.5 py-0.5 text-[10px] sm:px-2 sm:text-xs ${getStatusBadgeClass(selectedReport.status)}`}
                                                 >
                                                     {selectedReport.status}
                                                 </span>
                                             </div>
 
                                             <div>
-                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Deskripsi</h4>
-                                                <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-sm max-h-[60px] sm:max-h-[120px] overflow-y-auto">{selectedReport.deskripsi}</p>
+                                                <h4 className="text-[11px] font-medium text-gray-500 sm:text-sm">Deskripsi</h4>
+                                                <p className="mt-0.5 max-h-[60px] overflow-y-auto text-[11px] sm:mt-1 sm:max-h-[120px] sm:text-sm">
+                                                    {selectedReport.deskripsi}
+                                                </p>
                                             </div>
 
                                             <div>
-                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Lokasi</h4>
-                                                <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-sm line-clamp-2" title={selectedReport.lokasi}>{selectedReport.lokasi}</p>
-                                                <div className="mt-0.5 text-[10px] sm:text-xs text-gray-400">
+                                                <h4 className="text-[11px] font-medium text-gray-500 sm:text-sm">Lokasi</h4>
+                                                <p className="mt-0.5 line-clamp-2 text-[11px] sm:mt-1 sm:text-sm" title={selectedReport.lokasi}>
+                                                    {selectedReport.lokasi}
+                                                </p>
+                                                <div className="mt-0.5 text-[10px] text-gray-400 sm:text-xs">
                                                     Koordinat: {selectedReport.latitude}, {selectedReport.longitude}
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Dilaporkan oleh</h4>
+                                                <h4 className="text-[11px] font-medium text-gray-500 sm:text-sm">Dilaporkan oleh</h4>
                                                 <p className="mt-0.5 text-[11px] sm:text-sm">{selectedReport.user.name}</p>
-                                                <p className="text-[10px] sm:text-xs text-gray-400 truncate" title={selectedReport.user.email}>{selectedReport.user.email}</p>
+                                                <p className="truncate text-[10px] text-gray-400 sm:text-xs" title={selectedReport.user.email}>
+                                                    {selectedReport.user.email}
+                                                </p>
                                             </div>
 
                                             <div>
-                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Tanggal Laporan</h4>
+                                                <h4 className="text-[11px] font-medium text-gray-500 sm:text-sm">Tanggal Laporan</h4>
                                                 <p className="mt-0.5 text-[11px] sm:text-sm">{formatDate(selectedReport.created_at)}</p>
                                             </div>
 
                                             {selectedReport.catatan_admin && (
                                                 <div>
-                                                    <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Catatan Admin</h4>
+                                                    <h4 className="text-[11px] font-medium text-gray-500 sm:text-sm">Catatan Admin</h4>
                                                     <p className="mt-0.5 text-[11px] sm:text-sm">{selectedReport.catatan_admin}</p>
                                                 </div>
                                             )}
@@ -558,17 +566,17 @@ export default function ReportManagement() {
                                             {/* Photo section with responsive sizing */}
                                             {selectedReport.foto ? (
                                                 <div>
-                                                    <h4 className="text-[11px] sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-2">Foto Kejadian</h4>
+                                                    <h4 className="mb-0.5 text-[11px] font-medium text-gray-500 sm:mb-2 sm:text-sm">Foto Kejadian</h4>
                                                     <div className="relative overflow-hidden rounded-md border">
                                                         {imageLoadError[selectedReport.id] ? (
-                                                            <div className="flex h-24 sm:h-40 w-full items-center justify-center rounded-md border bg-gray-100">
-                                                                <div className="p-2 sm:p-4 text-center">
-                                                                    <ImageIcon className="mx-auto mb-1 sm:mb-2 h-5 w-5 sm:h-8 sm:w-8 text-gray-400" />
-                                                                    <p className="text-[10px] sm:text-sm text-gray-500">Gambar tidak dapat dimuat</p>
+                                                            <div className="flex h-24 w-full items-center justify-center rounded-md border bg-gray-100 sm:h-40">
+                                                                <div className="p-2 text-center sm:p-4">
+                                                                    <ImageIcon className="mx-auto mb-1 h-5 w-5 text-gray-400 sm:mb-2 sm:h-8 sm:w-8" />
+                                                                    <p className="text-[10px] text-gray-500 sm:text-sm">Gambar tidak dapat dimuat</p>
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
-                                                                        className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs h-6 sm:h-7 px-1.5 sm:px-2"
+                                                                        className="mt-0.5 h-6 px-1.5 text-[10px] sm:mt-1 sm:h-7 sm:px-2 sm:text-xs"
                                                                         onClick={() => {
                                                                             // Reset error state and try again
                                                                             setImageLoadError((prev) => {
@@ -585,19 +593,19 @@ export default function ReportManagement() {
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <div 
+                                                            <div
                                                                 className="cursor-pointer touch-manipulation"
                                                                 onClick={() => openImagePreview(selectedReport)}
                                                             >
                                                                 {loadingImages[selectedReport.id] && (
                                                                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100">
-                                                                        <div className="border-primary h-5 w-5 sm:h-8 sm:w-8 animate-spin rounded-full border-t-2 border-b-2"></div>
+                                                                        <div className="border-primary h-5 w-5 animate-spin rounded-full border-t-2 border-b-2 sm:h-8 sm:w-8"></div>
                                                                     </div>
                                                                 )}
-                                                                <img 
-                                                                    src={getFormattedImageUrl(selectedReport.foto)} 
-                                                                    alt="Foto Laporan" 
-                                                                    className="h-auto max-h-[100px] sm:max-h-[180px] w-full object-contain object-center"
+                                                                <img
+                                                                    src={getFormattedImageUrl(selectedReport.foto)}
+                                                                    alt="Foto Laporan"
+                                                                    className="h-auto max-h-[100px] w-full object-contain object-center sm:max-h-[180px]"
                                                                     data-retry-count="0"
                                                                     onLoad={() => {
                                                                         // Remove loading state when image loads successfully
@@ -609,7 +617,7 @@ export default function ReportManagement() {
                                                                     }}
                                                                     onError={(e) => handleImageError(selectedReport.id, e.target as HTMLImageElement)}
                                                                 />
-                                                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-0.5 sm:p-1 text-white text-[9px] sm:text-xs text-center">
+                                                                <div className="absolute right-0 bottom-0 left-0 bg-black/50 p-0.5 text-center text-[9px] text-white sm:p-1 sm:text-xs">
                                                                     Klik untuk memperbesar
                                                                 </div>
                                                             </div>
@@ -620,8 +628,8 @@ export default function ReportManagement() {
 
                                             {/* Map with responsive height */}
                                             <div>
-                                                <h4 className="text-[11px] sm:text-sm font-medium text-gray-500">Lokasi di Peta</h4>
-                                                <div className="mt-0.5 sm:mt-2 h-[120px] sm:h-[200px] w-full overflow-hidden rounded-md border">
+                                                <h4 className="text-[11px] font-medium text-gray-500 sm:text-sm">Lokasi di Peta</h4>
+                                                <div className="mt-0.5 h-[120px] w-full overflow-hidden rounded-md border sm:mt-2 sm:h-[200px]">
                                                     <MapContainer
                                                         center={[selectedReport.latitude, selectedReport.longitude]}
                                                         zoom={13}
@@ -638,7 +646,7 @@ export default function ReportManagement() {
                                                             icon={getDisasterMapIcon(selectedReport.jenis_bencana)}
                                                         >
                                                             <Popup>
-                                                                <div className="font-semibold text-[10px] sm:text-sm">{selectedReport.judul}</div>
+                                                                <div className="text-[10px] font-semibold sm:text-sm">{selectedReport.judul}</div>
                                                                 <div className="text-[9px] sm:text-xs">{selectedReport.lokasi}</div>
                                                             </Popup>
                                                         </Marker>
@@ -648,11 +656,11 @@ export default function ReportManagement() {
                                         </div>
                                     </div>
 
-                                    <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-1.5 sm:gap-2 pt-2 sm:pt-4 border-t">
-                                        <Button 
-                                            variant="outline" 
-                                            onClick={() => setIsViewDialogOpen(false)} 
-                                            className="w-full sm:w-auto h-7 sm:h-9 text-xs sm:text-sm"
+                                    <DialogFooter className="flex flex-col gap-1.5 border-t pt-2 sm:flex-row sm:justify-between sm:gap-2 sm:pt-4">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setIsViewDialogOpen(false)}
+                                            className="h-7 w-full text-xs sm:h-9 sm:w-auto sm:text-sm"
                                         >
                                             Tutup
                                         </Button>
@@ -662,7 +670,7 @@ export default function ReportManagement() {
                                                     setIsViewDialogOpen(false);
                                                     openVerifyDialog(selectedReport);
                                                 }}
-                                                className="w-full sm:w-auto h-7 sm:h-9 text-xs sm:text-sm"
+                                                className="h-7 w-full text-xs sm:h-9 sm:w-auto sm:text-sm"
                                             >
                                                 Verifikasi Laporan
                                             </Button>

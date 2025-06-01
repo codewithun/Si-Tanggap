@@ -1,9 +1,9 @@
 import { setAuthToken, setAuthUser } from '@/utils/api';
 import { useForm } from '@inertiajs/react';
 import axios from 'axios';
+import { motion } from 'framer-motion';
 import { ArrowLeft, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
-import { motion } from 'framer-motion';
 
 import PageTitle from '@/components/PageTitle';
 import InputError from '@/components/input-error';
@@ -154,11 +154,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                                     placeholder="Email"
                                     className="mt-1 rounded-lg border-gray-300 bg-white px-4 py-4 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 />
-                                {errors.email && (
-                                    <div className="mt-2 rounded-md bg-red-50 p-3 text-sm text-red-600">
-                                        {errors.email}
-                                    </div>
-                                )}
+                                {errors.email && <div className="mt-2 rounded-md bg-red-50 p-3 text-sm text-red-600">{errors.email}</div>}
                             </div>
 
                             <div>
@@ -196,11 +192,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                                 )}
 
                                 {canResetPassword && (
-                                    <TextLink
-                                        href={route('password.request')}
-                                        className="text-sm text-blue-600 hover:text-blue-800"
-                                        tabIndex={5}
-                                    >
+                                    <TextLink href={route('password.request')} className="text-sm text-blue-600 hover:text-blue-800" tabIndex={5}>
                                         Forgot Password?
                                     </TextLink>
                                 )}
@@ -210,7 +202,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
                             <Button
                                 type="submit"
-                                className="rounded-lg bg-blue-600 py-4 text-base font-semibold hover:bg-blue-700 transition-colors"
+                                className="rounded-lg bg-blue-600 py-4 text-base font-semibold transition-colors hover:bg-blue-700"
                                 tabIndex={4}
                                 disabled={processing}
                             >
@@ -224,9 +216,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
                                 <div className="w-full border-t border-gray-200"></div>
                             </div>
                             <div className="relative flex justify-center text-xs text-gray-500">
-                                <span className="bg-gradient-to-br from-blue-50 to-white px-2">
-                                    OR CONTINUE WITH
-                                </span>
+                                <span className="bg-gradient-to-br from-blue-50 to-white px-2">OR CONTINUE WITH</span>
                             </div>
                         </div>
 
@@ -247,11 +237,7 @@ export default function Login({ status, canResetPassword }: LoginProps) {
 
                     <div className="pt-2 text-center text-sm text-gray-600">
                         Buat akun?{' '}
-                        <TextLink
-                            href={route('register')}
-                            className="font-medium text-blue-600 hover:text-blue-800"
-                            tabIndex={6}
-                        >
+                        <TextLink href={route('register')} className="font-medium text-blue-600 hover:text-blue-800" tabIndex={6}>
                             Daftar
                         </TextLink>
                     </div>

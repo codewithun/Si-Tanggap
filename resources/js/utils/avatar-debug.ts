@@ -5,13 +5,13 @@
 
 // Constants for avatar storage keys
 export const AVATAR_PREVIEW_KEY = 'temp_avatar_preview';
-export const AVATAR_PATH_KEY = 'current_avatar_path'; 
+export const AVATAR_PATH_KEY = 'current_avatar_path';
 
 // Define interface for auth user
 interface AuthUser {
-  avatar?: string | null;
-  profile_photo_path?: string | null;
-  name?: string | null;
+    avatar?: string | null;
+    profile_photo_path?: string | null;
+    name?: string | null;
 }
 
 /**
@@ -19,15 +19,15 @@ interface AuthUser {
  */
 export function logAvatarState(authUser?: AuthUser) {
     console.group('Avatar State Debug');
-    
+
     try {
         const sessionPreview = sessionStorage.getItem(AVATAR_PREVIEW_KEY);
         const sessionPath = sessionStorage.getItem(AVATAR_PATH_KEY);
-        
+
         console.log('Session Storage:');
         console.log(`- Preview: ${sessionPreview ? 'exists (data URL)' : 'null'}`);
         console.log(`- Path: ${sessionPath || 'null'}`);
-        
+
         if (authUser) {
             console.log('Auth User State:');
             console.log(`- avatar: ${authUser.avatar || 'null'}`);
@@ -39,7 +39,7 @@ export function logAvatarState(authUser?: AuthUser) {
     } catch (e) {
         console.error('Error accessing avatar state:', e);
     }
-    
+
     console.groupEnd();
 }
 
@@ -64,9 +64,9 @@ export function broadcastAvatarUpdate(avatar: string, userId: number) {
         new CustomEvent('avatar-updated', {
             detail: {
                 avatar,
-                userId
-            }
-        })
+                userId,
+            },
+        }),
     );
     console.log(`Avatar update broadcast: ${userId} -> ${avatar.substring(0, 30)}...`);
 }
