@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\User;
@@ -15,6 +16,28 @@ class UserController extends Controller
     use AuthorizesRequests;
 
     /**
+     * Redirect users based on their role and status
+     */
+    public function redirectByUserStatus()
+    {
+        $user = auth()->user();
+
+        if ($user->hasRole('relawan')) {
+            if ($user->status === 'pending') {
+                return redirect()->route('registration.pending');
+            } elseif ($user->status === 'rejected') {
+                return redirect()->route('registration.rejected');
+            } elseif ($user->status === 'active') {
+                return redirect()->route('relawan.dashboard');
+            }
+        } elseif ($user->hasRole('admin')) {
+            return redirect()->route('admin.dashboard');
+        } else {
+            return redirect()->route('masyarakat.dashboard');
+        }
+    }
+
+    /**
      * Display a listing of the users
      */
     public function index(Request $request)
@@ -27,7 +50,7 @@ class UserController extends Controller
             $searchTerm = $request->get('search');
             $query->where(function ($q) use ($searchTerm) {
                 $q->where('name', 'like', '%' . $searchTerm . '%')
-                  ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                    ->orWhere('email', 'like', '%' . $searchTerm . '%');
             });
         }
 
@@ -133,10 +156,10 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => [
-                'required', 
-                'string', 
-                'email', 
-                'max:255', 
+                'required',
+                'string',
+                'email',
+                'max:255',
                 Rule::unique('users')->ignore($user->id)
             ],
             'role' => ['required', 'string', Rule::in($roles)],
@@ -215,27 +238,27 @@ class UserController extends Controller
     public function getUsers()
     {
         $users = User::select('id', 'name', 'email', 'phone', 'status', 'created_at', 'organization', 'experience', 'motivation', 'id_card_path', 'profile_photo_path', 'email_verified_at', 'google_id', 'avatar')
-                ->get()
-                ->map(function ($user) {
-                    return [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'phone' => $user->phone,
-                        'role' => $user->getRoleNames()->first() ?? 'masyarakat',
-                        'status' => $user->status,
-                        'created_at' => $user->created_at,
-                        'organization' => $user->organization,
-                        'experience' => $user->experience,
-                        'motivation' => $user->motivation, 
-                        'id_card_path' => $user->id_card_path,
-                        'profile_photo_path' => $user->profile_photo_path,
-                        'email_verified_at' => $user->email_verified_at,
-                        'google_id' => $user->google_id,
-                        'avatar' => $user->avatar
-                    ];
-                });
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'role' => $user->getRoleNames()->first() ?? 'masyarakat',
+                    'status' => $user->status,
+                    'created_at' => $user->created_at,
+                    'organization' => $user->organization,
+                    'experience' => $user->experience,
+                    'motivation' => $user->motivation,
+                    'id_card_path' => $user->id_card_path,
+                    'profile_photo_path' => $user->profile_photo_path,
+                    'email_verified_at' => $user->email_verified_at,
+                    'google_id' => $user->google_id,
+                    'avatar' => $user->avatar
+                ];
+            });
 
-    return response()->json($users);
-}
+        return response()->json($users);
+    }
 }

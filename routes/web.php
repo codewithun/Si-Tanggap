@@ -1,6 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Http\Controllers\{
     UserController,
@@ -74,6 +77,11 @@ Route::get('/registration-pending', function () {
     return Inertia::render('auth/RegistrationPending');
 })->name('registration.pending');
 
+// Add this route for rejected registration
+Route::get('/registration-rejected', function () {
+    return Inertia::render('auth/RegistrationRejected');
+})->name('registration.rejected');
+
 // ------------------------
 // 🔐 Protected Web Routes
 // ------------------------
@@ -88,14 +96,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', fn() => Inertia::render('masyarakat/AkunSaya'))->name('index');
         Route::get('/dashboard', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('dashboard');
         Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('laporan');
-        // Alias agar route('masyarakat.dashboard') mengarah ke /masyarakat/laporan-saya
-        Route::get('/laporan-saya', fn() => Inertia::render('masyarakat/MasyarakatDashboard'))->name('dashboard');
         Route::get('/buat-laporan', fn() => Inertia::render('masyarakat/BuatLaporan'))->name('buat-laporan');
         Route::get('/peta-bencana', fn() => Inertia::render('masyarakat/BencanaMaps'))->name('peta-bencana');
     });
 
     // 🦺 Relawan
-    Route::middleware(['auth', \App\Http\Middleware\EnsureRelawanIsActive::class])->prefix('relawan')->name('relawan.')->group(function () {
+    Route::middleware(['auth', 'verified', 'active.relawan'])->prefix('relawan')->name('relawan.')->group(function () {
         Route::get('/dashboard', fn() => Inertia::render('relawan/RelawanDashboard'))->name('dashboard');
         Route::get('/bencana-map', fn() => Inertia::render('relawan/BencanaMap'))->name('bencana-map');
         Route::get('/evacuation-and-shelter-map', fn() => Inertia::render('relawan/EvacuationAndShelterMap'))->name('evacuation-map');
@@ -140,7 +146,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/relawans/{id}', [\App\Http\Controllers\Admin\RelawanController::class, 'show'])->name('relawans.show');
         Route::post('/relawans/{id}/verify', [\App\Http\Controllers\Admin\RelawanController::class, 'verify'])->name('relawans.verify');
         Route::post('/relawans/{id}/reject', [\App\Http\Controllers\Admin\RelawanController::class, 'reject'])->name('relawans.reject');
-        Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
         // API endpoint untuk mengambil data user
@@ -151,9 +156,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('laporans/{laporan}/reject', [LaporanController::class, 'reject'])->name('laporans.reject');
         Route::delete('laporans/{laporan}', [LaporanController::class, 'destroy'])->name('laporans.destroy');
 
-        // Add these new routes for update functionality
+        // Update functionality for laporans
         Route::put('laporans/{laporan}', [LaporanController::class, 'update'])->name('laporans.update');
-        Route::patch('laporans/{laporan}', [LaporanController::class, 'update'])->name('laporans.update');
 
         // Notifikasi
         Route::post('notifikasi', [NotifikasiController::class, 'send'])->name('notifikasi.send');
@@ -173,6 +177,9 @@ Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
     Route::put('/profile', [ProfileController::class, 'update'])->name('api.profile.update');
     Route::get('/users', [UserController::class, 'index'])->name('api.users.index');
 
+    // Add endpoint for resubmitting relawan applications
+    Route::post('/relawan/resubmit', [\App\Http\Controllers\Admin\RelawanController::class, 'resubmit'])->name('api.relawan.resubmit');
+
     // Tambahkan endpoint baru untuk dashboard relawan
     Route::get('/relawan/dashboard-stats', [StatistikController::class, 'relawanDashboardStats'])
         ->name('api.relawan.dashboard-stats');
@@ -185,13 +192,41 @@ Route::prefix('api')->middleware(['auth', 'verified'])->group(function () {
 });
 
 // ------------------------
-// 🌐 API Routes - Public
+// 🌐 API Routes - Public & Sanctum Auth
 // ------------------------
 Route::prefix('api')->group(function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('api.login');
     Route::post('/register', [RegisteredUserController::class, 'store'])->name('api.register');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('api.logout');
     Route::get('/regions', [RegionController::class, 'index'])->name('api.regions');
+
+    // Add the missing /api/user endpoint
+    Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+        $user = $request->user();
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'organization' => $user->organization,
+            'experience' => $user->experience,
+            'motivation' => $user->motivation,
+            'id_card_path' => $user->id_card_path,
+            'status' => $user->status,
+            'roles' => $user->roles
+        ]);
+    });
+
+    // Pindahkan endpoint ini ke sini agar hanya memakai auth:sanctum
+    Route::middleware('auth:sanctum')->get('/rejected-relawan-data', [\App\Http\Controllers\Admin\RelawanController::class, 'getRejectedRelawanData'])
+        ->name('api.rejected-relawan-data');
+
+    // Public endpoints for rejected users to get their data and resubmit for resubmission
+    Route::get('/rejected-relawan-public/{email}', [\App\Http\Controllers\Admin\RelawanController::class, 'getRejectedRelawanDataPublic'])
+        ->name('api.rejected-relawan-public');
+
+    Route::post('/rejected-relawan-public/resubmit', [\App\Http\Controllers\Admin\RelawanController::class, 'resubmitPublic'])
+        ->name('api.rejected-relawan-public.resubmit');
 });
 
 Route::get('auth/google', [GoogleController::class, 'redirectToGoogle'])->name('google.login');
@@ -222,4 +257,40 @@ Route::get('/debug-bnpb-api', function () {
             ];
         }, array_slice($data['berita'], 0, 3))
     ]);
+});
+
+// Add temporarily for debugging
+Route::get('/debug-users', function () {
+    $users = \App\Models\User::with('roles')->get()->map(function ($user) {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'status' => $user->status,
+            'roles' => $user->roles->pluck('name')
+        ];
+    });
+    return response()->json($users);
+});
+
+// Add for debugging
+Route::get('/current-user', function () {
+    if (Auth::check()) {
+        $user = Auth::user();
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'status' => $user->status,
+            'roles' => $user->roles->pluck('name'),
+            'is_relawan' => $user->hasRole('relawan')
+        ]);
+    } else {
+        return response()->json(['message' => 'Not authenticated']);
+    }
+});
+
+// Add this at the end of your routes file
+Route::fallback(function () {
+    return response()->json(['message' => 'Resource not found or unauthorized'], 404);
 });

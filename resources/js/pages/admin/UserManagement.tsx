@@ -500,6 +500,7 @@ export default function UserManagement() {
                                             users.map((user) => {
                                                 const statusDisplay = getStatusDisplay(user.status);
                                                 const isPendingRelawan = user.role === 'relawan' && user.status === 'pending';
+                                                const isRejectedRelawan = user.role === 'relawan' && user.status === 'rejected';
 
                                                 return (
                                                     <TableRow key={user.id}>
@@ -546,6 +547,18 @@ export default function UserManagement() {
                                                                             <span className="sr-only">Tolak</span>
                                                                         </Button>
                                                                     </>
+                                                                )}
+
+                                                                {isRejectedRelawan && (
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="bg-orange-50 text-orange-600 hover:bg-orange-100"
+                                                                        onClick={() => showUserDetail(user)}
+                                                                        title="Lihat detail pengajuan yang ditolak"
+                                                                    >
+                                                                        <span className="text-xs">Ditolak</span>
+                                                                    </Button>
                                                                 )}
                                                                 <Button variant="outline" size="sm" onClick={() => showUserDetail(user)}>
                                                                     <EyeIcon className="h-4 w-4" />
@@ -763,8 +776,12 @@ export default function UserManagement() {
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="font-semibold">Status</div>
                                         <div className="col-span-2">
-                                            <span className={`rounded-full px-2 py-1 text-xs ${getStatusDisplay(selectedUser.status).class}`}>
-                                                {getStatusDisplay(selectedUser.status).text}
+                                            <span
+                                                className={`rounded-full px-2 py-1 text-xs ${
+                                                    selectedUser.status ? getStatusDisplay(selectedUser.status).class : 'bg-gray-100 text-gray-800'
+                                                }`}
+                                            >
+                                                {selectedUser.status ? getStatusDisplay(selectedUser.status).text : '-'}
                                             </span>
                                         </div>
                                     </div>
@@ -802,7 +819,6 @@ export default function UserManagement() {
                                                 </div>
                                             ) : (
                                                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-200 text-gray-500">
-                                                    Tidak ada foto
                                                 </div>
                                             )}
                                         </div>
